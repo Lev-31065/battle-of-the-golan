@@ -1,0 +1,80 @@
+// words.js — the Hebrew word bank. Every question in the game comes from here.
+//
+// HOW TO ADD A WORD: copy any line below, paste it, and change it. For example:
+//     { english: "horse", hebrew: "סוּס" },
+//
+// "wrong" is OPTIONAL. It holds tricky wrong answers (same word, wrong gender, wrong
+// word order...). If you give fewer than 3, the game fills the rest with other words.
+// Don't forget the comma at the end of each line!
+//
+// ⚠️ Please have a Hebrew teacher double-check the nikud (vowel marks).
+
+const WORDS = [
+  // ---------- Single words ----------
+  { english: "dog", hebrew: "כֶּלֶב" },
+  { english: "cat", hebrew: "חָתוּל" },
+  { english: "house", hebrew: "בַּיִת" },
+  { english: "book", hebrew: "סֵפֶר" },
+  { english: "water", hebrew: "מַיִם" },
+  { english: "bread", hebrew: "לֶחֶם" },
+  { english: "boy", hebrew: "יֶלֶד", wrong: ["יַלְדָּה"] },
+  { english: "girl", hebrew: "יַלְדָּה", wrong: ["יֶלֶד"] },
+  { english: "dad", hebrew: "אַבָּא", wrong: ["אִמָּא"] },
+  { english: "mom", hebrew: "אִמָּא", wrong: ["אַבָּא"] },
+  { english: "family", hebrew: "מִשְׁפָּחָה" },
+  { english: "friend", hebrew: "חָבֵר" },
+  { english: "school", hebrew: "בֵּית סֵפֶר", wrong: ["סֵפֶר"] },
+  { english: "teacher", hebrew: "מוֹרֶה" },
+  { english: "table", hebrew: "שֻׁלְחָן" },
+  { english: "chair", hebrew: "כִּסֵּא" },
+  { english: "door", hebrew: "דֶּלֶת" },
+  { english: "window", hebrew: "חַלּוֹן" },
+  { english: "bed", hebrew: "מִטָּה" },
+  { english: "car", hebrew: "מְכוֹנִית" },
+  { english: "tree", hebrew: "עֵץ" },
+  { english: "flower", hebrew: "פֶּרַח" },
+  { english: "sun", hebrew: "שֶׁמֶשׁ", wrong: ["יָרֵחַ"] },
+  { english: "moon", hebrew: "יָרֵחַ", wrong: ["שֶׁמֶשׁ"] },
+  { english: "sea", hebrew: "יָם" },
+  { english: "river", hebrew: "נָהָר" },
+  { english: "mountain", hebrew: "הַר" },
+  { english: "city", hebrew: "עִיר" },
+  { english: "street", hebrew: "רְחוֹב" },
+  { english: "food", hebrew: "אֹכֶל" },
+  { english: "apple", hebrew: "תַּפּוּחַ" },
+  { english: "milk", hebrew: "חָלָב" },
+  { english: "egg", hebrew: "בֵּיצָה" },
+  { english: "day", hebrew: "יוֹם", wrong: ["לַיְלָה"] },
+  { english: "night", hebrew: "לַיְלָה", wrong: ["יוֹם"] },
+  { english: "morning", hebrew: "בֹּקֶר" },
+  { english: "big", hebrew: "גָּדוֹל", wrong: ["קָטָן"] },
+  { english: "small", hebrew: "קָטָן", wrong: ["גָּדוֹל"] },
+  { english: "good", hebrew: "טוֹב" },
+  { english: "new", hebrew: "חָדָשׁ" },
+  { english: "hello / peace", hebrew: "שָׁלוֹם" },
+  { english: "thank you", hebrew: "תּוֹדָה", wrong: ["בְּבַקָּשָׁה"] },
+  { english: "please", hebrew: "בְּבַקָּשָׁה", wrong: ["תּוֹדָה"] },
+  { english: "yes", hebrew: "כֵּן", wrong: ["לֹא"] },
+  { english: "no", hebrew: "לֹא", wrong: ["כֵּן"] },
+  { english: "flag", hebrew: "דֶּגֶל" },
+  { english: "king", hebrew: "מֶלֶךְ" },
+  { english: "sword", hebrew: "חֶרֶב" },
+  { english: "hammer", hebrew: "פַּטִּישׁ" },
+
+  // ---------- Phrases (wrong answers test gender and word order) ----------
+  { english: "a red bed", hebrew: "מִטָּה אֲדֻמָּה", wrong: ["מִטָּה אָדֹם", "אֲדֻמָּה מִטָּה", "מִטָּה כְּחֻלָּה"] },
+  { english: "a big dog", hebrew: "כֶּלֶב גָּדוֹל", wrong: ["כֶּלֶב גְּדוֹלָה", "גָּדוֹל כֶּלֶב", "כֶּלֶב קָטָן"] },
+  { english: "a small cat", hebrew: "חָתוּל קָטָן", wrong: ["חָתוּל קְטַנָּה", "קָטָן חָתוּל", "חָתוּל גָּדוֹל"] },
+  { english: "a blue car", hebrew: "מְכוֹנִית כְּחֻלָּה", wrong: ["מְכוֹנִית כָּחֹל", "כְּחֻלָּה מְכוֹנִית", "מְכוֹנִית יְרֻקָּה"] },
+  { english: "a green tree", hebrew: "עֵץ יָרֹק", wrong: ["עֵץ יְרֻקָּה", "יָרֹק עֵץ", "עֵץ אָדֹם"] },
+  { english: "a new book", hebrew: "סֵפֶר חָדָשׁ", wrong: ["סֵפֶר חֲדָשָׁה", "חָדָשׁ סֵפֶר", "סֵפֶר יָשָׁן"] },
+  { english: "a white door", hebrew: "דֶּלֶת לְבָנָה", wrong: ["דֶּלֶת לָבָן", "לְבָנָה דֶּלֶת", "דֶּלֶת שְׁחֹרָה"] },
+  { english: "a black chair", hebrew: "כִּסֵּא שָׁחֹר", wrong: ["כִּסֵּא שְׁחֹרָה", "שָׁחֹר כִּסֵּא", "כִּסֵּא לָבָן"] },
+  { english: "the big house", hebrew: "הַבַּיִת הַגָּדוֹל", wrong: ["הַבַּיִת גָּדוֹל", "בַּיִת הַגָּדוֹל", "הַבַּיִת הַקָּטָן"] },
+  { english: "a good friend", hebrew: "חָבֵר טוֹב", wrong: ["חָבֵר טוֹבָה", "טוֹב חָבֵר", "חָבֵר רַע"] },
+  { english: "a big family", hebrew: "מִשְׁפָּחָה גְּדוֹלָה", wrong: ["מִשְׁפָּחָה גָּדוֹל", "גְּדוֹלָה מִשְׁפָּחָה", "מִשְׁפָּחָה קְטַנָּה"] },
+  { english: "good morning", hebrew: "בֹּקֶר טוֹב", wrong: ["בֹּקֶר טוֹבָה", "טוֹב בֹּקֶר", "לַיְלָה טוֹב"] },
+  { english: "good night", hebrew: "לַיְלָה טוֹב", wrong: ["לַיְלָה טוֹבָה", "טוֹב לַיְלָה", "בֹּקֶר טוֹב"] },
+  { english: "a red apple", hebrew: "תַּפּוּחַ אָדֹם", wrong: ["תַּפּוּחַ אֲדֻמָּה", "אָדֹם תַּפּוּחַ", "תַּפּוּחַ יָרֹק"] },
+  { english: "a little girl", hebrew: "יַלְדָּה קְטַנָּה", wrong: ["יַלְדָּה קָטָן", "קְטַנָּה יַלְדָּה", "יֶלֶד קָטָן"] },
+];

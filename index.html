@@ -1,0 +1,160 @@
+<!doctype html>
+<!--
+  index.html — the "skeleton" of the game page.
+  HTML describes WHAT is on the page (a drawing area, some buttons, some text).
+  The look comes from style.css, and the behavior comes from the .js files at the bottom.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- This line makes the page fit phone screens and stops accidental zooming while playing. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#2d4a22">
+  <!-- Lets the game fill the whole screen when saved to an iPhone's home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Battle of the Golan</title>
+  <!-- The little picture in the browser tab: a ⚔️ emoji -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <!-- "Rubik" is a free font that looks good in both English and Hebrew. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
+  <canvas id="game"></canvas>
+
+  <!-- The HUD ("heads-up display") is the info that floats on top of the game. -->
+  <div id="hud" class="hud" hidden>
+    <div class="chip score-chip">
+      <span class="score-blue">🔵 <b id="score-blue">0</b></span>
+      <span class="score-sep">:</span>
+      <span class="score-red"><b id="score-red">0</b> 🔴</span>
+    </div>
+    <div id="weapon-chip" class="chip">✋ No weapon</div>
+    <div id="carry-chip" class="chip carry-chip" hidden></div>
+    <div id="boost-chip" class="chip boost-chip" hidden></div>
+    <div id="water-chip" class="chip water-chip" hidden>🌊 In the river — very slow!</div>
+    <div id="bush-chip" class="chip bush-chip" hidden>🌿 In a bush — slow!</div>
+  </div>
+
+  <!-- Sound on/off. Sits under the minimap in the top-right corner. -->
+  <button id="mute-button" class="mute-button" type="button" aria-label="Sound on or off" hidden>🔊</button>
+
+  <!-- A red glow around the screen edges when you get hit -->
+  <div id="hurt-flash" class="hurt-flash"></div>
+
+  <!-- Shown in the middle of the screen while you're knocked out -->
+  <div id="ko-message" class="ko-message" hidden></div>
+
+  <!-- The left half of the screen is where your thumb drags to move (the joystick). -->
+  <div id="joystick-zone"></div>
+  <div id="joystick-base" class="joystick-base" hidden>
+    <div id="joystick-knob" class="joystick-knob"></div>
+  </div>
+
+  <!-- Action buttons on the right. Each one only appears when you can use it. -->
+  <div class="actions">
+    <button id="shop-button" class="action-button" type="button" hidden>🛒<span>Shop</span></button>
+    <button id="flag-button" class="action-button flag" type="button" hidden>🚩<span id="flag-button-label">Grab</span></button>
+    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span>Hit</span></button>
+  </div>
+
+  <!-- ===== HOME SCREEN: type a nickname, then create or join a room ===== -->
+  <div id="home" class="screen">
+    <div class="panel home-panel">
+      <h1>⚔️ Battle of the Golan</h1>
+      <p class="panel-sub">Capture the flag — and learn Hebrew while you do it!</p>
+      <label class="field-label" for="name-input">Your nickname</label>
+      <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="e.g. Dani">
+      <button id="create-button" class="big-button" type="button">Create a room</button>
+      <div class="or-line"><span>or join a friend's room</span></div>
+      <div class="join-row">
+        <input id="code-input" class="text-field code-field" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code">
+        <button id="join-button" class="big-button join-button" type="button">Join</button>
+      </div>
+      <p id="home-message" class="home-message"></p>
+    </div>
+  </div>
+
+  <!-- ===== LOBBY: see the teams, wait for the host to start ===== -->
+  <div id="lobby" class="screen" hidden>
+    <div class="panel lobby-panel">
+      <p class="panel-sub">Room code — friends type this on their phones</p>
+      <p id="lobby-code" class="room-code">----</p>
+      <button id="invite-button" class="secondary-button" type="button">📋 Share invite link</button>
+      <div class="teams">
+        <div class="team team-blue"><h3>🔵 Blue</h3><ul id="blue-list"></ul></div>
+        <div class="team team-red"><h3>🔴 Red</h3><ul id="red-list"></ul></div>
+      </div>
+      <button id="switch-team" class="secondary-button" type="button">⇄ Switch team</button>
+      <button id="start-button" class="big-button" type="button" hidden>Start the battle!</button>
+      <p id="lobby-wait" class="panel-sub lobby-wait" hidden>Waiting for the host to start…</p>
+      <details class="how-to">
+        <summary>How to play</summary>
+        <p>🕹️ Drag on the <b>left side</b> of the screen to walk.</p>
+        <p>🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</p>
+        <p>🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</p>
+        <p>💥 Knocked out? You drop the flag and come back at your base with nothing.</p>
+        <p>🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</p>
+        <p>⚡ Smash the speed box in the middle for a burst of speed.</p>
+      </details>
+    </div>
+  </div>
+
+  <!-- The shop window -->
+  <div id="shop" class="overlay" hidden>
+    <div class="panel">
+      <button id="shop-close" class="close-button" type="button" aria-label="Close shop">✕</button>
+      <h2>🛒 Shop</h2>
+      <p class="panel-sub">Tap a weapon to buy it. You pay by answering a Hebrew question!</p>
+      <button id="buy-hammer" class="shop-item" type="button">
+        <span class="shop-icon">🔨</span>
+        <span class="shop-text"><b>Hammer</b><small>Hits every enemy close to you</small></span>
+        <span id="hammer-status" class="shop-price">1 question</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- The Hebrew question popup (quiz.js controls it) -->
+  <div id="quiz" class="overlay" hidden>
+    <div class="panel quiz-panel">
+      <button id="quiz-close" class="close-button" type="button" aria-label="Close question">✕</button>
+      <p id="quiz-title" class="quiz-title"></p>
+      <p class="quiz-ask">How do you say this in Hebrew?</p>
+      <p id="quiz-prompt" class="quiz-prompt"></p>
+      <div id="quiz-choices" class="quiz-choices"></div>
+      <p id="quiz-feedback" class="quiz-feedback"></p>
+    </div>
+  </div>
+
+  <!-- The winner screen, shown when a team reaches 3 captures -->
+  <div id="winner" class="overlay" hidden>
+    <div id="confetti" class="confetti-layer"></div>
+    <div class="panel winner-panel">
+      <p class="winner-trophy">🏆</p>
+      <h2 id="winner-title">Blue team wins!</h2>
+      <p id="winner-score" class="panel-sub"></p>
+      <button id="play-again" class="big-button" type="button" hidden>Play again</button>
+      <p id="winner-wait" class="panel-sub" hidden>Waiting for the host to start a new game…</p>
+    </div>
+  </div>
+
+  <!-- A short message that pops up at the top and fades away -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- The game's code. Order matters: each file can use things from the files above it. -->
+  <script src="map.js"></script>
+  <script src="rules.js"></script>
+  <script src="sound.js"></script>
+  <script src="words.js"></script>
+  <script src="quiz.js"></script>
+  <script src="draw.js"></script>
+  <script src="network.js"></script>
+  <script src="server.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
