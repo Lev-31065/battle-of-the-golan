@@ -346,19 +346,46 @@ html, body {
 .quiz-feedback.good { color: #15803d; }
 .quiz-feedback.bad { color: #b91c1c; }
 
-/* ---------- Toast message ---------- */
-.toast {
+/* ---------- Top messages: the toast and the word card, stacked ---------- */
+.top-messages {
   position: fixed;
   top: 56px;
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
   max-width: calc(100% - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 15;
+  pointer-events: none;        /* touches pass through to the game */
+}
+
+/* The word card: English on top, Hebrew underneath */
+.word-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 22px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+.word-card-english { font-size: 18px; font-weight: 600; color: #374151; }
+.word-card-hebrew { font-size: 28px; font-weight: 800; color: #1e3a8a; }
+
+/* The voice button sits just under the sound button */
+.voice-button { top: 152px; }
+
+/* ---------- Toast message ---------- */
+.toast {
+  max-width: 100%;
   padding: 10px 18px;
   border-radius: 12px;
   background: rgba(17, 24, 39, 0.9);
   color: white;
   font-weight: 600;
   text-align: center;
-  z-index: 15;
-  pointer-events: none;
 }

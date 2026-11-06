@@ -734,10 +734,24 @@ muteButton.addEventListener("click", () => {
   muteButton.textContent = toggleMute() ? "🔇" : "🔊";
 });
 
+// Voice button: turns the words read out loud on or off (sound effects stay as they are).
+const voiceButton = document.getElementById("voice-button");
+function updateVoiceButton() {
+  voiceButton.textContent = "🗣️";
+  voiceButton.style.opacity = voiceOn ? "1" : "0.4";   // faded = voice off
+}
+updateVoiceButton();
+voiceButton.addEventListener("click", () => {
+  toggleVoice();
+  updateVoiceButton();
+  showToast(voiceOn ? "🗣️ Voice on" : "🤐 Voice off");
+});
+
 function updateHud(p) {
   const playing = client.phase === "playing" && p;
   hudEl.hidden = !playing;
   muteButton.hidden = !playing;
+  voiceButton.hidden = !playing;
   if (!playing) {
     for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
     koMessage.hidden = true;

@@ -37,6 +37,36 @@ const TEAM_NAMES = { blue: "Blue", red: "Red" };
 const ROCK_RADIUS = 28;
 const ROCK_PASS_TIME = 2;     // seconds you can walk through rocks after answering
 
+// ---------- Voice (speech.js) ----------
+const VOICE = {
+  englishRate: 1,        // talking speed: 1 = normal, 0.8 = slower, 1.2 = faster
+  hebrewRate: 0.85,      // Hebrew a little slower, so it's easier to learn
+  gapBetweenLines: 0.25, // seconds of quiet between one word and the next
+  silentLineTime: 1.3,   // with the voice off, how long each word stays on the top card
+  cardLingerTime: 1.5,   // seconds the top card stays up after the last word
+};
+
+// ---------- Flashcard review (progress.js) ----------
+// How long a word waits before coming back, by how many times IN A ROW you've
+// got it right. Level 0 = new or just missed. A word comes back when ANY of its
+// limits is reached (whichever comes first).
+//   questions = after this many more questions
+//   minutes / days = after this much time
+//   sessions = after this many more playing sessions
+const REVIEW_STEPS = [
+  { questions: 2 },             // level 0: just missed it → very soon
+  { questions: 3 },             // level 1: right once
+  { questions: 6 },             // level 2: right twice in a row
+  { minutes: 10 },              // level 3: right 3 times in a row → a few minutes
+  { days: 1, sessions: 1 },     // level 4: next playing session or tomorrow
+  { days: 3, sessions: 3 },     // level 5
+  { days: 7, sessions: 5 },     // level 6
+  { days: 21, sessions: 10 },   // level 7: you really know it
+];
+// Opening the game counts as a new "playing session" only if this many hours
+// have passed since the last one started.
+const SESSION_GAP_HOURS = 1;
+
 // ---------- Helpers ----------
 
 function distance(a, b) {
