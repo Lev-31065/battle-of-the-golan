@@ -58,12 +58,13 @@ function buildChoices(entry) {
 }
 
 // closable: false hides the ✕ button, so you MUST answer (used for rocks).
-function openQuiz({ title, onCorrect, closable = true }) {
+// titleHe is the Hebrew for the title (shown underneath it).
+function openQuiz({ title, titleHe, onCorrect, closable = true }) {
   quiz.open = true;
   quiz.onCorrect = onCorrect;
   quiz.closable = closable;
   quizCloseButton.hidden = !closable;
-  quizTitle.textContent = title;
+  setBilingual(quizTitle, title, titleHe);
   quizEl.hidden = false;
   askOrWait();
 }
@@ -90,7 +91,7 @@ function askOrWait() {
       const secondsLeft = Math.ceil((quiz.waitUntil - performance.now()) / 1000);
       if (secondsLeft <= 0) return askOrWait();
       quizFeedback.className = "quiz-feedback";
-      quizFeedback.textContent = `Next question in ${secondsLeft}…`;
+      setBilingual(quizFeedback, `Next question in ${secondsLeft}…`, `השאלה הבאה בעוד ${secondsLeft}…`);
     };
     tick();
     quiz.timer = setInterval(tick, 200);
@@ -105,7 +106,7 @@ function showNewQuestion() {
   quizPrompt.textContent = quiz.entry.english;
   // Stop anything still being read, and read the new English word.
   speakSteps([{ card: null, lines: [englishLine(quiz.entry)] }]);
-  quizFeedback.textContent = "";
+  setBilingual(quizFeedback, "");
   quizFeedback.className = "quiz-feedback";
 
   // Make one button per choice.
@@ -144,7 +145,7 @@ function choose(button) {
     // that message simply replaces this one.)
     closeQuiz();
     speakSteps(steps);
-    showToast("✅ נָכוֹן! Correct!");
+    showToast("✅ Correct!", "נָכוֹן!");
     if (quiz.onCorrect) quiz.onCorrect();
   } else {
     playSound("wrong");
@@ -159,7 +160,7 @@ function choose(button) {
     }
     quiz.waitUntil = performance.now() + WRONG_ANSWER_WAIT * 1000;
     quizFeedback.className = "quiz-feedback bad";
-    quizFeedback.textContent = `❌ The answer is ${correctAnswer}`;
+    setBilingual(quizFeedback, `❌ The answer is ${correctAnswer}`, `התשובה הנכונה: ${correctAnswer}`);
     // After a moment, switch to the countdown and then a new question.
     quiz.timer = setTimeout(() => { if (quiz.open) askOrWait(); }, 1800);
   }

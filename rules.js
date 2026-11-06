@@ -31,6 +31,11 @@ const FLAG_REACH = 70;        // how close you must be to grab a flag
 const FLAG_RETURN_TIME = 30;  // a dropped flag goes home by itself after this many seconds
 
 const TEAM_NAMES = { blue: "Blue", red: "Red" };
+// The Hebrew versions. Hebrew adjectives change with the noun, so each phrase is spelled out.
+const TEAM_HE = {
+  blue: { name: "כחול", flag: "הדגל הכחול", team: "הקבוצה הכחולה", players: "הכחולים" },
+  red:  { name: "אדום", flag: "הדגל האדום", team: "הקבוצה האדומה", players: "האדומים" },
+};
 
 // ---------- Rocks ----------
 // Rocks are solid. Bump into one and you must answer a question to pass through.
@@ -91,6 +96,29 @@ function spawnPoint(team) {
 function nearShop(p, extraReach = 0) {
   const shop = MAP.bases[p.team].shop;
   return Math.hypot(p.x - shop.x, p.y - (shop.y + 40)) < 110 + extraReach;
+}
+
+// Put English on top and Hebrew underneath, inside any box on the page.
+//     setBilingual(someElement, "Shop", "חנות");
+// Uses textContent (never innerHTML), so player names can't break the page.
+// If the box already shows these exact words, it does nothing (cheap to call every frame).
+function setBilingual(element, english, hebrew) {
+  const key = english + "|" + (hebrew || "");
+  if (element.dataset.bi === key) return;
+  element.dataset.bi = key;
+  element.textContent = "";
+  const en = document.createElement("span");
+  en.className = "en";
+  en.textContent = english;
+  element.appendChild(en);
+  if (hebrew) {
+    const he = document.createElement("span");
+    he.className = "he";
+    he.lang = "he";
+    he.dir = "rtl";      // Hebrew reads right-to-left
+    he.textContent = hebrew;
+    element.appendChild(he);
+  }
 }
 
 // Keep a position inside the map.

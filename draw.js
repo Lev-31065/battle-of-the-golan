@@ -89,7 +89,8 @@ function drawBase(ctx, base, team) {
   ctx.font = "800 26px Rubik, sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS[team];
-  ctx.fillText(team === "blue" ? "BLUE BASE" : "RED BASE", base.x, base.y + base.radius - 22);
+  ctx.fillText(team === "blue" ? "BLUE BASE" : "RED BASE", base.x, base.y + base.radius - 44);
+  ctx.fillText(team === "blue" ? "בסיס כחול" : "בסיס אדום", base.x, base.y + base.radius - 16); // Hebrew underneath
 }
 
 function drawBridge(ctx, b) {
@@ -188,6 +189,7 @@ function drawShopkeeper(ctx, base, team, time) {
   ctx.textAlign = "center";
   ctx.fillStyle = "#fff";
   ctx.fillText("🛒 SHOP", x, y + 7);
+  drawLabel(ctx, "חנות", x, y + 34); // Hebrew underneath the counter
 }
 
 // The round stand in the middle of each base where the flag lives.
@@ -446,7 +448,8 @@ function drawSpeedBox(ctx, box, time) {
     ctx.strokeRect(box.x - box.radius, box.y - box.radius, size, size);
     ctx.setLineDash([]);
     const secondsLeft = Math.ceil(box.respawnAt - time);
-    drawLabel(ctx, `⚡ back in ${secondsLeft}s`, box.x, box.y + 6);
+    drawLabel(ctx, `⚡ back in ${secondsLeft}s`, box.x, box.y - 4);
+    drawLabel(ctx, `חוזרת בעוד ${secondsLeft} שנ׳`, box.x, box.y + 16);
     return;
   }
 
@@ -500,7 +503,8 @@ function drawSpeedBox(ctx, box, time) {
   ctx.fillStyle = "#facc15";
   ctx.fillText("⚡", left + box.radius, box.y + 11);
 
-  drawLabel(ctx, box.name, box.x, box.y - box.radius - 20);
+  drawLabel(ctx, box.name, box.x, box.y - box.radius - 40);
+  if (box.nameHe) drawLabel(ctx, box.nameHe, box.x, box.y - box.radius - 20); // Hebrew underneath
   drawHealthBar(ctx, box.x, box.y - box.radius - 13, box.hp, box.maxHp);
 }
 
@@ -588,6 +592,10 @@ function drawEffects(ctx, effects, time) {
       ctx.strokeText(e.text, e.x, e.y - t * 45);
       ctx.fillStyle = e.color;
       ctx.fillText(e.text, e.x, e.y - t * 45);
+      if (e.he) { // Hebrew line underneath
+        ctx.strokeText(e.he, e.x, e.y + 28 - t * 45);
+        ctx.fillText(e.he, e.x, e.y + 28 - t * 45);
+      }
       ctx.globalAlpha = 1;
     }
   }

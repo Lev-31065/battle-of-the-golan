@@ -346,24 +346,15 @@ html, body {
 .quiz-feedback.good { color: #15803d; }
 .quiz-feedback.bad { color: #b91c1c; }
 
-/* ---------- Top messages: the toast and the word card, stacked ---------- */
-.top-messages {
+/* ---------- The word card: English on top, Hebrew underneath, at the very top ---------- */
+.word-card {
   position: fixed;
-  top: 56px;
+  top: 6px;
   left: 50%;
   transform: translateX(-50%);
-  width: max-content;
   max-width: calc(100% - 32px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
   z-index: 15;
   pointer-events: none;        /* touches pass through to the game */
-}
-
-/* The word card: English on top, Hebrew underneath */
-.word-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -379,13 +370,55 @@ html, body {
 /* The voice button sits just under the sound button */
 .voice-button { top: 152px; }
 
-/* ---------- Toast message ---------- */
+/* ---------- Toast message (bottom of the screen, a little see-through) ---------- */
+/* The area runs along the bottom. On wide screens it stops before the action buttons on the right. */
+.toast-area {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 120px;               /* narrow (upright) phones: just above the action buttons */
+  display: flex;
+  justify-content: center;
+  z-index: 15;
+  pointer-events: none;        /* touches pass through to the game */
+}
+@media (min-width: 640px) {
+  .toast-area { bottom: 16px; right: 330px; }   /* sideways phones: at the very bottom, left of the buttons */
+}
 .toast {
   max-width: 100%;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: 12px;
-  background: rgba(17, 24, 39, 0.9);
+  background: rgba(17, 24, 39, 0.6);   /* the last number is how solid it is: 0.6 = a bit see-through */
   color: white;
   font-weight: 600;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);  /* keeps white text readable over bright grass */
+}
+
+/* ---------- Two languages: English on top, Hebrew underneath ---------- */
+.en, .he { display: block; }
+.he {
+  font-size: 0.9em;
+  unicode-bidi: isolate;       /* keeps Hebrew and English from mixing up their reading direction */
+}
+/* Inline spots (like a label inside a sentence) still stack the two lines. */
+.action-button .en, .action-button .he { margin-top: 0; }
+.action-button .he { font-size: 11px; }
+.action-button .button-label { margin-top: 3px; }
+
+/* ---------- Home screen ---------- */
+.play-game-button { margin-top: 16px; padding: 18px; font-size: 22px; }
+#login-button { margin-top: 10px; margin-bottom: 0; }
+#login-button:disabled { opacity: 0.6; cursor: default; }
+.progress-summary { margin: 14px 0 0; color: #4b5563; font-size: 14px; text-align: center; }
+.welcome-panel { text-align: center; }
+.back-button {
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #e5e7eb;
+  font: 600 13px "Rubik", sans-serif;
+  cursor: pointer;
 }

@@ -165,17 +165,43 @@ function onPress(button, action) {
 
 const toastEl = document.getElementById("toast");
 let toastTimer = null;
-function showToast(message) {
-  toastEl.textContent = message;
+// showToast("English", "עברית") — the Hebrew shows underneath.
+function showToast(english, hebrew) {
+  setBilingual(toastEl, english, hebrew);
   toastEl.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2800);
 }
 
-// ---------- Home screen ----------
+// ---------- Home screen (the first screen: Play Game, Log in, your progress) ----------
 
 const homeEl = document.getElementById("home");
+const playEl = document.getElementById("play");
 const lobbyEl = document.getElementById("lobby");
+
+// "Play Game" goes to the play screen (nickname + create/join a room). "Back" comes home.
+document.getElementById("play-game-button").addEventListener("click", () => showScreen("play"));
+document.getElementById("back-button").addEventListener("click", () => {
+  setHomeMessage("");
+  showScreen("home");
+});
+
+// Show how many words you've practiced on the home screen.
+function updateProgressSummary() {
+  const { practiced, known } = progressSummary();
+  const el = document.getElementById("progress-summary");
+  if (practiced === 0) {
+    setBilingual(el, "📚 Every question you answer is saved on this phone.", "📚 כל שאלה שעונים עליה נשמרת בטלפון הזה.");
+  } else {
+    setBilingual(el,
+      `📚 Words practiced: ${practiced} · Words you know well: ${known}`,
+      `📚 מילים שתרגלת: ${practiced} · מילים שאת/ה יודע/ת היטב: ${known}`);
+  }
+}
+updateProgressSummary();
+
+// ---------- Play screen (nickname, create or join a room) ----------
+
 const hudEl = document.getElementById("hud");
 const nameInput = document.getElementById("name-input");
 const codeInput = document.getElementById("code-input");
@@ -195,11 +221,16 @@ codeInput.addEventListener("input", () => {
 const roomFromLink = new URLSearchParams(location.search).get("room");
 if (roomFromLink) {
   codeInput.value = roomFromLink.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
-  setTimeout(() => setHomeMessage("You've been invited! Type your nickname and tap Join.", true), 0);
+  // Skip the home screen and go straight to joining.
+  setTimeout(() => {
+    showScreen("play");
+    setHomeMessage("You've been invited! Type your nickname and tap Join.", "הוזמנת! כותבים כינוי ולוחצים על הצטרפות.", true);
+  }, 0);
 }
 
-function setHomeMessage(text, isInfo) {
-  homeMessage.textContent = text || "";
+// The message under the buttons on the play screen. isInfo = gray (not a red error).
+function setHomeMessage(english, hebrew, isInfo) {
+  setBilingual(homeMessage, english || "", hebrew);
   homeMessage.classList.toggle("info", Boolean(isInfo));
 }
 
@@ -211,7 +242,7 @@ function setHomeButtons(enabled) {
 function readNickname() {
   const name = nameInput.value.trim();
   if (!name) {
-    setHomeMessage("Type a nickname first 🙂");
+    setHomeMessage("Type a nickname first 🙂", "קודם כותבים כינוי 🙂");
     nameInput.focus();
     return null;
   }
@@ -223,7 +254,7 @@ createButton.addEventListener("click", () => {
   const name = readNickname();
   if (!name) return;
   setHomeButtons(false);
-  setHomeMessage("Creating a room…", true);
+  setHomeMessage("Creating a room…", "פותחים חדר…", true);
   hostRoom({
     onReady: (code, myId) => {
       client.isHost = true;
@@ -235,9 +266,9 @@ createButton.addEventListener("click", () => {
     },
     onMessage: (id, msg) => serverHandle(id, msg),
     onLeave: (id) => serverRemovePlayer(id),
-    onError: (text) => {
+    onError: (english, hebrew) => {
       setHomeButtons(true);
-      setHomeMessage(text);
+      setHomeMessage(english, hebrew);
     },
   });
 });
@@ -247,12 +278,12 @@ joinButton.addEventListener("click", () => {
   if (!name) return;
   const code = codeInput.value.trim();
   if (code.length !== 4) {
-    setHomeMessage("Room codes have 4 letters.");
+    setHomeMessage("Room codes have 4 letters.", "לקוד החדר יש 4 אותיות.");
     codeInput.focus();
     return;
   }
   setHomeButtons(false);
-  setHomeMessage("Joining…", true);
+  setHomeMessage("Joining…", "מצטרפים…", true);
   joinRoom(code, {
     onConnected: (myId) => {
       client.myId = myId;
@@ -263,16 +294,16 @@ joinButton.addEventListener("click", () => {
     onMessage: (msg) => {
       if (msg && msg.type === "state") applySnapshot(msg);
     },
-    onClose: () => backToHome("The host left the game."),
-    onError: (text) => {
+    onClose: () => backToHome("The host left the game.", "המארח יצא מהמשחק."),
+    onError: (english, hebrew) => {
       setHomeButtons(true);
-      setHomeMessage(text);
+      setHomeMessage(english, hebrew);
     },
   });
 });
 
-// Leave the game and go back to the home screen.
-function backToHome(message) {
+// Leave the game and go back to the play screen (with a message saying why).
+function backToHome(english, hebrew) {
   disconnect();
   client.isHost = false;
   client.myId = null;
@@ -283,15 +314,17 @@ function backToHome(message) {
   closeQuiz();
   shopEl.hidden = true;
   winnerEl.hidden = true;
-  showScreen("home");
+  showScreen("play");
   setHomeButtons(true);
-  setHomeMessage(message);
+  setHomeMessage(english, hebrew);
 }
 
-// Show one full-screen panel (or none, while playing).
+// Show one full-screen panel ("home", "play" or "lobby"), or none while playing.
 function showScreen(name) {
   homeEl.hidden = name !== "home";
+  playEl.hidden = name !== "play";
   lobbyEl.hidden = name !== "lobby";
+  if (name === "home") updateProgressSummary();
 }
 
 // ---------- Lobby ----------
@@ -310,13 +343,17 @@ document.getElementById("invite-button").addEventListener("click", async () => {
   const link = location.origin + location.pathname + "?room=" + client.roomCode;
   try {
     if (navigator.share) {
-      await navigator.share({ title: "Battle of the Golan", text: "Join my game! Room code: " + client.roomCode, url: link });
+      await navigator.share({
+        title: "Battle of the Golan · הקרב על הגולן",
+        text: `Join my game! Room code: ${client.roomCode}\nבואו לשחק איתי! קוד החדר: ${client.roomCode}`,
+        url: link,
+      });
     } else {
       await navigator.clipboard.writeText(link);
-      showToast("📋 Invite link copied! Paste it to your friends.");
+      showToast("📋 Invite link copied! Paste it to your friends.", "קישור ההזמנה הועתק! שולחים אותו לחברים.");
     }
   } catch {
-    showToast("Room code: " + client.roomCode);
+    showToast("Room code: " + client.roomCode, "קוד החדר: " + client.roomCode);
   }
 });
 
@@ -329,7 +366,7 @@ function renderLobby(hostId) {
       if (p.team !== team) continue;
       const item = document.createElement("li");
       // textContent (not innerHTML) so a weird nickname can't break the page.
-      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " (you)" : "");
+      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " (you · אני)" : "");
       list.appendChild(item);
     }
   }
@@ -381,7 +418,7 @@ function applySnapshot(snap) {
   // Things that just happened: messages, damage numbers, shockwaves.
   for (const e of snap.events) {
     if (e.kind === "toast") {
-      if (e.to === "all" || e.to === client.myId) showToast(e.text);
+      if (e.to === "all" || e.to === client.myId) showToast(e.text, e.he);
     } else {
       effects.push({ ...e, born: gameTime });
       if (e.sound && isNearMe(e)) playSound(e.sound);
@@ -408,7 +445,7 @@ function changePhase(phase) {
     winnerEl.hidden = true;
     rockPassUntil = 0;
     if (window.innerHeight > window.innerWidth) {
-      setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!"), 3000);
+      setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טיפ: מסובבים את הטלפון לרוחב כדי לראות יותר מהמפה!"), 3000);
     }
   } else if (phase === "over") {
     closeQuiz();
@@ -431,7 +468,8 @@ function tryOpenShop() {
   resetStick(); // shopping means standing still
   const owned = p.weapon === "hammer";
   buyHammerButton.disabled = owned;
-  hammerStatus.textContent = owned ? "Owned ✓" : "1 question";
+  if (owned) setBilingual(hammerStatus, "Owned ✓", "יש לך");
+  else setBilingual(hammerStatus, "1 question", "שאלה אחת");
   shopEl.hidden = false;
 }
 
@@ -444,9 +482,10 @@ buyHammerButton.addEventListener("click", () => {
   shopEl.hidden = true;
   openQuiz({
     title: "🔨 Answer correctly to earn the Hammer",
+    titleHe: "עונים נכון ומקבלים פטיש",
     onCorrect: () => {
       sendToServer({ type: "buy", item: "hammer" });
-      showToast("🔨 You earned the Hammer! Tap Hit to swing it.");
+      showToast("🔨 You earned the Hammer! Tap Hit to swing it.", "קיבלת פטיש! לוחצים על ״להכות״ כדי להשתמש בו.");
     },
   });
 });
@@ -500,6 +539,7 @@ function pressFlagButton() {
   resetStick(); // grabbing means standing still to answer
   openQuiz({
     title: `🚩 Answer correctly to grab the ${TEAM_NAMES[flag.team]} flag`,
+    titleHe: `עונים נכון ותופסים את ${TEAM_HE[flag.team].flag}`,
     onCorrect: () => {
       sendToServer({ type: "grab", flag: flag.team });
       playSound("grab");
@@ -538,10 +578,11 @@ function bumpRock() {
   playSound("bump");
   openQuiz({
     title: "🪨 You bumped into a rock! Answer to pass through",
+    titleHe: "נתקעת בסלע! עונים כדי לעבור",
     closable: false,
     onCorrect: () => {
       rockPassUntil = gameTime + ROCK_PASS_TIME;
-      showToast(`🪨 You can walk through rocks for ${ROCK_PASS_TIME} seconds!`);
+      showToast(`🪨 You can walk through rocks for ${ROCK_PASS_TIME} seconds!`, `אפשר לעבור דרך סלעים במשך ${ROCK_PASS_TIME} שניות!`);
     },
   });
 }
@@ -552,8 +593,10 @@ const winnerEl = document.getElementById("winner");
 
 function showWinner() {
   resetStick();
-  document.getElementById("winner-title").textContent = `${TEAM_NAMES[client.winner]} team wins!`;
-  document.getElementById("winner-score").textContent = `Final score: Blue ${score.blue} – ${score.red} Red`;
+  setBilingual(document.getElementById("winner-title"),
+    `${TEAM_NAMES[client.winner]} team wins!`, `${TEAM_HE[client.winner].team} ניצחה!`);
+  setBilingual(document.getElementById("winner-score"),
+    `Final score: Blue ${score.blue} – ${score.red} Red`, `תוצאה סופית: כחול ${score.blue} – ${score.red} אדום`);
   document.getElementById("play-again").hidden = !client.isHost;
   document.getElementById("winner-wait").hidden = client.isHost;
   winnerEl.hidden = false;
@@ -605,7 +648,7 @@ function update(dt) {
 
   // Joiners: if the host has gone quiet for 6 seconds, the game is over.
   if (!client.isHost && client.phase !== "home" && now - client.lastSnapshotAt > 6000) {
-    backToHome("Lost connection to the host.");
+    backToHome("Lost connection to the host.", "החיבור למארח נותק.");
     return;
   }
   // Joiners: tell the host "I'm still here" once a second.
@@ -744,7 +787,8 @@ updateVoiceButton();
 voiceButton.addEventListener("click", () => {
   toggleVoice();
   updateVoiceButton();
-  showToast(voiceOn ? "🗣️ Voice on" : "🤐 Voice off");
+  if (voiceOn) showToast("🗣️ Voice on", "הקול פועל");
+  else showToast("🤐 Voice off", "הקול כבוי");
 });
 
 function updateHud(p) {
@@ -762,30 +806,32 @@ function updateHud(p) {
   document.getElementById("score-red").textContent = score.red;
   waterChip.hidden = !p.inWater || !p.alive;
   bushChip.hidden = !p.inBush || !p.alive;
-  weaponChip.textContent = p.weapon === "hammer" ? "🔨 Hammer" : "✋ No weapon";
+  if (p.weapon === "hammer") setBilingual(weaponChip, "🔨 Hammer", "פטיש");
+  else setBilingual(weaponChip, "✋ No weapon", "בלי נשק");
 
   carryChip.hidden = !p.carrying;
-  if (p.carrying) {
-    carryChip.textContent = p.carrying === p.team
-      ? "🚩 Carrying your flag — take it home!"
-      : `🚩 Carrying the ${TEAM_NAMES[p.carrying]} flag — run home!`;
+  if (p.carrying === p.team) {
+    setBilingual(carryChip, "🚩 Carrying your flag — take it home!", "הדגל שלך אצלך — מחזירים אותו הביתה!");
+  } else if (p.carrying) {
+    setBilingual(carryChip, `🚩 Carrying the ${TEAM_NAMES[p.carrying]} flag — run home!`, `${TEAM_HE[p.carrying].flag} אצלך — רצים הביתה!`);
   }
 
   const boostLeft = Math.ceil(p.boostUntil - gameTime);
   boostChip.hidden = boostLeft <= 0;
-  boostChip.textContent = `⚡ Speed boost ${boostLeft}s`;
+  setBilingual(boostChip, `⚡ Speed boost ${boostLeft}s`, `מהירות! עוד ${boostLeft} שניות`);
 
   koMessage.hidden = p.alive;
   if (!p.alive) {
     const secondsLeft = Math.max(1, Math.ceil(p.respawnAt - gameTime));
-    koMessage.textContent = `💥 Knocked out! Back in ${secondsLeft}…`;
+    setBilingual(koMessage, `💥 Knocked out! Back in ${secondsLeft}…`, `הפילו אותך! חוזרים בעוד ${secondsLeft}…`);
   }
 
   shopButton.hidden = isBusy() || !nearShop(p);
   attackButton.hidden = !canAttack(p);
   attackButton.classList.toggle("cooling", gameTime - p.lastSwing < HAMMER.cooldown);
   flagButton.hidden = isBusy() || !(p.carrying || grabbableFlag(p));
-  flagButtonLabel.textContent = p.carrying ? "Drop" : "Grab";
+  if (p.carrying) setBilingual(flagButtonLabel, "Drop", "לזרוק");
+  else setBilingual(flagButtonLabel, "Grab", "לתפוס");
 }
 
 // ---------- The game loop ----------

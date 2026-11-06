@@ -83,6 +83,16 @@ function randomItem(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// For the home screen: how many words you've practiced, and how many you know well
+// (got right at least 3 times in a row).
+function progressSummary() {
+  const records = Object.values(progress.words);
+  return {
+    practiced: records.length,
+    known: records.filter((r) => r.level >= 3).length,
+  };
+}
+
 // Update a word after you answer it.
 function recordAnswer(entry, correct) {
   progress.questionCount++;

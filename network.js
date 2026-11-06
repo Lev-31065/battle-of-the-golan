@@ -25,25 +25,26 @@ function makeRoomCode() {
 }
 
 // Turn PeerJS's technical errors into messages a player can understand.
+// Returns two texts: [English, Hebrew].
 function friendlyError(err) {
   switch (err.type) {
     case "peer-unavailable":
-      return "No room with that code. Check the code and try again.";
+      return ["No room with that code. Check the code and try again.", "אין חדר עם הקוד הזה. בודקים את הקוד ומנסים שוב."];
     case "network":
     case "server-error":
     case "socket-error":
     case "socket-closed":
-      return "Couldn't reach the game server. Check your internet connection.";
+      return ["Couldn't reach the game server. Check your internet connection.", "אין חיבור לשרת המשחק. בודקים את חיבור האינטרנט."];
     case "browser-incompatible":
-      return "This browser can't play online. Try Chrome or Safari.";
+      return ["This browser can't play online. Try Chrome or Safari.", "הדפדפן הזה לא יכול לשחק ברשת. נסו כרום או ספארי."];
     default:
-      return "Something went wrong: " + (err.message || err.type);
+      return ["Something went wrong: " + (err.message || err.type), "משהו השתבש."];
   }
 }
 
 function peerLibraryLoaded(onError) {
   if (typeof Peer === "undefined") {
-    onError("Couldn't load the multiplayer library. Check your internet connection.");
+    onError("Couldn't load the multiplayer library. Check your internet connection.", "לא הצלחנו לטעון את המשחק המשותף. בודקים את חיבור האינטרנט.");
     return false;
   }
   return true;
@@ -83,7 +84,7 @@ function hostRoom(handlers) {
       peer.destroy();
       hostRoom(handlers);
     } else if (!ready) {
-      handlers.onError(friendlyError(err));
+      handlers.onError(...friendlyError(err));
     }
   });
 }
@@ -99,7 +100,7 @@ function joinRoom(code, handlers) {
   const giveUpTimer = setTimeout(() => {
     if (connected) return;
     peer.destroy();
-    handlers.onError("Couldn't connect to that room. Check the code and that you're online.");
+    handlers.onError("Couldn't connect to that room. Check the code and that you're online.", "לא הצלחנו להתחבר לחדר. בודקים את הקוד ואת החיבור לאינטרנט.");
   }, 12000);
 
   peer.on("open", (myId) => {
@@ -118,7 +119,7 @@ function joinRoom(code, handlers) {
     if (connected) return;
     clearTimeout(giveUpTimer);
     peer.destroy();
-    handlers.onError(friendlyError(err));
+    handlers.onError(...friendlyError(err));
   });
 }
 
