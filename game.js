@@ -190,7 +190,9 @@ document.getElementById("back-button").addEventListener("click", () => {
 function updateProgressSummary() {
   const { practiced, known } = progressSummary();
   const el = document.getElementById("progress-summary");
-  if (practiced === 0) {
+  if (practiced === 0 && account.user) {
+    setBilingual(el, "📚 Every question you answer is saved to your account.", "📚 כָּל תְּשׁוּבָה נִשְׁמֶרֶת בַּחֶשְׁבּוֹן.");
+  } else if (practiced === 0) {
     setBilingual(el, "📚 Every question you answer is saved on this phone.", "📚 כָּל תְּשׁוּבָה נִשְׁמֶרֶת בַּטֶּלֶפוֹן הַזֶּה.");
   } else {
     setBilingual(el,
@@ -319,9 +321,10 @@ function backToHome(english, hebrew) {
   setHomeMessage(english, hebrew);
 }
 
-// Show one full-screen panel ("home", "play" or "lobby"), or none while playing.
+// Show one full-screen panel ("home", "account", "play" or "lobby"), or none while playing.
 function showScreen(name) {
   homeEl.hidden = name !== "home";
+  accountEl.hidden = name !== "account";
   playEl.hidden = name !== "play";
   lobbyEl.hidden = name !== "lobby";
   if (name === "home") updateProgressSummary();

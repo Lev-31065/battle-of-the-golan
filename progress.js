@@ -7,32 +7,90 @@
 //   • Get it wrong at any point and it starts over.
 // The waiting times live in rules.js (REVIEW_STEPS), so they're easy to change.
 //
-// For now, progress is saved on this phone only (in the browser's "localStorage").
-// Later, when we add logins, it will move into your account.
+// Where it's saved:
+//   • Not logged in → on this phone only (in the browser's "localStorage").
+//   • Logged in → on this phone AND in your account (account.js uploads it),
+//     so it follows you to any phone or computer.
 //
 // quiz.js uses it like this:
 //     pickNextWord()               → which word to ask next
 //     recordAnswer(entry, true)    → you got it right (false = wrong)
 
-const PROGRESS_KEY = "golan-progress-v1";
+const GUEST_PROGRESS_KEY = "golan-progress-v1"; // the phone's storage slot for "not logged in"
+let progressKey = GUEST_PROGRESS_KEY;           // the slot we're using right now
 
-// Load saved progress (or start fresh).
-let progress = { session: 0, lastSessionStart: 0, questionCount: 0, words: {} };
-try {
-  const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY));
-  if (saved && saved.words) progress = saved;
-} catch {}
+function emptyProgress() {
+  return { session: 0, lastSessionStart: 0, questionCount: 0, words: {} };
+}
+
+function loadProgressFrom(key) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key));
+    if (saved && saved.words) return saved;
+  } catch {}
+  return emptyProgress();
+}
+
+let progress = loadProgressFrom(GUEST_PROGRESS_KEY);
+
+// account.js sets this to a function that uploads progress to your account.
+let onProgressSaved = null;
 
 function saveProgress() {
-  try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch {}
+  try { localStorage.setItem(progressKey, JSON.stringify(progress)); } catch {}
+  if (onProgressSaved) onProgressSaved();
 }
 
 // A "playing session" starts when you open the game, but only if it's been a
 // while since the last one. (Opening the game 3 times in 10 minutes is one session.)
-if (Date.now() - progress.lastSessionStart > SESSION_GAP_HOURS * 60 * 60 * 1000) {
-  progress.session++;
-  progress.lastSessionStart = Date.now();
+function startSessionIfNeeded() {
+  if (Date.now() - progress.lastSessionStart > SESSION_GAP_HOURS * 60 * 60 * 1000) {
+    progress.session++;
+    progress.lastSessionStart = Date.now();
+    saveProgress();
+  }
+}
+startSessionIfNeeded();
+
+// Combine two sets of progress (for example, this phone's and your account's).
+// For each word, keep whichever one you answered most recently.
+function mergeProgress(a, b) {
+  const merged = {
+    session: Math.max(a.session || 0, b.session || 0),
+    lastSessionStart: Math.max(a.lastSessionStart || 0, b.lastSessionStart || 0),
+    questionCount: Math.max(a.questionCount || 0, b.questionCount || 0),
+    words: { ...a.words },
+  };
+  for (const [key, record] of Object.entries(b.words || {})) {
+    const other = merged.words[key];
+    const newer = !other
+      || (record.seen || 0) > (other.seen || 0)
+      || ((record.seen || 0) === (other.seen || 0) && record.level > other.level);
+    if (newer) merged.words[key] = record;
+  }
+  return merged;
+}
+
+// Called by account.js when someone logs in (userId + their saved progress
+// from the account) or logs out (userId = null).
+function switchProgressOwner(userId, accountData) {
+  if (!userId) {
+    progressKey = GUEST_PROGRESS_KEY;
+    progress = loadProgressFrom(GUEST_PROGRESS_KEY);
+    startSessionIfNeeded();
+    return;
+  }
+  progressKey = GUEST_PROGRESS_KEY + "-" + userId;
+  let merged = mergeProgress(loadProgressFrom(progressKey), accountData && accountData.words ? accountData : emptyProgress());
+  // Words practiced before logging in get added to the account (then the guest slot is emptied).
+  const guest = loadProgressFrom(GUEST_PROGRESS_KEY);
+  if (Object.keys(guest.words).length > 0) {
+    merged = mergeProgress(merged, guest);
+    try { localStorage.removeItem(GUEST_PROGRESS_KEY); } catch {}
+  }
+  progress = merged;
   saveProgress();
+  startSessionIfNeeded();
 }
 
 // Each word gets a name made of its English + Hebrew, e.g. "dog|כֶּלֶב".
@@ -110,6 +168,7 @@ function recordAnswer(entry, correct) {
                  : step.days != null ? Date.now() + step.days * 24 * 60 * 60 * 1000
                  : never;
   record.dueSession = step.sessions != null ? progress.session + step.sessions : never;
+  record.seen = Date.now(); // when you last answered it (used when combining phones)
 
   progress.words[key] = record;
   saveProgress();

@@ -75,7 +75,7 @@ Save the file after each change, then refresh the browser (`F5`) to see it.
 
 - **Add a Hebrew word:** in `words.js`, copy a line like `{ english: "dog", hebrew: "כֶּלֶב" },` and change it.
 - **Walk faster:** in `rules.js`, change `PLAYER_SPEED = 172` to `300`.
-- **Change how slow rivers and bushes are:** in `map.js`, change `waterSlowdown: 0.1` or `bushSlowdown: 0.3`.
+- **Change how slow rivers and bushes are:** in `map.js`, change `waterSlowdown: 0.15` or `bushSlowdown: 0.3`.
 - **Add a rock or a bush:** in `map.js`, add `[800, 300],` to the `rocks` list, or `[800, 300, 50],` to `bushes`. The numbers are x (left to right, 0–2000) and y (top to bottom, 0–1200). Bushes also get a size.
 - **Make the hammer stronger:** in `rules.js`, change `damage: 34` to `damage: 50` (2 hits to knock out).
 - **Shorter or longer games:** in `rules.js`, change `WIN_SCORE = 3`.

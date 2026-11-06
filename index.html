@@ -75,9 +75,37 @@
       <h1><span class="en">⚔️ Battle of the Golan</span><span class="he" lang="he" dir="rtl">הַקְּרָב עַל הַגּוֹלָן</span></h1>
       <p class="panel-sub"><span class="en">Capture the flag — and learn Hebrew while you do it!</span><span class="he" lang="he" dir="rtl">תּוֹפְסִים אֶת הַדֶּגֶל וְלוֹמְדִים עִבְרִית בַּדֶּרֶךְ!</span></p>
       <button id="play-game-button" class="big-button play-game-button" type="button"><span class="en">▶ Play Game</span><span class="he" lang="he" dir="rtl">לְשַׂחֵק</span></button>
-      <!-- Logins come in a later step (with Supabase). For now the button is just a placeholder. -->
-      <button id="login-button" class="secondary-button" type="button" disabled><span class="en">🔑 Log in — coming soon</span><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת — בְּקָרוֹב</span></button>
+      <!-- Logging in is optional (account.js). It saves your progress to your account. -->
+      <button id="login-button" class="secondary-button" type="button"><span class="en">🔑 Log in or sign up</span><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span></button>
+      <div id="account-box" class="account-box" hidden>
+        <p id="account-email" class="account-email"></p>
+        <button id="logout-button" class="link-button" type="button"><span class="en">Log out</span><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span></button>
+      </div>
       <p id="progress-summary" class="progress-summary"></p>
+    </div>
+  </div>
+
+  <!-- ===== ACCOUNT SCREEN: log in or create an account (account.js controls it) ===== -->
+  <div id="account" class="screen" hidden>
+    <div class="panel home-panel">
+      <button id="account-back" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
+      <h2 id="account-title"></h2>
+      <label class="field-label" for="email-input"><span class="en">Email</span><span class="he" lang="he" dir="rtl">אִימֵייל</span></label>
+      <input id="email-input" class="text-field" type="email" autocomplete="email" inputmode="email" placeholder="name@example.com">
+      <label class="field-label" for="password-input"><span class="en">Password</span><span class="he" lang="he" dir="rtl">סִיסְמָה</span></label>
+      <input id="password-input" class="text-field" type="password" autocomplete="current-password">
+      <label id="age-row" class="check-row" hidden>
+        <input id="age-check" type="checkbox">
+        <span><span class="en">I'm 13 or older</span><span class="he" lang="he" dir="rtl">אֲנִי בֶּן/בַּת 13 וָמַעְלָה</span></span>
+      </label>
+      <button id="account-submit" class="big-button" type="button"></button>
+      <button id="code-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a code instead</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קוֹד בָּאִימֵייל</span></button>
+      <div id="code-row" class="join-row" hidden>
+        <input id="code-entry" class="text-field code-field" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" aria-label="Code from the email">
+        <button id="code-verify" class="big-button join-button" type="button"><span class="en">OK</span><span class="he" lang="he" dir="rtl">אִשּׁוּר</span></button>
+      </div>
+      <p id="account-message" class="home-message"></p>
+      <button id="mode-switch" class="link-button" type="button"></button>
     </div>
   </div>
 
@@ -172,6 +200,8 @@
     <div id="toast" class="toast" hidden></div>
   </div>
 
+  <!-- Supabase: a free library for logins and saving data online (used by account.js). -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
@@ -181,6 +211,7 @@
   <script src="speech.js"></script>
   <script src="words.js"></script>
   <script src="progress.js"></script>
+  <script src="account.js"></script>
   <script src="quiz.js"></script>
   <script src="draw.js"></script>
   <script src="network.js"></script>

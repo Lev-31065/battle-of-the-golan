@@ -413,6 +413,26 @@ html, body {
 #login-button:disabled { opacity: 0.6; cursor: default; }
 .progress-summary { margin: 14px 0 0; color: #4b5563; font-size: 14px; text-align: center; }
 .welcome-panel { text-align: center; }
+
+/* ---------- Account (login) screen ---------- */
+.account-box { margin-top: 12px; }
+.account-email { margin: 0 0 4px; color: #15803d; font-size: 14px; font-weight: 600; word-break: break-all; }
+.link-button {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: #2563eb;
+  font: 600 14px "Rubik", sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#account .text-field { margin-bottom: 10px; }
+#account h2 { margin-bottom: 10px; }
+.check-row { display: flex; align-items: center; gap: 10px; margin: 2px 0 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.check-row input { width: 22px; height: 22px; flex-shrink: 0; }
+.code-button { margin-top: 10px; font-size: 14px; }
+#account .big-button:disabled, #account .secondary-button:disabled { opacity: 0.6; }
 .back-button {
   margin: 0 0 8px;
   padding: 4px 10px;
