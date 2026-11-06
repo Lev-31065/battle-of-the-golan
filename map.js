@@ -9,7 +9,7 @@ const MAP = {
   height: 1200,
 
   // How much the ground slows you down. 1 = full speed, 0.5 = half speed.
-  waterSlowdown: 0.1,   // rivers: 10% speed — wading is really slow!
+  waterSlowdown: 0.15,  // rivers: 15% speed — wading is really slow!
   bushSlowdown: 0.3,    // bushes: 30% speed
 
   // Each team's home base: a circle with the flag in the middle.

@@ -90,7 +90,7 @@ function drawBase(ctx, base, team) {
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS[team];
   ctx.fillText(team === "blue" ? "BLUE BASE" : "RED BASE", base.x, base.y + base.radius - 44);
-  ctx.fillText(team === "blue" ? "בסיס כחול" : "בסיס אדום", base.x, base.y + base.radius - 16); // Hebrew underneath
+  ctx.fillText(team === "blue" ? "בָּסִיס כָּחֹל" : "בָּסִיס אָדֹם", base.x, base.y + base.radius - 16); // Hebrew underneath
 }
 
 function drawBridge(ctx, b) {
@@ -189,7 +189,7 @@ function drawShopkeeper(ctx, base, team, time) {
   ctx.textAlign = "center";
   ctx.fillStyle = "#fff";
   ctx.fillText("🛒 SHOP", x, y + 7);
-  drawLabel(ctx, "חנות", x, y + 34); // Hebrew underneath the counter
+  drawLabel(ctx, "חֲנוּת", x, y + 34); // Hebrew underneath the counter
 }
 
 // The round stand in the middle of each base where the flag lives.
@@ -449,7 +449,7 @@ function drawSpeedBox(ctx, box, time) {
     ctx.setLineDash([]);
     const secondsLeft = Math.ceil(box.respawnAt - time);
     drawLabel(ctx, `⚡ back in ${secondsLeft}s`, box.x, box.y - 4);
-    drawLabel(ctx, `חוזרת בעוד ${secondsLeft} שנ׳`, box.x, box.y + 16);
+    drawLabel(ctx, `חוֹזֶרֶת בְּעוֹד ${secondsLeft} שְׁנִיּוֹת`, box.x, box.y + 16);
     return;
   }
 

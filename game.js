@@ -191,11 +191,11 @@ function updateProgressSummary() {
   const { practiced, known } = progressSummary();
   const el = document.getElementById("progress-summary");
   if (practiced === 0) {
-    setBilingual(el, "📚 Every question you answer is saved on this phone.", "📚 כל שאלה שעונים עליה נשמרת בטלפון הזה.");
+    setBilingual(el, "📚 Every question you answer is saved on this phone.", "📚 כָּל תְּשׁוּבָה נִשְׁמֶרֶת בַּטֶּלֶפוֹן הַזֶּה.");
   } else {
     setBilingual(el,
       `📚 Words practiced: ${practiced} · Words you know well: ${known}`,
-      `📚 מילים שתרגלת: ${practiced} · מילים שאת/ה יודע/ת היטב: ${known}`);
+      `📚 מִלִּים שֶׁתֻּרְגְּלוּ: ${practiced} · מִלִּים יְדוּעוֹת הֵיטֵב: ${known}`);
   }
 }
 updateProgressSummary();
@@ -224,7 +224,7 @@ if (roomFromLink) {
   // Skip the home screen and go straight to joining.
   setTimeout(() => {
     showScreen("play");
-    setHomeMessage("You've been invited! Type your nickname and tap Join.", "הוזמנת! כותבים כינוי ולוחצים על הצטרפות.", true);
+    setHomeMessage("You've been invited! Type your nickname and tap Join.", "קִבַּלְתֶּם הַזְמָנָה! כּוֹתְבִים כִּנּוּי וְלוֹחֲצִים עַל ״הִצְטָרְפוּת״.", true);
   }, 0);
 }
 
@@ -242,7 +242,7 @@ function setHomeButtons(enabled) {
 function readNickname() {
   const name = nameInput.value.trim();
   if (!name) {
-    setHomeMessage("Type a nickname first 🙂", "קודם כותבים כינוי 🙂");
+    setHomeMessage("Type a nickname first 🙂", "קֹדֶם כּוֹתְבִים כִּנּוּי 🙂");
     nameInput.focus();
     return null;
   }
@@ -254,7 +254,7 @@ createButton.addEventListener("click", () => {
   const name = readNickname();
   if (!name) return;
   setHomeButtons(false);
-  setHomeMessage("Creating a room…", "פותחים חדר…", true);
+  setHomeMessage("Creating a room…", "פּוֹתְחִים חֶדֶר…", true);
   hostRoom({
     onReady: (code, myId) => {
       client.isHost = true;
@@ -278,12 +278,12 @@ joinButton.addEventListener("click", () => {
   if (!name) return;
   const code = codeInput.value.trim();
   if (code.length !== 4) {
-    setHomeMessage("Room codes have 4 letters.", "לקוד החדר יש 4 אותיות.");
+    setHomeMessage("Room codes have 4 letters.", "לְקוֹד הַחֶדֶר יֵשׁ 4 אוֹתִיּוֹת.");
     codeInput.focus();
     return;
   }
   setHomeButtons(false);
-  setHomeMessage("Joining…", "מצטרפים…", true);
+  setHomeMessage("Joining…", "מִצְטָרְפִים…", true);
   joinRoom(code, {
     onConnected: (myId) => {
       client.myId = myId;
@@ -294,7 +294,7 @@ joinButton.addEventListener("click", () => {
     onMessage: (msg) => {
       if (msg && msg.type === "state") applySnapshot(msg);
     },
-    onClose: () => backToHome("The host left the game.", "המארח יצא מהמשחק."),
+    onClose: () => backToHome("The host left the game.", "הַמְּאָרֵחַ יָצָא מֵהַמִּשְׂחָק."),
     onError: (english, hebrew) => {
       setHomeButtons(true);
       setHomeMessage(english, hebrew);
@@ -344,16 +344,16 @@ document.getElementById("invite-button").addEventListener("click", async () => {
   try {
     if (navigator.share) {
       await navigator.share({
-        title: "Battle of the Golan · הקרב על הגולן",
-        text: `Join my game! Room code: ${client.roomCode}\nבואו לשחק איתי! קוד החדר: ${client.roomCode}`,
+        title: "Battle of the Golan · הַקְּרָב עַל הַגּוֹלָן",
+        text: `Join my game! Room code: ${client.roomCode}\nבּוֹאוּ לְשַׂחֵק אִתִּי! קוֹד הַחֶדֶר: ${client.roomCode}`,
         url: link,
       });
     } else {
       await navigator.clipboard.writeText(link);
-      showToast("📋 Invite link copied! Paste it to your friends.", "קישור ההזמנה הועתק! שולחים אותו לחברים.");
+      showToast("📋 Invite link copied! Paste it to your friends.", "קִשּׁוּר הַהַזְמָנָה הוּעֲתַק! שׁוֹלְחִים אוֹתוֹ לַחֲבֵרִים.");
     }
   } catch {
-    showToast("Room code: " + client.roomCode, "קוד החדר: " + client.roomCode);
+    showToast("Room code: " + client.roomCode, "קוֹד הַחֶדֶר: " + client.roomCode);
   }
 });
 
@@ -366,7 +366,7 @@ function renderLobby(hostId) {
       if (p.team !== team) continue;
       const item = document.createElement("li");
       // textContent (not innerHTML) so a weird nickname can't break the page.
-      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " (you · אני)" : "");
+      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " (you · אֲנִי)" : "");
       list.appendChild(item);
     }
   }
@@ -445,7 +445,7 @@ function changePhase(phase) {
     winnerEl.hidden = true;
     rockPassUntil = 0;
     if (window.innerHeight > window.innerWidth) {
-      setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טיפ: מסובבים את הטלפון לרוחב כדי לראות יותר מהמפה!"), 3000);
+      setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טִיפ: מְסוֹבְבִים אֶת הַטֶּלֶפוֹן לָרֹחַב כְּדֵי לִרְאוֹת יוֹתֵר מֵהַמַּפָּה!"), 3000);
     }
   } else if (phase === "over") {
     closeQuiz();
@@ -468,8 +468,8 @@ function tryOpenShop() {
   resetStick(); // shopping means standing still
   const owned = p.weapon === "hammer";
   buyHammerButton.disabled = owned;
-  if (owned) setBilingual(hammerStatus, "Owned ✓", "יש לך");
-  else setBilingual(hammerStatus, "1 question", "שאלה אחת");
+  if (owned) setBilingual(hammerStatus, "Owned ✓", "כְּבָר יֵשׁ");
+  else setBilingual(hammerStatus, "1 question", "שְׁאֵלָה אַחַת");
   shopEl.hidden = false;
 }
 
@@ -482,10 +482,10 @@ buyHammerButton.addEventListener("click", () => {
   shopEl.hidden = true;
   openQuiz({
     title: "🔨 Answer correctly to earn the Hammer",
-    titleHe: "עונים נכון ומקבלים פטיש",
+    titleHe: "עוֹנִים נָכוֹן וּמְקַבְּלִים פַּטִּישׁ",
     onCorrect: () => {
       sendToServer({ type: "buy", item: "hammer" });
-      showToast("🔨 You earned the Hammer! Tap Hit to swing it.", "קיבלת פטיש! לוחצים על ״להכות״ כדי להשתמש בו.");
+      showToast("🔨 You earned the Hammer! Tap Hit to swing it.", "יֵשׁ פַּטִּישׁ! לוֹחֲצִים עַל ״לְהַכּוֹת״ כְּדֵי לְהִשְׁתַּמֵּשׁ בּוֹ.");
     },
   });
 });
@@ -525,6 +525,24 @@ function grabbableFlag(p) {
   return null;
 }
 
+// While a "grab the flag" question is open, this says which flag it's for ("blue"/"red").
+let flagQuizTeam = null;
+
+// If that flag isn't there to grab anymore (it went back to its base by itself,
+// or someone else grabbed it), close the question. Runs every frame.
+function checkFlagQuiz(p) {
+  if (!quiz.open) {
+    flagQuizTeam = null;
+    return;
+  }
+  if (!flagQuizTeam) return;
+  const flag = grabbableFlag(p);
+  if (!flag || flag.team !== flagQuizTeam) {
+    flagQuizTeam = null;
+    closeQuiz();
+  }
+}
+
 // The 🚩 button does two jobs: drop the flag you have, or try to grab one nearby.
 function pressFlagButton() {
   const p = myPlayer();
@@ -537,9 +555,10 @@ function pressFlagButton() {
   const flag = grabbableFlag(p);
   if (!flag) return;
   resetStick(); // grabbing means standing still to answer
+  flagQuizTeam = flag.team; // remember which flag this question is for
   openQuiz({
     title: `🚩 Answer correctly to grab the ${TEAM_NAMES[flag.team]} flag`,
-    titleHe: `עונים נכון ותופסים את ${TEAM_HE[flag.team].flag}`,
+    titleHe: `עוֹנִים נָכוֹן וְתוֹפְסִים אֶת ${TEAM_HE[flag.team].flag}`,
     onCorrect: () => {
       sendToServer({ type: "grab", flag: flag.team });
       playSound("grab");
@@ -578,11 +597,11 @@ function bumpRock() {
   playSound("bump");
   openQuiz({
     title: "🪨 You bumped into a rock! Answer to pass through",
-    titleHe: "נתקעת בסלע! עונים כדי לעבור",
+    titleHe: "נִתְקַעְתֶּם בְּסֶלַע! עוֹנִים כְּדֵי לַעֲבֹר",
     closable: false,
     onCorrect: () => {
       rockPassUntil = gameTime + ROCK_PASS_TIME;
-      showToast(`🪨 You can walk through rocks for ${ROCK_PASS_TIME} seconds!`, `אפשר לעבור דרך סלעים במשך ${ROCK_PASS_TIME} שניות!`);
+      showToast(`🪨 You can walk through rocks for ${ROCK_PASS_TIME} seconds!`, `אֶפְשָׁר לַעֲבֹר דֶּרֶךְ סְלָעִים בְּמֶשֶׁךְ ${ROCK_PASS_TIME} שְׁנִיּוֹת!`);
     },
   });
 }
@@ -594,9 +613,9 @@ const winnerEl = document.getElementById("winner");
 function showWinner() {
   resetStick();
   setBilingual(document.getElementById("winner-title"),
-    `${TEAM_NAMES[client.winner]} team wins!`, `${TEAM_HE[client.winner].team} ניצחה!`);
+    `${TEAM_NAMES[client.winner]} team wins!`, `${TEAM_HE[client.winner].team} נִצְּחָה!`);
   setBilingual(document.getElementById("winner-score"),
-    `Final score: Blue ${score.blue} – ${score.red} Red`, `תוצאה סופית: כחול ${score.blue} – ${score.red} אדום`);
+    `Final score: Blue ${score.blue} – ${score.red} Red`, `תּוֹצָאָה סוֹפִית: כָּחֹל ${score.blue} – ${score.red} אָדֹם`);
   document.getElementById("play-again").hidden = !client.isHost;
   document.getElementById("winner-wait").hidden = client.isHost;
   winnerEl.hidden = false;
@@ -648,7 +667,7 @@ function update(dt) {
 
   // Joiners: if the host has gone quiet for 6 seconds, the game is over.
   if (!client.isHost && client.phase !== "home" && now - client.lastSnapshotAt > 6000) {
-    backToHome("Lost connection to the host.", "החיבור למארח נותק.");
+    backToHome("Lost connection to the host.", "הַחִבּוּר לַמְּאָרֵחַ נִתַּק.");
     return;
   }
   // Joiners: tell the host "I'm still here" once a second.
@@ -668,6 +687,8 @@ function update(dt) {
     return;
   }
 
+  checkFlagQuiz(p);
+
   if (isBusy()) {
     p.moving = false;
   } else {
@@ -681,7 +702,7 @@ function update(dt) {
     }
 
     // Work out speed. Each thing multiplies it:
-    //   river ×0.1   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5
+    //   river ×0.15   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5
     let speed = PLAYER_SPEED;
     if (p.inWater) speed *= MAP.waterSlowdown;
     else if (p.inBush) speed *= MAP.bushSlowdown;
@@ -787,8 +808,8 @@ updateVoiceButton();
 voiceButton.addEventListener("click", () => {
   toggleVoice();
   updateVoiceButton();
-  if (voiceOn) showToast("🗣️ Voice on", "הקול פועל");
-  else showToast("🤐 Voice off", "הקול כבוי");
+  if (voiceOn) showToast("🗣️ Voice on", "הַקּוֹל פּוֹעֵל");
+  else showToast("🤐 Voice off", "הַקּוֹל כָּבוּי");
 });
 
 function updateHud(p) {
@@ -806,32 +827,32 @@ function updateHud(p) {
   document.getElementById("score-red").textContent = score.red;
   waterChip.hidden = !p.inWater || !p.alive;
   bushChip.hidden = !p.inBush || !p.alive;
-  if (p.weapon === "hammer") setBilingual(weaponChip, "🔨 Hammer", "פטיש");
-  else setBilingual(weaponChip, "✋ No weapon", "בלי נשק");
+  if (p.weapon === "hammer") setBilingual(weaponChip, "🔨 Hammer", "פַּטִּישׁ");
+  else setBilingual(weaponChip, "✋ No weapon", "בְּלִי נֶשֶׁק");
 
   carryChip.hidden = !p.carrying;
   if (p.carrying === p.team) {
-    setBilingual(carryChip, "🚩 Carrying your flag — take it home!", "הדגל שלך אצלך — מחזירים אותו הביתה!");
+    setBilingual(carryChip, "🚩 Carrying your flag — take it home!", "סוֹחֲבִים אֶת הַדֶּגֶל שֶׁלָּכֶם — מַחֲזִירִים אוֹתוֹ הַבַּיְתָה!");
   } else if (p.carrying) {
-    setBilingual(carryChip, `🚩 Carrying the ${TEAM_NAMES[p.carrying]} flag — run home!`, `${TEAM_HE[p.carrying].flag} אצלך — רצים הביתה!`);
+    setBilingual(carryChip, `🚩 Carrying the ${TEAM_NAMES[p.carrying]} flag — run home!`, `סוֹחֲבִים אֶת ${TEAM_HE[p.carrying].flag} — רָצִים הַבַּיְתָה!`);
   }
 
   const boostLeft = Math.ceil(p.boostUntil - gameTime);
   boostChip.hidden = boostLeft <= 0;
-  setBilingual(boostChip, `⚡ Speed boost ${boostLeft}s`, `מהירות! עוד ${boostLeft} שניות`);
+  setBilingual(boostChip, `⚡ Speed boost ${boostLeft}s`, `מְהִירוּת! עוֹד ${boostLeft} שְׁנִיּוֹת`);
 
   koMessage.hidden = p.alive;
   if (!p.alive) {
     const secondsLeft = Math.max(1, Math.ceil(p.respawnAt - gameTime));
-    setBilingual(koMessage, `💥 Knocked out! Back in ${secondsLeft}…`, `הפילו אותך! חוזרים בעוד ${secondsLeft}…`);
+    setBilingual(koMessage, `💥 Knocked out! Back in ${secondsLeft}…`, `הִפִּילוּ אֶתְכֶם! חוֹזְרִים בְּעוֹד ${secondsLeft}…`);
   }
 
   shopButton.hidden = isBusy() || !nearShop(p);
   attackButton.hidden = !canAttack(p);
   attackButton.classList.toggle("cooling", gameTime - p.lastSwing < HAMMER.cooldown);
   flagButton.hidden = isBusy() || !(p.carrying || grabbableFlag(p));
-  if (p.carrying) setBilingual(flagButtonLabel, "Drop", "לזרוק");
-  else setBilingual(flagButtonLabel, "Grab", "לתפוס");
+  if (p.carrying) setBilingual(flagButtonLabel, "Drop", "לִזְרֹק");
+  else setBilingual(flagButtonLabel, "Grab", "לִתְפֹּס");
 }
 
 // ---------- The game loop ----------

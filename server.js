@@ -30,7 +30,7 @@ function makeFlag(team) {
 
 function makeSpeedBox() {
   return {
-    name: "Speed box", nameHe: "קופסת מהירות", x: MAP.speedBox.x, y: MAP.speedBox.y, radius: 28,
+    name: "Speed box", nameHe: "קֻפְסַת מְהִירוּת", x: MAP.speedBox.x, y: MAP.speedBox.y, radius: 28,
     hp: 100, maxHp: 100, alive: true, lastHit: -10, respawnAt: 0,
   };
 }
@@ -96,7 +96,7 @@ function serverAddPlayer(id, name) {
     lastSeen: server.time,
   };
   const playerName = server.players[id].name;
-  toast(`👋 ${playerName} joined the ${TEAM_NAMES[team]} team`, `${playerName} הצטרף/ה ל${TEAM_HE[team].team}`);
+  toast(`👋 ${playerName} joined the ${TEAM_NAMES[team]} team`, `${playerName} הִצְטָרֵף/הִצְטָרְפָה ${TEAM_HE[team].toTeam}`);
 }
 
 function serverRemovePlayer(id) {
@@ -104,7 +104,7 @@ function serverRemovePlayer(id) {
   if (!p) return;
   serverDropFlag(p);
   delete server.players[id];
-  toast(`👋 ${p.name} left the game`, `${p.name} יצא/ה מהמשחק`);
+  toast(`👋 ${p.name} left the game`, `${p.name} יָצָא/יָצְאָה מֵהַמִּשְׂחָק`);
 }
 
 // ---------- Messages from phones ----------
@@ -162,7 +162,7 @@ function serverStartGame() {
     });
     p.spawnCount += 1;
   }
-  toast("⚔️ The battle begins! Grab the enemy flag!", "הקרב מתחיל! תופסים את הדגל של האויב!");
+  toast("⚔️ The battle begins! Grab the enemy flag!", "הַקְּרָב מַתְחִיל! תּוֹפְסִים אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב!");
 }
 
 // ---------- Fighting ----------
@@ -194,9 +194,9 @@ function serverHurt(target, amount, attacker) {
     target.alive = false;
     target.respawnAt = server.time + SPEED_BOOST.respawn;
     attacker.boostUntil = server.time + SPEED_BOOST.duration;
-    floatText("⚡ SPEED!", target.x, target.y - 50, "#fde047", 1.4, "boost", "מהירות!");
+    floatText("⚡ SPEED!", target.x, target.y - 50, "#fde047", 1.4, "boost", "מְהִירוּת!");
     toast(`⚡ Speed boost! ${SPEED_BOOST.multiplier}× speed for ${SPEED_BOOST.duration} seconds`,
-      `מהירות ×${SPEED_BOOST.multiplier} למשך ${SPEED_BOOST.duration} שניות!`, attacker.id);
+      `מְהִירוּת ×${SPEED_BOOST.multiplier} לְמֶשֶׁךְ ${SPEED_BOOST.duration} שְׁנִיּוֹת!`, attacker.id);
   } else {
     // A player is knocked out: they drop any flag, lose their weapon, and respawn soon.
     target.alive = false;
@@ -204,8 +204,8 @@ function serverHurt(target, amount, attacker) {
     serverDropFlag(target);
     target.weapon = null;
     target.boostUntil = 0;
-    floatText("💥 KO!", target.x, target.y - 60, "#fff", 1.2, "ko", "נוקאאוט!");
-    toast(`💥 ${attacker.name} knocked out ${target.name}!`, `${attacker.name} הפיל/ה את ${target.name}!`);
+    floatText("💥 KO!", target.x, target.y - 60, "#fff", 1.2, "ko", "נוֹקְאָאוּט!");
+    toast(`💥 ${attacker.name} knocked out ${target.name}!`, `${attacker.name} הִפִּיל/הִפִּילָה אֶת ${target.name}!`);
   }
 }
 
@@ -215,7 +215,7 @@ function serverGrab(p, team) {
   const flag = server.flags[team];
   if (!flag || server.phase !== "playing" || !p.alive || p.carrying) return;
   if (flag.state === "carried") {
-    toast("Too slow — someone else grabbed it!", "איטי מדי — מישהו אחר תפס אותו!", p.id);
+    toast("Too slow — someone else grabbed it!", "מְאֻחָר מִדַּי — מִישֶׁהוּ אַחֵר תָּפַס אוֹתוֹ!", p.id);
     return;
   }
   if (flag.team === p.team && flag.state === "home") return; // your flag is already safe
@@ -225,10 +225,10 @@ function serverGrab(p, team) {
   flag.carrierId = p.id;
   p.carrying = team;
   if (team === p.team) {
-    toast("🚩 Got your flag back! Carry it home.", "הדגל שלך חזר אליך! מחזירים אותו הביתה.", p.id);
+    toast("🚩 Got your flag back! Carry it home.", "יֵשׁ! הַדֶּגֶל שֶׁלָּכֶם חָזַר. מַחֲזִירִים אוֹתוֹ הַבַּיְתָה.", p.id);
   } else {
-    toast("🚩 You've got the flag! Run back to your base!", "הדגל אצלך! רצים חזרה לבסיס!", p.id);
-    toast(`🚨 ${p.name} grabbed the ${TEAM_NAMES[team]} flag!`, `${p.name} תפס/ה את ${TEAM_HE[team].flag}!`);
+    toast("🚩 You've got the flag! Run back to your base!", "יֵשׁ דֶּגֶל! רָצִים חֲזָרָה לַבָּסִיס!", p.id);
+    toast(`🚨 ${p.name} grabbed the ${TEAM_NAMES[team]} flag!`, `${p.name} תָּפַס/תָּפְסָה אֶת ${TEAM_HE[team].flag}!`);
   }
 }
 
@@ -259,21 +259,21 @@ function checkFlagDelivery(p) {
   if (flag.team === p.team) {
     sendFlagHome(flag);
     p.carrying = null;
-    toast(`🏠 ${p.name} brought the ${TEAM_NAMES[p.team]} flag home!`, `${p.name} החזיר/ה את ${TEAM_HE[p.team].flag} הביתה!`);
+    toast(`🏠 ${p.name} brought the ${TEAM_NAMES[p.team]} flag home!`, `${p.name} הֶחֱזִיר/הֶחֱזִירָה אֶת ${TEAM_HE[p.team].flag} הַבַּיְתָה!`);
   } else if (server.flags[p.team].state === "home") {
     sendFlagHome(flag);
     p.carrying = null;
     server.score[p.team] += 1;
     floatText("🎉 +1", p.x, p.y - 50, "#fff", 1.5, "score");
     toast(`🎉 ${p.name} scores for ${TEAM_NAMES[p.team]}! (${server.score[p.team]} of ${WIN_SCORE})`,
-      `נקודה ל${TEAM_HE[p.team].players}! ${p.name} הבקיע/ה (${server.score[p.team]} מתוך ${WIN_SCORE})`);
+      `${p.name} — נְקֻדָּה ${TEAM_HE[p.team].toPlayers}! (${server.score[p.team]} מִתּוֹךְ ${WIN_SCORE})`);
     if (server.score[p.team] >= WIN_SCORE) {
       server.phase = "over";
       server.winner = p.team;
     }
   } else if (server.time - (p.lastHint || -10) > 3) {
     p.lastHint = server.time;
-    toast("⚠️ Your own flag must be home before you can score!", "הדגל שלכם צריך להיות בבסיס לפני שאפשר לקבל נקודה!", p.id);
+    toast("⚠️ Your own flag must be home before you can score!", "הַדֶּגֶל שֶׁלָּכֶם צָרִיךְ לִהְיוֹת בַּבָּסִיס כְּדֵי לְקַבֵּל נְקֻדָּה!", p.id);
   }
 }
 
@@ -306,7 +306,7 @@ function serverUpdate(dt) {
   for (const flag of Object.values(server.flags)) {
     if (flag.state === "dropped" && server.time - flag.droppedAt >= FLAG_RETURN_TIME) {
       sendFlagHome(flag);
-      toast(`↩️ The ${TEAM_NAMES[flag.team]} flag returned to its base.`, `${TEAM_HE[flag.team].flag} חזר לבסיס.`);
+      toast(`↩️ The ${TEAM_NAMES[flag.team]} flag returned to its base.`, `${TEAM_HE[flag.team].flag} חָזַר לַבָּסִיס.`);
     }
   }
 }

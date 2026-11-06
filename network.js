@@ -29,22 +29,22 @@ function makeRoomCode() {
 function friendlyError(err) {
   switch (err.type) {
     case "peer-unavailable":
-      return ["No room with that code. Check the code and try again.", "אין חדר עם הקוד הזה. בודקים את הקוד ומנסים שוב."];
+      return ["No room with that code. Check the code and try again.", "אֵין חֶדֶר עִם הַקּוֹד הַזֶּה. בּוֹדְקִים אֶת הַקּוֹד וּמְנַסִּים שׁוּב."];
     case "network":
     case "server-error":
     case "socket-error":
     case "socket-closed":
-      return ["Couldn't reach the game server. Check your internet connection.", "אין חיבור לשרת המשחק. בודקים את חיבור האינטרנט."];
+      return ["Couldn't reach the game server. Check your internet connection.", "אֵין חִבּוּר לַשָּׁרָת שֶׁל הַמִּשְׂחָק. בּוֹדְקִים אֶת הַחִבּוּר לָאִינְטֶרְנֶט."];
     case "browser-incompatible":
-      return ["This browser can't play online. Try Chrome or Safari.", "הדפדפן הזה לא יכול לשחק ברשת. נסו כרום או ספארי."];
+      return ["This browser can't play online. Try Chrome or Safari.", "הַדַּפְדְּפָן הַזֶּה לֹא יָכוֹל לְשַׂחֵק בָּרֶשֶׁת. כְּדַאי לְנַסּוֹת כְּרוֹם אוֹ סָפָארִי."];
     default:
-      return ["Something went wrong: " + (err.message || err.type), "משהו השתבש."];
+      return ["Something went wrong: " + (err.message || err.type), "מַשֶּׁהוּ הִשְׁתַּבֵּשׁ."];
   }
 }
 
 function peerLibraryLoaded(onError) {
   if (typeof Peer === "undefined") {
-    onError("Couldn't load the multiplayer library. Check your internet connection.", "לא הצלחנו לטעון את המשחק המשותף. בודקים את חיבור האינטרנט.");
+    onError("Couldn't load the multiplayer library. Check your internet connection.", "לֹא הִצְלַחְנוּ לִטְעֹן אֶת הַמִּשְׂחָק. בּוֹדְקִים אֶת הַחִבּוּר לָאִינְטֶרְנֶט.");
     return false;
   }
   return true;
@@ -100,7 +100,7 @@ function joinRoom(code, handlers) {
   const giveUpTimer = setTimeout(() => {
     if (connected) return;
     peer.destroy();
-    handlers.onError("Couldn't connect to that room. Check the code and that you're online.", "לא הצלחנו להתחבר לחדר. בודקים את הקוד ואת החיבור לאינטרנט.");
+    handlers.onError("Couldn't connect to that room. Check the code and that you're online.", "לֹא הִצְלַחְנוּ לְהִתְחַבֵּר לַחֶדֶר. בּוֹדְקִים אֶת הַקּוֹד וְאֶת הַחִבּוּר לָאִינְטֶרְנֶט.");
   }, 12000);
 
   peer.on("open", (myId) => {

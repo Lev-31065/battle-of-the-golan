@@ -91,7 +91,7 @@ function askOrWait() {
       const secondsLeft = Math.ceil((quiz.waitUntil - performance.now()) / 1000);
       if (secondsLeft <= 0) return askOrWait();
       quizFeedback.className = "quiz-feedback";
-      setBilingual(quizFeedback, `Next question in ${secondsLeft}…`, `השאלה הבאה בעוד ${secondsLeft}…`);
+      setBilingual(quizFeedback, `Next question in ${secondsLeft}…`, `הַשְּׁאֵלָה הַבָּאָה בְּעוֹד ${secondsLeft}…`);
     };
     tick();
     quiz.timer = setInterval(tick, 200);
@@ -160,7 +160,7 @@ function choose(button) {
     }
     quiz.waitUntil = performance.now() + WRONG_ANSWER_WAIT * 1000;
     quizFeedback.className = "quiz-feedback bad";
-    setBilingual(quizFeedback, `❌ The answer is ${correctAnswer}`, `התשובה הנכונה: ${correctAnswer}`);
+    setBilingual(quizFeedback, `❌ The answer is ${correctAnswer}`, `הַתְּשׁוּבָה הַנְּכוֹנָה: ${correctAnswer}`);
     // After a moment, switch to the countdown and then a new question.
     quiz.timer = setTimeout(() => { if (quiz.open) askOrWait(); }, 1800);
   }

@@ -35,8 +35,8 @@
     <div id="weapon-chip" class="chip"></div>
     <div id="carry-chip" class="chip carry-chip" hidden></div>
     <div id="boost-chip" class="chip boost-chip" hidden></div>
-    <div id="water-chip" class="chip water-chip" hidden><span class="en">🌊 In the river — very slow!</span><span class="he" lang="he" dir="rtl">בנהר — איטי מאוד!</span></div>
-    <div id="bush-chip" class="chip bush-chip" hidden><span class="en">🌿 In a bush — slow!</span><span class="he" lang="he" dir="rtl">בשיח — איטי!</span></div>
+    <div id="water-chip" class="chip water-chip" hidden><span class="en">🌊 In the river — very slow!</span><span class="he" lang="he" dir="rtl">בַּנָּהָר — אִטִּי מְאֹד!</span></div>
+    <div id="bush-chip" class="chip bush-chip" hidden><span class="en">🌿 In a bush — slow!</span><span class="he" lang="he" dir="rtl">בַּשִּׂיחַ — אִטִּי!</span></div>
   </div>
 
   <!-- Sound on/off. Sits under the minimap in the top-right corner. -->
@@ -58,9 +58,9 @@
 
   <!-- Action buttons on the right. Each one only appears when you can use it. -->
   <div class="actions">
-    <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="en">Shop</span><span class="he" lang="he" dir="rtl">חנות</span></button>
+    <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="en">Shop</span><span class="he" lang="he" dir="rtl">חֲנוּת</span></button>
     <button id="flag-button" class="action-button flag" type="button" hidden>🚩<span id="flag-button-label" class="button-label"></span></button>
-    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span class="en">Hit</span><span class="he" lang="he" dir="rtl">להכות</span></button>
+    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span class="en">Hit</span><span class="he" lang="he" dir="rtl">לְהַכּוֹת</span></button>
   </div>
 
   <!--
@@ -72,11 +72,11 @@
   <!-- ===== HOME SCREEN: the first thing you see ===== -->
   <div id="home" class="screen">
     <div class="panel home-panel welcome-panel">
-      <h1><span class="en">⚔️ Battle of the Golan</span><span class="he" lang="he" dir="rtl">הקרב על הגולן</span></h1>
-      <p class="panel-sub"><span class="en">Capture the flag — and learn Hebrew while you do it!</span><span class="he" lang="he" dir="rtl">תופסים את הדגל ולומדים עברית בדרך!</span></p>
-      <button id="play-game-button" class="big-button play-game-button" type="button"><span class="en">▶ Play Game</span><span class="he" lang="he" dir="rtl">משחקים</span></button>
+      <h1><span class="en">⚔️ Battle of the Golan</span><span class="he" lang="he" dir="rtl">הַקְּרָב עַל הַגּוֹלָן</span></h1>
+      <p class="panel-sub"><span class="en">Capture the flag — and learn Hebrew while you do it!</span><span class="he" lang="he" dir="rtl">תּוֹפְסִים אֶת הַדֶּגֶל וְלוֹמְדִים עִבְרִית בַּדֶּרֶךְ!</span></p>
+      <button id="play-game-button" class="big-button play-game-button" type="button"><span class="en">▶ Play Game</span><span class="he" lang="he" dir="rtl">לְשַׂחֵק</span></button>
       <!-- Logins come in a later step (with Supabase). For now the button is just a placeholder. -->
-      <button id="login-button" class="secondary-button" type="button" disabled><span class="en">🔑 Log in — coming soon</span><span class="he" lang="he" dir="rtl">התחברות — בקרוב</span></button>
+      <button id="login-button" class="secondary-button" type="button" disabled><span class="en">🔑 Log in — coming soon</span><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת — בְּקָרוֹב</span></button>
       <p id="progress-summary" class="progress-summary"></p>
     </div>
   </div>
@@ -84,14 +84,14 @@
   <!-- ===== PLAY SCREEN: type a nickname, then create or join a room ===== -->
   <div id="play" class="screen" hidden>
     <div class="panel home-panel">
-      <button id="back-button" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חזרה</span></button>
-      <label class="field-label" for="name-input"><span class="en">Your nickname</span><span class="he" lang="he" dir="rtl">הכינוי שלך</span></label>
-      <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="e.g. Dani · למשל דני">
-      <button id="create-button" class="big-button" type="button"><span class="en">Create a room</span><span class="he" lang="he" dir="rtl">פתיחת חדר</span></button>
-      <div class="or-line"><span><span class="en">or join a friend's room</span><span class="he" lang="he" dir="rtl">או הצטרפות לחדר של חבר</span></span></div>
+      <button id="back-button" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
+      <label class="field-label" for="name-input"><span class="en">Your nickname</span><span class="he" lang="he" dir="rtl">כִּנּוּי</span></label>
+      <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="e.g. Dani · לְמָשָׁל דָּנִי">
+      <button id="create-button" class="big-button" type="button"><span class="en">Create a room</span><span class="he" lang="he" dir="rtl">פְּתִיחַת חֶדֶר</span></button>
+      <div class="or-line"><span><span class="en">or join a friend's room</span><span class="he" lang="he" dir="rtl">אוֹ הִצְטָרְפוּת לְחֶדֶר שֶׁל חָבֵר</span></span></div>
       <div class="join-row">
         <input id="code-input" class="text-field code-field" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code">
-        <button id="join-button" class="big-button join-button" type="button"><span class="en">Join</span><span class="he" lang="he" dir="rtl">הצטרפות</span></button>
+        <button id="join-button" class="big-button join-button" type="button"><span class="en">Join</span><span class="he" lang="he" dir="rtl">הִצְטָרְפוּת</span></button>
       </div>
       <p id="home-message" class="home-message"></p>
     </div>
@@ -100,24 +100,24 @@
   <!-- ===== LOBBY: see the teams, wait for the host to start ===== -->
   <div id="lobby" class="screen" hidden>
     <div class="panel lobby-panel">
-      <p class="panel-sub"><span class="en">Room code — friends type this on their phones</span><span class="he" lang="he" dir="rtl">קוד החדר — החברים מקלידים אותו בטלפון</span></p>
+      <p class="panel-sub"><span class="en">Room code — friends type this on their phones</span><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span></p>
       <p id="lobby-code" class="room-code">----</p>
-      <button id="invite-button" class="secondary-button" type="button"><span class="en">📋 Share invite link</span><span class="he" lang="he" dir="rtl">שיתוף קישור הזמנה</span></button>
+      <button id="invite-button" class="secondary-button" type="button"><span class="en">📋 Share invite link</span><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span></button>
       <div class="teams">
-        <div class="team team-blue"><h3><span class="en">🔵 Blue</span><span class="he" lang="he" dir="rtl">כחול</span></h3><ul id="blue-list"></ul></div>
-        <div class="team team-red"><h3><span class="en">🔴 Red</span><span class="he" lang="he" dir="rtl">אדום</span></h3><ul id="red-list"></ul></div>
+        <div class="team team-blue"><h3><span class="en">🔵 Blue</span><span class="he" lang="he" dir="rtl">כָּחֹל</span></h3><ul id="blue-list"></ul></div>
+        <div class="team team-red"><h3><span class="en">🔴 Red</span><span class="he" lang="he" dir="rtl">אָדֹם</span></h3><ul id="red-list"></ul></div>
       </div>
-      <button id="switch-team" class="secondary-button" type="button"><span class="en">⇄ Switch team</span><span class="he" lang="he" dir="rtl">החלפת קבוצה</span></button>
-      <button id="start-button" class="big-button" type="button" hidden><span class="en">Start the battle!</span><span class="he" lang="he" dir="rtl">מתחילים את הקרב!</span></button>
-      <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="en">Waiting for the host to start…</span><span class="he" lang="he" dir="rtl">מחכים שהמארח יתחיל…</span></p>
+      <button id="switch-team" class="secondary-button" type="button"><span class="en">⇄ Switch team</span><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span></button>
+      <button id="start-button" class="big-button" type="button" hidden><span class="en">Start the battle!</span><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span></button>
+      <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="en">Waiting for the host to start…</span><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל…</span></p>
       <details class="how-to">
-        <summary><span class="en">How to play</span><span class="he" lang="he" dir="rtl">איך משחקים</span></summary>
-        <p><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span><span class="he" lang="he" dir="rtl">גוררים את האצבע ב<b>צד שמאל</b> של המסך כדי ללכת.</span></p>
-        <p><span class="en">🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</span><span class="he" lang="he" dir="rtl">הולכים ל<b>מוכר</b> ועונים על שאלה בעברית כדי לקבל <b>פטיש</b>.</span></p>
-        <p><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span><span class="he" lang="he" dir="rtl">עונים על שאלה כדי <b>לתפוס את הדגל של האויב</b>, ומחזירים אותו לבסיס. מי שמגיע ראשון ל־<b>3</b> מנצח!</span></p>
-        <p><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span><span class="he" lang="he" dir="rtl">הפילו אותך? הדגל נופל, וחוזרים לבסיס בלי כלום.</span></p>
-        <p><span class="en">🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</span><span class="he" lang="he" dir="rtl">אי אפשר לעבור דרך סלעים. נתקעים בסלע? עונים על שאלה כדי לעבור.</span></p>
-        <p><span class="en">⚡ Smash the speed box in the middle for a burst of speed.</span><span class="he" lang="he" dir="rtl">שוברים את קופסת המהירות באמצע ורצים מהר יותר.</span></p>
+        <summary><span class="en">How to play</span><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span></summary>
+        <p><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span></p>
+        <p><span class="en">🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</span><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלָה בְּעִבְרִית כְּדֵי לְקַבֵּל <b>פַּטִּישׁ</b>.</span></p>
+        <p><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span><span class="he" lang="he" dir="rtl">עוֹנִים עַל שְׁאֵלָה כְּדֵי <b>לִתְפֹּס אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב</b>, וּמַחֲזִירִים אוֹתוֹ לַבָּסִיס. הַקְּבוּצָה הָרִאשׁוֹנָה שֶׁמַּגִּיעָה לְ־<b>3</b> מְנַצַּחַת!</span></p>
+        <p><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span><span class="he" lang="he" dir="rtl">הִפִּילוּ אֶתְכֶם? הַדֶּגֶל נוֹפֵל, וְחוֹזְרִים לַבָּסִיס בְּלִי כְּלוּם.</span></p>
+        <p><span class="en">🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</span><span class="he" lang="he" dir="rtl">אִי אֶפְשָׁר לַעֲבֹר דֶּרֶךְ סְלָעִים. נִתְקָעִים בְּסֶלַע? עוֹנִים עַל שְׁאֵלָה כְּדֵי לַעֲבֹר.</span></p>
+        <p><span class="en">⚡ Smash the speed box in the middle for a burst of speed.</span><span class="he" lang="he" dir="rtl">שׁוֹבְרִים אֶת קֻפְסַת הַמְּהִירוּת בָּאֶמְצַע וְרָצִים מַהֵר יוֹתֵר.</span></p>
       </details>
     </div>
   </div>
@@ -126,11 +126,11 @@
   <div id="shop" class="overlay" hidden>
     <div class="panel">
       <button id="shop-close" class="close-button" type="button" aria-label="Close shop">✕</button>
-      <h2><span class="en">🛒 Shop</span><span class="he" lang="he" dir="rtl">חנות</span></h2>
-      <p class="panel-sub"><span class="en">Tap a weapon to buy it. You pay by answering a Hebrew question!</span><span class="he" lang="he" dir="rtl">לוחצים על נשק כדי לקנות אותו. משלמים בתשובה לשאלה בעברית!</span></p>
+      <h2><span class="en">🛒 Shop</span><span class="he" lang="he" dir="rtl">חֲנוּת</span></h2>
+      <p class="panel-sub"><span class="en">Tap a weapon to buy it. You pay by answering a Hebrew question!</span><span class="he" lang="he" dir="rtl">לוֹחֲצִים עַל נֶשֶׁק כְּדֵי לִקְנוֹת אוֹתוֹ. מְשַׁלְּמִים בִּתְשׁוּבָה לִשְׁאֵלָה בְּעִבְרִית!</span></p>
       <button id="buy-hammer" class="shop-item" type="button">
         <span class="shop-icon">🔨</span>
-        <span class="shop-text"><b><span class="en">Hammer</span><span class="he" lang="he" dir="rtl">פטיש</span></b><small><span class="en">Hits every enemy close to you</span><span class="he" lang="he" dir="rtl">פוגע בכל אויב שקרוב אליך</span></small></span>
+        <span class="shop-text"><b><span class="en">Hammer</span><span class="he" lang="he" dir="rtl">פַּטִּישׁ</span></b><small><span class="en">Hits every enemy close to you</span><span class="he" lang="he" dir="rtl">פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב</span></small></span>
         <span id="hammer-status" class="shop-price"></span>
       </button>
     </div>
@@ -141,7 +141,7 @@
     <div class="panel quiz-panel">
       <button id="quiz-close" class="close-button" type="button" aria-label="Close question">✕</button>
       <p id="quiz-title" class="quiz-title"></p>
-      <p class="quiz-ask"><span class="en">How do you say this in Hebrew?</span><span class="he" lang="he" dir="rtl">איך אומרים את זה בעברית?</span></p>
+      <p class="quiz-ask"><span class="en">How do you say this in Hebrew?</span><span class="he" lang="he" dir="rtl">אֵיךְ אוֹמְרִים אֶת זֶה בְּעִבְרִית?</span></p>
       <!-- The English word being asked. (No Hebrew under this one — that would give away the answer!) -->
       <p id="quiz-prompt" class="quiz-prompt"></p>
       <div id="quiz-choices" class="quiz-choices"></div>
@@ -156,8 +156,8 @@
       <p class="winner-trophy">🏆</p>
       <h2 id="winner-title"></h2>
       <p id="winner-score" class="panel-sub"></p>
-      <button id="play-again" class="big-button" type="button" hidden><span class="en">Play again</span><span class="he" lang="he" dir="rtl">משחק חוזר</span></button>
-      <p id="winner-wait" class="panel-sub" hidden><span class="en">Waiting for the host to start a new game…</span><span class="he" lang="he" dir="rtl">מחכים שהמארח יתחיל משחק חדש…</span></p>
+      <button id="play-again" class="big-button" type="button" hidden><span class="en">Play again</span><span class="he" lang="he" dir="rtl">מִשְׂחָק חוֹזֵר</span></button>
+      <p id="winner-wait" class="panel-sub" hidden><span class="en">Waiting for the host to start a new game…</span><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל מִשְׂחָק חָדָשׁ…</span></p>
     </div>
   </div>
 

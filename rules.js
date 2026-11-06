@@ -31,10 +31,11 @@ const FLAG_REACH = 70;        // how close you must be to grab a flag
 const FLAG_RETURN_TIME = 30;  // a dropped flag goes home by itself after this many seconds
 
 const TEAM_NAMES = { blue: "Blue", red: "Red" };
-// The Hebrew versions. Hebrew adjectives change with the noun, so each phrase is spelled out.
+// The Hebrew versions (with nikud). Hebrew adjectives change with the noun, and
+// "to the..." merges into one word (לַ...), so each phrase is spelled out in full.
 const TEAM_HE = {
-  blue: { name: "כחול", flag: "הדגל הכחול", team: "הקבוצה הכחולה", players: "הכחולים" },
-  red:  { name: "אדום", flag: "הדגל האדום", team: "הקבוצה האדומה", players: "האדומים" },
+  blue: { name: "כָּחֹל", flag: "הַדֶּגֶל הַכָּחֹל", team: "הַקְּבוּצָה הַכְּחֻלָּה", toTeam: "לַקְּבוּצָה הַכְּחֻלָּה", toPlayers: "לַכְּחֻלִּים" },
+  red:  { name: "אָדֹם", flag: "הַדֶּגֶל הָאָדֹם", team: "הַקְּבוּצָה הָאֲדֻמָּה", toTeam: "לַקְּבוּצָה הָאֲדֻמָּה", toPlayers: "לָאֲדֻמִּים" },
 };
 
 // ---------- Rocks ----------
