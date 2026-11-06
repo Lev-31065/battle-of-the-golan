@@ -50,10 +50,11 @@ function buildChoices(entry) {
   for (const wrong of shuffle([...(entry.wrong || [])])) {
     if (choices.length < 4 && !choices.includes(wrong)) choices.push(wrong);
   }
-  // Not enough tricky answers? Borrow answers from other words in the same deck
+  // Not enough tricky answers? Borrow answers from other words in the same level
   // (simple words first, then anything).
-  const simple = shuffle(WORDS.filter((w) => !(w.wrong && w.wrong.length >= 3)));
-  const anything = shuffle([...WORDS]);
+  const home = homeLevelOf.has(entry) ? homeLevelOf.get(entry).words : WORDS;
+  const simple = shuffle(home.filter((w) => !(w.wrong && w.wrong.length >= 3)));
+  const anything = shuffle([...home]);
   for (const other of [...simple, ...anything]) {
     if (choices.length < 4 && !choices.includes(other.hebrew)) choices.push(other.hebrew);
   }
@@ -107,6 +108,7 @@ function askOrWait() {
 function showNewQuestion() {
   quiz.entry = pickNextWord();
   quiz.locked = false;
+  quiz.shownAt = performance.now(); // to time how long you take (Auto level uses it)
   quizPrompt.textContent = quiz.entry.english;
   // The hint (like the infinitive "לֶאֱכֹל"), if this word has one.
   quizHint.hidden = !quiz.entry.hint;
@@ -138,8 +140,11 @@ function choose(button) {
   if (quiz.locked) return;
   quiz.locked = true;
   const correctAnswer = quiz.entry.hebrew;
+  const isRight = button.textContent === correctAnswer;
+  // Playing on Auto? Your answer (and how fast it was) may move your level (game.js).
+  autoLevelAnswer(isRight, (performance.now() - quiz.shownAt) / 1000);
 
-  if (button.textContent === correctAnswer) {
+  if (isRight) {
     playSound("correct");
     recordAnswer(quiz.entry, true);
     // Read it back: Hebrew, then English + Hebrew, then every word you missed.

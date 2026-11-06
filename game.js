@@ -365,13 +365,20 @@ document.getElementById("invite-button").addEventListener("click", async () => {
 const deckSelect = document.getElementById("deck-select");
 const deckProgressEl = document.getElementById("deck-progress");
 
-// The host's last choice is remembered on their phone for next time.
+// The host's last choice is remembered on their phone for next time (Auto if none yet).
+// ("-v2" so everyone starts on Auto once, even if they picked a level before Auto existed.)
 function savedDeckId() {
-  try { return localStorage.getItem("golan-deck") || LEVELS[0].id; } catch { return LEVELS[0].id; }
+  try { return localStorage.getItem("golan-deck-v2") || AUTO; } catch { return AUTO; }
 }
 
-// Fill the list with every level (once).
-for (const deck of LEVELS) {
+// Fill the list (once): Auto first, then every level and review level.
+{
+  const autoOption = document.createElement("option");
+  autoOption.value = AUTO;
+  autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
+  deckSelect.appendChild(autoOption);
+}
+for (const deck of DECKS) {
   const option = document.createElement("option");
   option.value = deck.id;
   option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
@@ -380,21 +387,50 @@ for (const deck of LEVELS) {
 
 // The host picked a deck: tell the referee (who tells everyone).
 deckSelect.addEventListener("change", () => {
-  try { localStorage.setItem("golan-deck", deckSelect.value); } catch {}
+  try { localStorage.setItem("golan-deck-v2", deckSelect.value); } catch {}
   sendToServer({ type: "deck", deckId: deckSelect.value });
 });
 
+// The room's choice changed (from the referee's snapshot). On Auto, this phone
+// plays its own level; otherwise everyone plays the host's pick.
+function useRoomDeck(deckId) {
+  roomDeckId = deckId;
+  useDeck(deckId === AUTO ? autoDeckId() : deckId);
+}
+
+// quiz.js calls this after every answer. Only does something on Auto.
+function autoLevelAnswer(correct, seconds) {
+  if (roomDeckId !== AUTO) return;
+  const move = noteAutoAnswer(correct, seconds);
+  if (!move) return;
+  useDeck(autoDeckId());
+  const number = findDeck(currentDeckId).number;
+  // Wait a moment, so this doesn't cover up "Correct!" or "You earned the Hammer!".
+  setTimeout(() => {
+    if (move === "up") showToast(`⬆️ Level up! Now level ${number}`, `⬆️ עוֹלִים רָמָה! עַכְשָׁו רָמָה ${number}`);
+    else showToast(`⬇️ Back to level ${number} for some practice`, `⬇️ חוֹזְרִים לְרָמָה ${number} לְתַרְגּוּל`);
+  }, 2500);
+}
+
 function renderDeckPicker() {
   // (Only change things that are different: this runs 20 times a second.)
-  if (deckSelect.value !== currentDeckId) deckSelect.value = currentDeckId;
+  if (deckSelect.value !== roomDeckId) deckSelect.value = roomDeckId;
+  // On Auto, keep up with your own level (for example, after logging in here).
+  if (roomDeckId === AUTO && currentDeckId !== autoDeckId()) useDeck(autoDeckId());
   if (deckSelect.disabled !== !client.isHost) deckSelect.disabled = !client.isHost; // only the host can change it
   const deck = findDeck(currentDeckId);
   const { known, total } = deckProgress(deck);
   const pickNote = client.isHost ? "" : " · The host picks the words";
   const pickNoteHe = client.isHost ? "" : " · הַמְּאָרֵחַ בּוֹחֵר אֶת הַמִּלִּים";
-  setBilingual(deckProgressEl,
-    `You know ${known} of ${total} well${pickNote}`,
-    `${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב${pickNoteHe}`);
+  if (roomDeckId === AUTO) {
+    setBilingual(deckProgressEl,
+      `Your level: ${deckLabel(deck)} · You know ${known} of ${total} well`,
+      `רָמָה נוֹכְחִית: ${deck.number} · ${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב`);
+  } else {
+    setBilingual(deckProgressEl,
+      `You know ${known} of ${total} well${pickNote}`,
+      `${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב${pickNoteHe}`);
+  }
 }
 
 function renderLobby(hostId) {
@@ -451,8 +487,8 @@ function applySnapshot(snap) {
     if (!stillHere.has(id)) delete players[id];
   }
 
-  // The host picked different words? Switch this phone's questions to that deck.
-  if (snap.deckId && snap.deckId !== currentDeckId) useDeck(snap.deckId);
+  // The host picked different words (or Auto)? Switch this phone's questions.
+  if (snap.deckId && snap.deckId !== roomDeckId) useRoomDeck(snap.deckId);
 
   flags = snap.flags;
   score = snap.score;

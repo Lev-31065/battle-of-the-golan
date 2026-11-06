@@ -60,6 +60,8 @@ function mergeProgress(a, b) {
     lastSessionStart: Math.max(a.lastSessionStart || 0, b.lastSessionStart || 0),
     questionCount: Math.max(a.questionCount || 0, b.questionCount || 0),
     words: { ...a.words },
+    // Auto level: keep whichever one changed most recently.
+    auto: ((a.auto && a.auto.updated) || 0) >= ((b.auto && b.auto.updated) || 0) ? a.auto : b.auto,
   };
   for (const [key, record] of Object.entries(b.words || {})) {
     const other = merged.words[key];
@@ -181,4 +183,71 @@ function recordAnswer(entry, correct) {
 
   progress.words[key] = record;
   saveProgress();
+}
+
+// ---------- Auto level ----------
+// Each player's own level, used when the host picks "Auto" in the lobby.
+// The settings live in rules.js (AUTO_LEVEL).
+// Saved inside progress (so it follows your account too):
+//   deckId  = your level right now
+//   placing = true while we're still finding your level (fast climbing)
+//   recent  = your answers since you arrived at this level: { right, fast }
+
+function autoState() {
+  if (!progress.auto || !findDeck(progress.auto.deckId)) {
+    progress.auto = { deckId: DECKS[0].id, placing: true, recent: [], updated: 0 };
+  }
+  return progress.auto;
+}
+
+// Your Auto level's deck id, like "level-4" or "review-6".
+function autoDeckId() {
+  return autoState().deckId;
+}
+
+// Called after every answer while playing on Auto.
+// Returns "up" or "down" if your level changed, otherwise null.
+function noteAutoAnswer(correct, seconds) {
+  const auto = autoState();
+  auto.recent.push({ right: correct, fast: correct && seconds <= AUTO_LEVEL.fastSeconds });
+  auto.updated = Date.now();
+  let move = null;
+  const index = DECKS.findIndex((deck) => deck.id === auto.deckId);
+
+  if (auto.placing) {
+    // 1) Still finding your level.
+    const lastFew = auto.recent.slice(-AUTO_LEVEL.jumpAfter);
+    const struggles = auto.recent.filter((a) => !a.fast).length;
+    if (struggles >= AUTO_LEVEL.settleAfter) {
+      auto.placing = false;                 // this is your level
+    } else if (lastFew.length === AUTO_LEVEL.jumpAfter && lastFew.every((a) => a.fast)) {
+      // Jump to the next main level (skip the review levels while climbing).
+      const next = DECKS.findIndex((deck, i) => i > index && !deck.review);
+      if (next === -1) {
+        auto.placing = false;               // already at the top!
+      } else {
+        auto.deckId = DECKS[next].id;
+        auto.recent = [];
+        move = "up";
+      }
+    }
+  } else {
+    // 2) Settled. Judge by your last few answers.
+    auto.recent = auto.recent.slice(-AUTO_LEVEL.lookBack);
+    if (auto.recent.length >= AUTO_LEVEL.lookBack) {
+      const right = auto.recent.filter((a) => a.right).length / auto.recent.length;
+      const fast = auto.recent.filter((a) => a.fast).length / auto.recent.length;
+      if (right >= AUTO_LEVEL.upIfRight && fast >= AUTO_LEVEL.upIfFast && index < DECKS.length - 1) {
+        auto.deckId = DECKS[index + 1].id;
+        move = "up";
+      } else if (right < AUTO_LEVEL.downIfRight && index > 0) {
+        auto.deckId = DECKS[index - 1].id;
+        move = "down";
+      }
+      if (move) auto.recent = [];
+    }
+  }
+
+  saveProgress();
+  return move;
 }

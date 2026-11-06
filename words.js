@@ -2,7 +2,8 @@
 // (or, later, from a teacher's own deck).
 //
 // Each level is a deck: a name in English and Hebrew, plus a list of words or sentences.
-// The host picks the deck in the lobby, and everyone in the room plays with it.
+// The host picks the deck in the lobby: Auto (each player gets their own level),
+// or one level that everyone in the room plays.
 //
 // HOW TO ADD A WORD: copy any line inside a level, paste it, and change it. For example:
 //     { english: "horse", hebrew: "סוּס" },
@@ -319,26 +320,74 @@ const LEVELS = [
   },
 ];
 
+// ---------- Review levels (2.5, 3.5 ... 15.5) ----------
+// These are built automatically, so nobody has to write them by hand.
+// Level 12.5 = the words of level 12 + the same number of random words from levels 1–11.
+// (There's no 1.5, because there's nothing before level 1 to review.)
+// The random half is picked again each time the review level is chosen.
+
+// Remember which level each word comes from (quiz.js uses this to borrow
+// wrong answers from the word's OWN level, so a single word isn't next to sentences).
+const homeLevelOf = new Map();
+LEVELS.forEach((level, index) => {
+  level.number = String(index + 1);
+  for (const word of level.words) homeLevelOf.set(word, level);
+});
+
+// DECKS = every level in order: 1, 2, 2.5, 3, 3.5 ... 15, 15.5.
+const DECKS = [];
+LEVELS.forEach((level, index) => {
+  DECKS.push(level);
+  if (index === 0) return;
+  const upTo = index + 1;
+  DECKS.push({
+    id: "review-" + upTo,
+    number: upTo + ".5",
+    english: `Review: levels 1–${upTo}`,
+    hebrew: `חֲזָרָה: רָמוֹת 1–${upTo}`,
+    review: true,
+    newLevel: level,                      // the level being reviewed (half the questions)
+    earlier: LEVELS.slice(0, index).flatMap((l) => l.words), // everything before it
+    words: LEVELS.slice(0, upTo).flatMap((l) => l.words),    // all of it (for "you know X of Y")
+  });
+});
+
+// Make the question list for a review level: the newest level + an equal number of earlier words.
+function mixReviewWords(deck) {
+  const earlier = [...deck.earlier].sort(() => Math.random() - 0.5);
+  return [...deck.newLevel.words, ...earlier.slice(0, deck.newLevel.words.length)];
+}
+
 // ---------- The deck being played right now ----------
 
 // WORDS = the words of the deck being played. quiz.js and progress.js ask questions from it.
 let WORDS = LEVELS[0].words;
 let currentDeckId = LEVELS[0].id;
 
-// Find a deck by its id (like "level-3"). Returns undefined if there's no such deck.
+// What the host picked for the room: "auto" (each player gets their own level,
+// see progress.js) or one level's id that everyone plays. (null until we join a room.)
+const AUTO = "auto";
+let roomDeckId = null;
+
+// Find a deck by its id (like "level-3" or "review-3"). Returns undefined if there's no such deck.
 function findDeck(deckId) {
-  return LEVELS.find((deck) => deck.id === deckId);
+  return DECKS.find((deck) => deck.id === deckId);
 }
 
-// Switch to another deck (the host picked one in the lobby).
+// Is this something the host is allowed to pick? (Auto, or a real deck.)
+function isDeckChoice(deckId) {
+  return deckId === AUTO || !!findDeck(deckId);
+}
+
+// Switch this phone's questions to another deck.
 function useDeck(deckId) {
   const deck = findDeck(deckId);
   if (!deck) return;
   currentDeckId = deck.id;
-  WORDS = deck.words;
+  WORDS = deck.review ? mixReviewWords(deck) : deck.words;
 }
 
-// The name shown in the lobby, like "3 · Prefixes: the (הַ) and (וְ)".
+// The name shown in the lobby, like "3 · Prefixes: the (הַ) and (וְ)" or "3.5 · Review: levels 1–3".
 function deckLabel(deck) {
-  return `${LEVELS.indexOf(deck) + 1} · ${deck.english}`;
+  return `${deck.number} · ${deck.english}`;
 }

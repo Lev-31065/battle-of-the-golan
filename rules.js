@@ -73,6 +73,25 @@ const REVIEW_STEPS = [
 // have passed since the last one started.
 const SESSION_GAP_HOURS = 1;
 
+// ---------- Auto level (progress.js) ----------
+// When the host picks "Auto", each player gets their own level.
+//   1) Finding your level: start at level 1 and jump up a level after every few
+//      fast right answers. Stop climbing once you slow down or miss a few.
+//   2) After that: look at your last few answers at your level. Almost all right
+//      and mostly fast → up one level. Too many wrong → down one level.
+// Your level is remembered for next time.
+const AUTO_LEVEL = {
+  fastSeconds: 6,       // answering right within this many seconds counts as "fast"
+  // 1) Finding your level
+  jumpAfter: 3,         // this many fast right answers in a row → jump up a level
+  settleAfter: 3,       // this many slow or wrong answers at one level → that's your level
+  // 2) After that
+  lookBack: 8,          // how many recent answers to judge by
+  upIfRight: 0.85,      // move up if at least 85% right...
+  upIfFast: 0.5,        // ...and at least half of the answers were fast
+  downIfRight: 0.55,    // move down if less than 55% right
+};
+
 // ---------- Helpers ----------
 
 function distance(a, b) {
