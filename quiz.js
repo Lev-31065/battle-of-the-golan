@@ -30,6 +30,7 @@ const quiz = {
 const quizEl = document.getElementById("quiz");
 const quizTitle = document.getElementById("quiz-title");
 const quizPrompt = document.getElementById("quiz-prompt");
+const quizHint = document.getElementById("quiz-hint");
 const quizChoices = document.getElementById("quiz-choices");
 const quizFeedback = document.getElementById("quiz-feedback");
 const quizCloseButton = document.getElementById("quiz-close");
@@ -49,9 +50,11 @@ function buildChoices(entry) {
   for (const wrong of shuffle([...(entry.wrong || [])])) {
     if (choices.length < 4 && !choices.includes(wrong)) choices.push(wrong);
   }
-  // Not enough tricky answers? Borrow other single words from the word bank.
-  const others = shuffle(WORDS.filter((w) => !(w.wrong && w.wrong.length >= 3)));
-  for (const other of others) {
+  // Not enough tricky answers? Borrow answers from other words in the same deck
+  // (simple words first, then anything).
+  const simple = shuffle(WORDS.filter((w) => !(w.wrong && w.wrong.length >= 3)));
+  const anything = shuffle([...WORDS]);
+  for (const other of [...simple, ...anything]) {
     if (choices.length < 4 && !choices.includes(other.hebrew)) choices.push(other.hebrew);
   }
   return shuffle(choices);
@@ -87,6 +90,7 @@ function askOrWait() {
   if (performance.now() < quiz.waitUntil) {
     quizChoices.innerHTML = "";
     quizPrompt.textContent = "⏳";
+    quizHint.hidden = true;
     const tick = () => {
       const secondsLeft = Math.ceil((quiz.waitUntil - performance.now()) / 1000);
       if (secondsLeft <= 0) return askOrWait();
@@ -104,6 +108,9 @@ function showNewQuestion() {
   quiz.entry = pickNextWord();
   quiz.locked = false;
   quizPrompt.textContent = quiz.entry.english;
+  // The hint (like the infinitive "לֶאֱכֹל"), if this word has one.
+  quizHint.hidden = !quiz.entry.hint;
+  quizHint.textContent = quiz.entry.hint ? `(${quiz.entry.hint})` : "";
   // Stop anything still being read, and read the new English word.
   speakSteps([{ card: null, lines: [englishLine(quiz.entry)] }]);
   setBilingual(quizFeedback, "");
@@ -111,7 +118,10 @@ function showNewQuestion() {
 
   // Make one button per choice.
   quizChoices.innerHTML = "";
-  buildChoices(quiz.entry).forEach((hebrew, index) => {
+  const choices = buildChoices(quiz.entry);
+  // Long sentences get smaller text so they fit in the buttons.
+  quizChoices.classList.toggle("long", choices.some((hebrew) => hebrew.length > 22));
+  choices.forEach((hebrew, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "quiz-choice";

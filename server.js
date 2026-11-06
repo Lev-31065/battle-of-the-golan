@@ -17,6 +17,7 @@ const server = {
   score: { blue: 0, red: 0 },
   speedBox: null,
   events: [],       // things that just happened (hits, messages) to send with the next snapshot
+  deckId: "level-1", // which word deck everyone plays with (the host picks it in the lobby)
 };
 
 // The two flags. Each flag is in one of three states:
@@ -35,8 +36,9 @@ function makeSpeedBox() {
   };
 }
 
-function serverReset(hostId) {
+function serverReset(hostId, deckId) {
   server.hostId = hostId;
+  server.deckId = findDeck(deckId) ? deckId : LEVELS[0].id;
   server.time = 0;
   server.phase = "lobby";
   server.players = {};
@@ -127,6 +129,12 @@ function serverHandle(id, msg) {
       break;
     case "start":
       if (id === server.hostId) serverStartGame();
+      break;
+    case "deck":
+      // Only the host can pick the words, and not in the middle of a battle.
+      if (id === server.hostId && server.phase !== "playing" && findDeck(msg.deckId)) {
+        server.deckId = msg.deckId;
+      }
       break;
     case "move":
       if (p.alive && server.phase === "playing" && Number.isFinite(msg.x) && Number.isFinite(msg.y)) {
@@ -319,6 +327,7 @@ function serverSnapshot() {
     phase: server.phase,
     winner: server.winner,
     hostId: server.hostId,
+    deckId: server.deckId,
     score: { ...server.score },
     flags: { blue: { ...server.flags.blue }, red: { ...server.flags.red } },
     speedBox: { ...server.speedBox },

@@ -262,7 +262,7 @@ createButton.addEventListener("click", () => {
       client.isHost = true;
       client.myId = myId;
       client.roomCode = code;
-      serverReset(myId);
+      serverReset(myId, savedDeckId());
       serverAddPlayer(myId, name);
       applySnapshot(serverSnapshot());
     },
@@ -360,8 +360,46 @@ document.getElementById("invite-button").addEventListener("click", async () => {
   }
 });
 
+// ---------- Picking the word deck (in the lobby) ----------
+
+const deckSelect = document.getElementById("deck-select");
+const deckProgressEl = document.getElementById("deck-progress");
+
+// The host's last choice is remembered on their phone for next time.
+function savedDeckId() {
+  try { return localStorage.getItem("golan-deck") || LEVELS[0].id; } catch { return LEVELS[0].id; }
+}
+
+// Fill the list with every level (once).
+for (const deck of LEVELS) {
+  const option = document.createElement("option");
+  option.value = deck.id;
+  option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
+  deckSelect.appendChild(option);
+}
+
+// The host picked a deck: tell the referee (who tells everyone).
+deckSelect.addEventListener("change", () => {
+  try { localStorage.setItem("golan-deck", deckSelect.value); } catch {}
+  sendToServer({ type: "deck", deckId: deckSelect.value });
+});
+
+function renderDeckPicker() {
+  // (Only change things that are different: this runs 20 times a second.)
+  if (deckSelect.value !== currentDeckId) deckSelect.value = currentDeckId;
+  if (deckSelect.disabled !== !client.isHost) deckSelect.disabled = !client.isHost; // only the host can change it
+  const deck = findDeck(currentDeckId);
+  const { known, total } = deckProgress(deck);
+  const pickNote = client.isHost ? "" : " · The host picks the words";
+  const pickNoteHe = client.isHost ? "" : " · הַמְּאָרֵחַ בּוֹחֵר אֶת הַמִּלִּים";
+  setBilingual(deckProgressEl,
+    `You know ${known} of ${total} well${pickNote}`,
+    `${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב${pickNoteHe}`);
+}
+
 function renderLobby(hostId) {
   document.getElementById("lobby-code").textContent = client.roomCode;
+  renderDeckPicker();
   for (const team of ["blue", "red"]) {
     const list = document.getElementById(team + "-list");
     list.innerHTML = "";
@@ -369,7 +407,7 @@ function renderLobby(hostId) {
       if (p.team !== team) continue;
       const item = document.createElement("li");
       // textContent (not innerHTML) so a weird nickname can't break the page.
-      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " (you · אֲנִי)" : "");
+      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " — you · אֲנִי" : "");
       list.appendChild(item);
     }
   }
@@ -412,6 +450,9 @@ function applySnapshot(snap) {
   for (const id of Object.keys(players)) {
     if (!stillHere.has(id)) delete players[id];
   }
+
+  // The host picked different words? Switch this phone's questions to that deck.
+  if (snap.deckId && snap.deckId !== currentDeckId) useDeck(snap.deckId);
 
   flags = snap.flags;
   score = snap.score;

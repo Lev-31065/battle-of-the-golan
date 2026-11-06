@@ -218,6 +218,10 @@ html, body {
   cursor: pointer;
 }
 .lobby-wait { margin-top: 6px; }
+.deck-picker { margin-bottom: 12px; text-align: left; }
+.deck-select { font-size: 15px; padding: 10px; cursor: pointer; }
+.deck-select:disabled { background: #f3f4f6; color: #374151; cursor: default; opacity: 1; }
+.deck-progress { margin: 6px 0 0; color: #4b5563; font-size: 13px; }
 .how-to { margin-top: 12px; text-align: left; font-size: 14px; }
 .how-to summary { cursor: pointer; color: #2563eb; font-weight: 600; text-align: center; }
 .how-to p { margin: 8px 0 0; line-height: 1.4; }
@@ -315,6 +319,10 @@ html, body {
 .quiz-title { margin: 0 40px 6px 0; color: #b45309; font-size: 14px; font-weight: 800; }
 .quiz-ask { margin: 0; color: #6b7280; font-size: 13px; }
 .quiz-prompt { margin: 2px 0 12px; font-size: 28px; font-weight: 800; }
+.quiz-hint { margin: -10px 0 12px; color: #6b7280; font-size: 18px; font-weight: 600; text-align: left; }
+/* Long sentences need smaller answer text so they fit in the buttons */
+.quiz-choice { line-height: 1.25; }
+.quiz-choices.long .quiz-choice { font-size: 18px; }
 .quiz-choices {
   display: grid;
   grid-template-columns: 1fr 1fr;   /* 2 columns → a 2×2 grid of answers */

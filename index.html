@@ -99,11 +99,7 @@
         <span><span class="en">I'm 13 or older</span><span class="he" lang="he" dir="rtl">אֲנִי בֶּן/בַּת 13 וָמַעְלָה</span></span>
       </label>
       <button id="account-submit" class="big-button" type="button"></button>
-      <button id="code-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a code instead</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קוֹד בָּאִימֵייל</span></button>
-      <div id="code-row" class="join-row" hidden>
-        <input id="code-entry" class="text-field code-field" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" aria-label="Code from the email">
-        <button id="code-verify" class="big-button join-button" type="button"><span class="en">OK</span><span class="he" lang="he" dir="rtl">אִשּׁוּר</span></button>
-      </div>
+      <button id="link-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a sign-in link</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קִשּׁוּר בָּאִימֵייל</span></button>
       <p id="account-message" class="home-message"></p>
       <button id="mode-switch" class="link-button" type="button"></button>
     </div>
@@ -134,6 +130,12 @@
       <div class="teams">
         <div class="team team-blue"><h3><span class="en">🔵 Blue</span><span class="he" lang="he" dir="rtl">כָּחֹל</span></h3><ul id="blue-list"></ul></div>
         <div class="team team-red"><h3><span class="en">🔴 Red</span><span class="he" lang="he" dir="rtl">אָדֹם</span></h3><ul id="red-list"></ul></div>
+      </div>
+      <!-- Which words to play with. Only the host can change it. -->
+      <div class="deck-picker">
+        <label class="field-label" for="deck-select"><span class="en">📚 Words for this game</span><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span></label>
+        <select id="deck-select" class="text-field deck-select"></select>
+        <p id="deck-progress" class="deck-progress"></p>
       </div>
       <button id="switch-team" class="secondary-button" type="button"><span class="en">⇄ Switch team</span><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span></button>
       <button id="start-button" class="big-button" type="button" hidden><span class="en">Start the battle!</span><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span></button>
@@ -172,6 +174,8 @@
       <p class="quiz-ask"><span class="en">How do you say this in Hebrew?</span><span class="he" lang="he" dir="rtl">אֵיךְ אוֹמְרִים אֶת זֶה בְּעִבְרִית?</span></p>
       <!-- The English word being asked. (No Hebrew under this one — that would give away the answer!) -->
       <p id="quiz-prompt" class="quiz-prompt"></p>
+      <!-- A helper under the English, like the infinitive: (לֶאֱכֹל) -->
+      <p id="quiz-hint" class="quiz-hint" lang="he" dir="rtl" hidden></p>
       <div id="quiz-choices" class="quiz-choices"></div>
       <p id="quiz-feedback" class="quiz-feedback"></p>
     </div>

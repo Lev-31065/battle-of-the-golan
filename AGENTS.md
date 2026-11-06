@@ -26,9 +26,9 @@
 - `rules.js`: every tweakable setting, plus shared helpers
 - `sound.js`: sound effects and mute
 - `speech.js`: reads words out loud with the phone's built-in voice (or a recording, if a word has `audio`), plus the word card at the top
-- `words.js`: Hebrew word bank (English → Hebrew with nikud, plus tricky wrong answers)
+- `words.js`: the 15 built-in levels (`LEVELS`), each a deck of English → Hebrew (nikud, tricky `wrong` answers, optional `hint` like the infinitive). `WORDS` is the deck being played; `useDeck(id)` switches it. The host picks the deck in the lobby; the referee sends `deckId` in every snapshot.
 - `progress.js`: flashcard memory (spaced repetition), saved on the phone, plus the account when logged in
-- `account.js`: optional login (email + password, or email code; 13+ checkbox to sign up) and uploading progress to Supabase
+- `account.js`: optional login (email + password, or an emailed sign-in link; 13+ checkbox to sign up). Typed email codes need custom SMTP so the Supabase email template can be edited and uploading progress to Supabase
 - `supabase/setup.sql`: creates the `decks` and `progress` tables and their security rules (paste into Supabase's SQL Editor)
 - `quiz.js`: question popup (`openQuiz`)
 - `draw.js`: all canvas drawing, including the minimap

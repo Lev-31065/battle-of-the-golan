@@ -5,7 +5,10 @@
 //
 // Ways to log in:
 //   • Email + password
-//   • Email + a code sent to your email (for people who don't want a password)
+//   • A sign-in link sent to your email (for people who don't want a password).
+//     Tapping the link in the email opens the game, already logged in.
+//     (It's a link, not a typed code, because Supabase only lets us change the
+//     email's wording once we connect our own email service. Maybe later.)
 // Making an account needs the "I'm 13 or older" box ticked.
 //
 // The two values below are PUBLIC on purpose — every visitor's browser needs them
@@ -30,9 +33,7 @@ const passwordInput = document.getElementById("password-input");
 const ageRow = document.getElementById("age-row");
 const ageCheck = document.getElementById("age-check");
 const accountSubmit = document.getElementById("account-submit");
-const codeButton = document.getElementById("code-button");
-const codeRow = document.getElementById("code-row");
-const codeEntry = document.getElementById("code-entry");
+const linkButton = document.getElementById("link-button");
 const modeSwitch = document.getElementById("mode-switch");
 const accountMessage = document.getElementById("account-message");
 const loginButton = document.getElementById("login-button");
@@ -142,7 +143,6 @@ function openAccountScreen(mode) {
     signup ? "כְּבָר יֵשׁ חֶשְׁבּוֹן? מִתְחַבְּרִים" : "חֲדָשִׁים כָּאן? יוֹצְרִים חֶשְׁבּוֹן");
   ageRow.hidden = !signup;
   passwordInput.autocomplete = signup ? "new-password" : "current-password";
-  codeRow.hidden = true;
   setAccountMessage("");
   showScreen("account");
 }
@@ -156,7 +156,7 @@ function setAccountMessage(english, hebrew, isInfo) {
 }
 
 function setAccountBusy(busy) {
-  for (const b of [accountSubmit, codeButton, document.getElementById("code-verify")]) b.disabled = busy;
+  for (const b of [accountSubmit, linkButton]) b.disabled = busy;
 }
 
 // Check the email box (and the age box, when signing up). Returns the email, or null.
@@ -214,12 +214,12 @@ accountSubmit.addEventListener("click", async () => {
   setAccountMessage("📧 Check your email and tap the link to finish.", "📧 בּוֹדְקִים אֶת הָאִימֵייל וְלוֹחֲצִים עַל הַקִּשּׁוּר.", true);
 });
 
-// "Email me a code instead"
-codeButton.addEventListener("click", async () => {
+// "Email me a sign-in link"
+linkButton.addEventListener("click", async () => {
   const email = readEmail();
   if (!email) return;
   setAccountBusy(true);
-  setAccountMessage("Sending a code…", "שׁוֹלְחִים קוֹד…", true);
+  setAccountMessage("Sending the link…", "שׁוֹלְחִים קִשּׁוּר…", true);
   const signup = account.mode === "signup";
   const { error } = await supa.auth.signInWithOtp({
     email,
@@ -231,25 +231,16 @@ codeButton.addEventListener("click", async () => {
   });
   setAccountBusy(false);
   if (error) return showAccountError(error);
-  codeRow.hidden = false;
-  codeEntry.value = "";
-  codeEntry.focus();
-  setAccountMessage("📧 We emailed you a code. Type it here.", "📧 שָׁלַחְנוּ קוֹד לָאִימֵייל. כּוֹתְבִים אוֹתוֹ כָּאן.", true);
+  setAccountMessage("📧 Check your email and tap the link to log in.", "📧 בּוֹדְקִים אֶת הָאִימֵייל וְלוֹחֲצִים עַל הַקִּשּׁוּר כְּדֵי לְהִתְחַבֵּר.", true);
 });
 
-// Typing the code from the email
-document.getElementById("code-verify").addEventListener("click", async () => {
-  const token = codeEntry.value.replace(/\D/g, ""); // digits only
-  if (token.length < 6) {
-    setAccountMessage("Type the code from the email.", "כּוֹתְבִים אֶת הַקּוֹד מֵהָאִימֵייל.");
-    return;
-  }
-  setAccountBusy(true);
-  setAccountMessage("Checking the code…", "בּוֹדְקִים אֶת הַקּוֹד…", true);
-  const { error } = await supa.auth.verifyOtp({ email: emailInput.value.trim(), token, type: "email" });
-  setAccountBusy(false);
-  if (error) return showAccountError(error);
-  finishLogin();
+// Came back from an email link that didn't work (too old, or already used)?
+// Supabase puts the reason in the page address after a "#". Show a friendly message.
+window.addEventListener("DOMContentLoaded", () => {
+  if (!location.hash.includes("error")) return;
+  setTimeout(() => showToast("⚠️ That email link is too old or was already used. Ask for a new one.",
+    "הַקִּשּׁוּר יָשָׁן מִדַּי אוֹ שֶׁכְּבָר הִשְׁתַּמְּשׁוּ בּוֹ. מְבַקְּשִׁים קִשּׁוּר חָדָשׁ."), 500);
+  history.replaceState(null, "", location.pathname + location.search); // tidy the address
 });
 
 function finishLogin() {
@@ -273,8 +264,6 @@ function showAccountError(error) {
     setAccountMessage("The password needs at least 6 characters.", "הַסִּיסְמָה צְרִיכָה לִהְיוֹת לְפָחוֹת 6 תָּוִים.");
   } else if (code === "otp_disabled" || text.includes("signups not allowed")) {
     setAccountMessage("No account with this email yet. Tap “Create an account” first.", "אֵין עֲדַיִן חֶשְׁבּוֹן עִם הָאִימֵייל הַזֶּה. יוֹצְרִים חֶשְׁבּוֹן קֹדֶם.");
-  } else if (code === "otp_expired" || text.includes("expired") || text.includes("invalid")) {
-    setAccountMessage("That code is wrong or too old. Ask for a new one.", "הַקּוֹד לֹא נָכוֹן אוֹ יָשָׁן מִדַּי. מְבַקְּשִׁים קוֹד חָדָשׁ.");
   } else if (error.status === 429 || text.includes("rate limit")) {
     setAccountMessage("Too many tries. Wait a little and try again.", "יוֹתֵר מִדַּי נִסְיוֹנוֹת. מְחַכִּים קְצָת וּמְנַסִּים שׁוּב.");
   } else {

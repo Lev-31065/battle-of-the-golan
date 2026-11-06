@@ -151,6 +151,15 @@ function progressSummary() {
   };
 }
 
+// For the lobby: how many words of one deck you know well, out of how many.
+function deckProgress(deck) {
+  const known = deck.words.filter((w) => {
+    const record = progress.words[wordKey(w)];
+    return record && record.level >= 3;
+  }).length;
+  return { known, total: deck.words.length };
+}
+
 // Update a word after you answer it.
 function recordAnswer(entry, correct) {
   progress.questionCount++;
