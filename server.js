@@ -14,6 +14,7 @@ const server = {
   winner: null,
   overAt: 0,        // when the last game ended
   players: {},      // every player, by id
+  pastTeams: {},    // nickname → team, for players who left (so they rejoin the same team)
   flags: {},
   score: { blue: 0, red: 0 },
   speedBox: null,
@@ -43,6 +44,7 @@ function serverReset(hostId, deckId) {
   server.time = 0;
   server.phase = "lobby";
   server.players = {};
+  server.pastTeams = {};
   resetRound();
 }
 
@@ -73,10 +75,12 @@ function cleanName(name) {
 
 function serverAddPlayer(id, name) {
   if (server.players[id]) return;
-  // Put new players on whichever team is smaller.
+  // Coming back after leaving (same nickname)? Back on your old team.
+  // Otherwise, join whichever team is smaller.
   const everyone = Object.values(server.players);
   const blueCount = everyone.filter((p) => p.team === "blue").length;
-  const team = blueCount <= everyone.length - blueCount ? "blue" : "red";
+  const pastTeam = server.pastTeams[cleanName(name)];
+  const team = pastTeam || (blueCount <= everyone.length - blueCount ? "blue" : "red");
 
   server.players[id] = {
     id,
@@ -106,6 +110,7 @@ function serverRemovePlayer(id) {
   const p = server.players[id];
   if (!p) return;
   serverDropFlag(p);
+  server.pastTeams[p.name] = p.team; // remember their team in case they come back
   delete server.players[id];
   toast(`👋 ${p.name} left the game`, `${p.name} יָצָא/יָצְאָה מֵהַמִּשְׂחָק`);
 }
@@ -256,34 +261,62 @@ function sendFlagHome(flag) {
   Object.assign(flag, makeFlag(flag.team));
 }
 
-// Did a flag carrier make it back to their own base?
-function checkFlagDelivery(p) {
-  const flag = server.flags[p.carrying];
-  flag.x = p.x;  // the flag travels with its carrier
-  flag.y = p.y;
+// Who is carrying this flag right now? (null if nobody)
+function carrierOf(flag) {
+  return flag.state === "carried" ? server.players[flag.carrierId] || null : null;
+}
 
-  const home = MAP.bases[p.team];
-  if (distance(p, home) > home.radius) return;
+// Checks one team's base (the big circle), every frame.
+// THE RULE: if BOTH flags are inside a team's circle, that team gets a point.
+// A flag counts if it's standing on its stand, lying on the ground, or carried
+// by someone on that team. (A flag in an ENEMY's hands doesn't count — it's being stolen.)
+function checkBase(team) {
+  const home = MAP.bases[team];
+  const own = server.flags[team];
+  const enemy = server.flags[otherTeam(team)];
+  const counts = (flag) => {
+    const carrier = carrierOf(flag);
+    return distance(flag, home) <= home.radius && (!carrier || carrier.team === team);
+  };
 
-  if (flag.team === p.team) {
-    sendFlagHome(flag);
-    p.carrying = null;
-    toast(`🏠 ${p.name} brought the ${TEAM_NAMES[p.team]} flag home!`, `${p.name} הֶחֱזִיר/הֶחֱזִירָה אֶת ${TEAM_HE[p.team].flag} הַבַּיְתָה!`);
-  } else if (server.flags[p.team].state === "home") {
-    sendFlagHome(flag);
-    p.carrying = null;
-    server.score[p.team] += 1;
-    floatText("🎉 +1", p.x, p.y - 50, "#fff", 1.5, "score");
-    toast(`🎉 ${p.name} scores for ${TEAM_NAMES[p.team]}! (${server.score[p.team]} of ${WIN_SCORE})`,
-      `${p.name} — נְקֻדָּה ${TEAM_HE[p.team].toPlayers}! (${server.score[p.team]} מִתּוֹךְ ${WIN_SCORE})`);
-    if (server.score[p.team] >= WIN_SCORE) {
+  // 1) Your own flag is back inside your base (carried in, or dropped there) → back on its stand.
+  if (own.state !== "home" && counts(own)) {
+    const carrier = carrierOf(own);
+    sendFlagHome(own);
+    if (carrier) {
+      carrier.carrying = null;
+      toast(`🏠 ${carrier.name} brought the ${TEAM_NAMES[team]} flag home!`, `${carrier.name} הֶחֱזִיר/הֶחֱזִירָה אֶת ${TEAM_HE[team].flag} הַבַּיְתָה!`);
+    } else {
+      toast(`↩️ The ${TEAM_NAMES[team]} flag returned to its base.`, `${TEAM_HE[team].flag} חָזַר לַבָּסִיס.`);
+    }
+  }
+
+  if (!counts(enemy)) return;
+  const scorer = carrierOf(enemy); // a player, or null if the flag was dropped here
+
+  // 2) Both flags are in your base → a point!
+  if (counts(own)) {
+    if (scorer) scorer.carrying = null;
+    sendFlagHome(enemy);
+    server.score[team] += 1;
+    const spot = scorer || home;
+    floatText("🎉 +1", spot.x, spot.y - 50, "#fff", 1.5, "score");
+    const points = `(${server.score[team]} of ${WIN_SCORE})`;
+    const pointsHe = `(${server.score[team]} מִתּוֹךְ ${WIN_SCORE})`;
+    if (scorer) {
+      toast(`🎉 ${scorer.name} scores for ${TEAM_NAMES[team]}! ${points}`, `${scorer.name} — נְקֻדָּה ${TEAM_HE[team].toPlayers}! ${pointsHe}`);
+    } else {
+      toast(`🎉 Point for ${TEAM_NAMES[team]}! ${points}`, `נְקֻדָּה ${TEAM_HE[team].toPlayers}! ${pointsHe}`);
+    }
+    if (server.score[team] >= WIN_SCORE) {
       server.phase = "over";
-      server.winner = p.team;
+      server.winner = team;
       server.overAt = server.time; // when the game ended (for going back to the teams)
     }
-  } else if (server.time - (p.lastHint || -10) > 3) {
-    p.lastHint = server.time;
-    toast("⚠️ Your own flag must be home before you can score!", "הַדֶּגֶל שֶׁלָּכֶם צָרִיךְ לִהְיוֹת בַּבָּסִיס כְּדֵי לְקַבֵּל נְקֻדָּה!", p.id);
+  } else if (scorer && server.time - (scorer.lastHint || -10) > 3) {
+    // Brought the enemy flag home, but your own flag is missing.
+    scorer.lastHint = server.time;
+    toast("⚠️ Your own flag must be in your base too before you can score!", "גַּם הַדֶּגֶל שֶׁלָּכֶם צָרִיךְ לִהְיוֹת בַּבָּסִיס כְּדֵי לְקַבֵּל נְקֻדָּה!", scorer.id);
   }
 }
 
@@ -311,7 +344,16 @@ function serverUpdate(dt) {
       Object.assign(p, spawnPoint(p.team), { alive: true, hp: MAX_HP, weapon: null });
       p.spawnCount += 1;
     }
-    if (p.alive && p.carrying) checkFlagDelivery(p);
+    // A carried flag travels with its carrier.
+    if (p.alive && p.carrying) {
+      server.flags[p.carrying].x = p.x;
+      server.flags[p.carrying].y = p.y;
+    }
+  }
+
+  // Check both bases for returned flags and points.
+  for (const team of ["blue", "red"]) {
+    checkBase(team);
     if (server.phase !== "playing") return; // someone just won
   }
 

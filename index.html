@@ -43,9 +43,18 @@
   <button id="mute-button" class="mute-button" type="button" aria-label="Sound on or off" hidden>🔊</button>
   <!-- Voice on/off (the words read out loud). Sits under the sound button. -->
   <button id="voice-button" class="mute-button voice-button" type="button" aria-label="Voice on or off" hidden>🗣️</button>
+  <!-- Full screen on/off (hides the browser's address bar). Left of the sound button.
+       Hidden on phones that can't do it, like iPhones. -->
+  <button id="fullscreen-button" class="mute-button fullscreen-button" type="button" aria-label="Full screen on or off" hidden>⛶</button>
+  <!-- Leave the game (asks "Are you sure?" first). Left of the voice button. -->
+  <button id="leave-button" class="mute-button leave-button" type="button" aria-label="Leave the game" hidden>🚪</button>
 
-  <!-- Which level you're playing, small on the left edge (game.js fills it in) -->
-  <div id="level-tag" class="level-tag" hidden></div>
+  <!-- Small tags on the left edge: your level, and the room code (so someone who
+       closed the game by accident can rejoin). game.js fills them in. -->
+  <div id="side-tags" class="side-tags" hidden>
+    <div id="level-tag" class="side-tag"></div>
+    <div id="room-tag" class="side-tag"></div>
+  </div>
 
   <!-- A red glow around the screen edges when you get hit -->
   <div id="hurt-flash" class="hurt-flash"></div>
@@ -176,6 +185,16 @@
         <span class="shop-text"><b><span class="en">Hammer</span><span class="he" lang="he" dir="rtl">פַּטִּישׁ</span></b><small><span class="en">Hits every enemy close to you</span><span class="he" lang="he" dir="rtl">פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב</span></small></span>
         <span id="hammer-status" class="shop-price"></span>
       </button>
+    </div>
+  </div>
+
+  <!-- "Are you sure you want to leave?" popup (game.js controls it) -->
+  <div id="leave-confirm" class="overlay" hidden>
+    <div class="panel leave-panel">
+      <h2><span class="en">🚪 Leave the game?</span><span class="he" lang="he" dir="rtl">לָצֵאת מֵהַמִּשְׂחָק?</span></h2>
+      <p id="leave-note" class="panel-sub"></p>
+      <button id="leave-yes" class="big-button leave-yes" type="button"><span class="en">Yes, leave</span><span class="he" lang="he" dir="rtl">כֵּן, לָצֵאת</span></button>
+      <button id="leave-no" class="secondary-button leave-no" type="button"><span class="en">No, stay</span><span class="he" lang="he" dir="rtl">לֹא, נִשְׁאָרִים</span></button>
     </div>
   </div>
 

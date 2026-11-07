@@ -19,6 +19,10 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* "manipulation" = taps and scrolling only, no double-tap zoom. (Stops phones from
+   zooming in when someone taps a button twice quickly.) */
+button, select, input { touch-action: manipulation; }
+
 /* The canvas covers the whole screen. */
 #game {
   position: fixed;
@@ -59,12 +63,19 @@ html, body {
 .score-sep { color: #9ca3af; }
 [hidden] { display: none !important; }
 
-/* The small level tag on the left edge of the screen, like "Level 3B / רָמָה 3ב". */
-.level-tag {
+/* The small tags on the left edge of the screen: "Level 3B" and "Room KZTP". */
+.side-tags {
   position: fixed;
   left: 6px;
   top: 50%;
-  transform: translateY(-50%); /* centers it up and down */
+  transform: translateY(-50%); /* centers them up and down */
+  display: flex;
+  flex-direction: column;      /* one under the other */
+  gap: 4px;
+  pointer-events: none;        /* touches pass through to the joystick */
+  z-index: 2;
+}
+.side-tag {
   padding: 3px 7px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.55);
@@ -72,8 +83,6 @@ html, body {
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
-  pointer-events: none;        /* touches pass through to the joystick */
-  z-index: 2;
 }
 
 /* ---------- Joystick ---------- */
@@ -236,7 +245,8 @@ html, body {
 }
 .lobby-wait { margin-top: 6px; }
 .deck-picker { margin-bottom: 12px; text-align: left; }
-.deck-select { font-size: 15px; padding: 10px; cursor: pointer; }
+/* 16px or bigger: iPhones zoom in on any box with smaller text when you tap it. */
+.deck-select { font-size: 16px; padding: 10px; cursor: pointer; }
 .deck-select:disabled { background: #f3f4f6; color: #374151; cursor: default; opacity: 1; }
 .deck-progress { margin: 6px 0 0; color: #4b5563; font-size: 13px; }
 .how-to { margin-top: 12px; text-align: left; font-size: 14px; }
@@ -394,6 +404,14 @@ html, body {
 
 /* The voice button sits just under the sound button */
 .voice-button { top: 152px; }
+/* A 2×2 group of round buttons under the minimap: these two sit to the left. */
+.fullscreen-button { right: 56px; }
+.leave-button { top: 152px; right: 56px; }
+
+/* "Leave the game?" popup */
+.leave-panel { text-align: center; }
+.leave-yes { background: #dc2626; margin-bottom: 10px; }
+.leave-no { margin-bottom: 0; }
 
 /* ---------- Toast message (bottom of the screen, a little see-through) ---------- */
 /* The area runs along the bottom. On wide screens it stops before the action buttons on the right. */

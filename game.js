@@ -44,6 +44,41 @@ function sendToServer(msg) {
   else sendToHost(msg);
 }
 
+// ---------- No zooming ----------
+// iPhones ignore the "no zooming" line in index.html, so block pinch-zoom and
+// double-tap zoom here too.
+document.addEventListener("gesturestart", (event) => event.preventDefault());
+document.addEventListener("dblclick", (event) => event.preventDefault());
+
+// ---------- Full screen (hides the browser's address bar) ----------
+// Phones only allow full screen right after a tap, so it turns on when you tap
+// Play Game, Create or Join. The ⛶ button in the game turns it off and on.
+// (iPhones don't allow it at all, so there the button stays hidden.)
+const page = document.documentElement;
+const canFullscreen = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+function isFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function enterFullscreen() {
+  if (!canFullscreen || isFullscreen()) return;
+  try {
+    const result = (page.requestFullscreen || page.webkitRequestFullscreen).call(page);
+    if (result && result.catch) result.catch(() => {}); // the phone said no: that's fine
+  } catch {}
+}
+function exitFullscreen() {
+  if (!isFullscreen()) return;
+  try {
+    const result = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    if (result && result.catch) result.catch(() => {});
+  } catch {}
+}
+const fullscreenButton = document.getElementById("fullscreen-button");
+fullscreenButton.addEventListener("click", () => {
+  if (isFullscreen()) exitFullscreen();
+  else enterFullscreen();
+});
+
 // ---------- Screen size and camera ----------
 
 const view = { scale: 1, width: 0, height: 0, dpr: 1 };
@@ -70,7 +105,7 @@ function cameraPosition(target, viewSize, mapSize) {
 // Can I move right now? Not while a popup is open, and not while knocked out.
 function isBusy() {
   const p = myPlayer();
-  return quiz.open || !shopEl.hidden || client.phase !== "playing" || !p || !p.alive;
+  return quiz.open || !shopEl.hidden || !leaveEl.hidden || client.phase !== "playing" || !p || !p.alive;
 }
 
 // ---------- Keyboard controls ----------
@@ -180,7 +215,10 @@ const playEl = document.getElementById("play");
 const lobbyEl = document.getElementById("lobby");
 
 // "Play Game" goes to the play screen (nickname + create/join a room). "Back" comes home.
-document.getElementById("play-game-button").addEventListener("click", () => showScreen("play"));
+document.getElementById("play-game-button").addEventListener("click", () => {
+  enterFullscreen();
+  showScreen("play");
+});
 document.getElementById("back-button").addEventListener("click", () => {
   setHomeMessage("");
   showScreen("home");
@@ -235,7 +273,19 @@ codeInput.addEventListener("input", () => {
 });
 
 // Opened from an invite link like ".../?room=KZTP"? Fill in the code for them.
+// Otherwise, if you joined a room in the last 3 hours (maybe you closed the game
+// by accident?), fill in that room's code so you can jump back in.
 const roomFromLink = new URLSearchParams(location.search).get("room");
+if (!roomFromLink) {
+  try {
+    const last = JSON.parse(localStorage.getItem("golan-last-room"));
+    if (last && Date.now() - last.at < 3 * 60 * 60 * 1000) {
+      codeInput.value = last.code;
+      setTimeout(() => setHomeMessage(`Your last room was ${last.code}. Tap Join to go back in.`,
+        `הַחֶדֶר הָאַחֲרוֹן שֶׁלָּכֶם: ${last.code}. לוֹחֲצִים עַל ״הִצְטָרְפוּת״ כְּדֵי לַחֲזֹר.`, true), 0);
+    }
+  } catch {}
+}
 if (roomFromLink) {
   codeInput.value = roomFromLink.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
   // Skip the home screen and go straight to joining.
@@ -270,6 +320,7 @@ function readNickname() {
 createButton.addEventListener("click", () => {
   const name = readNickname();
   if (!name) return;
+  enterFullscreen();
   setHomeButtons(false);
   setHomeMessage("Creating a room…", "פּוֹתְחִים חֶדֶר…", true);
   hostRoom({
@@ -299,12 +350,15 @@ joinButton.addEventListener("click", () => {
     codeInput.focus();
     return;
   }
+  enterFullscreen();
   setHomeButtons(false);
   setHomeMessage("Joining…", "מִצְטָרְפִים…", true);
   joinRoom(code, {
     onConnected: (myId) => {
       client.myId = myId;
       client.roomCode = code;
+      // Remember this room, in case the game gets closed by accident.
+      try { localStorage.setItem("golan-last-room", JSON.stringify({ code, at: Date.now() })); } catch {}
       client.lastSnapshotAt = performance.now();
       sendToHost({ type: "join", name });
     },
@@ -330,6 +384,7 @@ function backToHome(english, hebrew) {
   speedBox = null;
   closeQuiz();
   shopEl.hidden = true;
+  leaveEl.hidden = true;
   winnerEl.hidden = true;
   showScreen("play");
   setHomeButtons(true);
@@ -356,21 +411,36 @@ document.getElementById("switch-team").addEventListener("click", () => {
 });
 startButton.addEventListener("click", () => sendToServer({ type: "start" }));
 
-// 🏠 Home: leave the room and go back to the first screen.
+// ---------- Leaving (🏠 in the lobby, 🚪 in the game) ----------
 // The host's phone IS the room, so if the host leaves, everyone's game ends.
-// That's why the host has to tap twice (the first tap just warns them).
-const lobbyHomeButton = document.getElementById("lobby-home");
-let homeTapWarnedAt = -Infinity; // when the host was last warned (-Infinity = never)
-lobbyHomeButton.addEventListener("click", () => {
-  if (client.isHost && performance.now() - homeTapWarnedAt > 4000) {
-    homeTapWarnedAt = performance.now();
-    showToast("You're the host: leaving closes the room for everyone. Tap Home again to leave.",
-      "אַתֶּם הַמְּאָרְחִים: אִם תֵּצְאוּ, הַחֶדֶר יִסָּגֵר לְכֻלָּם. לוֹחֲצִים שׁוּב כְּדֵי לָצֵאת.");
-    return;
+// In the game, everyone gets an "Are you sure?" popup. In the lobby, only the host does.
+
+const leaveEl = document.getElementById("leave-confirm");
+const leaveNote = document.getElementById("leave-note");
+
+function askToLeave() {
+  resetStick();
+  if (client.isHost) {
+    setBilingual(leaveNote, "You're the host: if you leave, the room closes for everyone.",
+      "אַתֶּם הַמְּאָרְחִים: אִם תֵּצְאוּ, הַחֶדֶר יִסָּגֵר לְכֻלָּם.");
+  } else {
+    setBilingual(leaveNote, `To come back later, join room ${client.roomCode} again.`,
+      `כְּדֵי לַחֲזֹר אַחַר כָּךְ, מִצְטָרְפִים שׁוּב לְחֶדֶר ${client.roomCode}.`);
   }
-  homeTapWarnedAt = -Infinity;
-  backToHome("", "");
+  leaveEl.hidden = false;
+}
+
+function leaveRoom() {
+  backToHome("", ""); // hangs up and hides the popup
   showScreen("home");
+}
+
+document.getElementById("leave-yes").addEventListener("click", leaveRoom);
+document.getElementById("leave-no").addEventListener("click", () => { leaveEl.hidden = true; });
+document.getElementById("leave-button").addEventListener("click", askToLeave);
+document.getElementById("lobby-home").addEventListener("click", () => {
+  if (client.isHost) askToLeave();
+  else leaveRoom();
 });
 
 // Share a link that opens the game with the room code already filled in.
@@ -921,14 +991,19 @@ voiceButton.addEventListener("click", () => {
   else showToast("🤐 Voice off", "הַקּוֹל כָּבוּי");
 });
 
+const sideTags = document.getElementById("side-tags");
 const levelTag = document.getElementById("level-tag");
+const roomTag = document.getElementById("room-tag");
+const leaveButton = document.getElementById("leave-button");
 
 function updateHud(p) {
   const playing = client.phase === "playing" && p;
   hudEl.hidden = !playing;
   muteButton.hidden = !playing;
   voiceButton.hidden = !playing;
-  levelTag.hidden = !playing;
+  leaveButton.hidden = !playing;
+  fullscreenButton.hidden = !playing || !canFullscreen;
+  sideTags.hidden = !playing;
   if (!playing) {
     for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
     koMessage.hidden = true;
@@ -938,6 +1013,8 @@ function updateHud(p) {
   // The level you're on right now (it changes by itself on Auto).
   const deck = findDeck(currentDeckId);
   setBilingual(levelTag, `Level ${deck.number}`, `רָמָה ${deck.numberHe}`);
+  // The room code, so you can tell a friend who closed the game by accident.
+  setBilingual(roomTag, `Room ${client.roomCode}`, `חֶדֶר ${client.roomCode}`);
 
   document.getElementById("score-blue").textContent = score.blue;
   document.getElementById("score-red").textContent = score.red;
