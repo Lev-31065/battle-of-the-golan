@@ -186,6 +186,21 @@ document.getElementById("back-button").addEventListener("click", () => {
   showScreen("home");
 });
 
+// Masculine / feminine buttons. The picked one is highlighted (words.js remembers the choice).
+const genderButtons = { m: document.getElementById("gender-m"), f: document.getElementById("gender-f") };
+function showGenderChoice() {
+  for (const [gender, button] of Object.entries(genderButtons)) {
+    button.classList.toggle("picked", gender === myGender);
+  }
+}
+for (const [gender, button] of Object.entries(genderButtons)) {
+  button.addEventListener("click", () => {
+    setMyGender(gender);
+    showGenderChoice();
+  });
+}
+showGenderChoice();
+
 // Show how many words you've practiced on the home screen.
 function updateProgressSummary() {
   const { practiced, known } = progressSummary();

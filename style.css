@@ -433,6 +433,21 @@ html, body {
 .action-button .button-label { margin-top: 3px; }
 
 /* ---------- Home screen ---------- */
+/* Masculine / feminine picker: two side-by-side buttons; the picked one is blue. */
+.gender-picker { margin-top: 14px; }
+.gender-row { display: flex; gap: 8px; }
+.gender-button {
+  flex: 1;                     /* both buttons share the row equally */
+  padding: 9px 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  background: white;
+  font: 600 15px "Rubik", sans-serif;
+  color: #1f2937;
+  cursor: pointer;
+}
+.gender-button .he { font-size: 12px; margin-top: 2px; }
+.gender-button.picked { border-color: #2563eb; background: #dbeafe; color: #1e3a8a; }
 .play-game-button { margin-top: 16px; padding: 18px; font-size: 22px; }
 #login-button { margin-top: 10px; margin-bottom: 0; }
 #login-button:disabled { opacity: 0.6; cursor: default; }

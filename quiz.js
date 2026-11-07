@@ -52,7 +52,8 @@ function buildChoices(entry) {
   }
   // Not enough tricky answers? Borrow answers from other words in the same level
   // (simple words first, then anything).
-  const home = homeLevelOf.has(entry) ? homeLevelOf.get(entry).words : WORDS;
+  // (forMyGender: borrow the masculine or feminine version, whichever this player uses.)
+  const home = homeLevelOf.has(entry) ? homeLevelOf.get(entry).words.map(forMyGender) : WORDS;
   const simple = shuffle(home.filter((w) => !(w.wrong && w.wrong.length >= 3)));
   const anything = shuffle([...home]);
   for (const other of [...simple, ...anything]) {
