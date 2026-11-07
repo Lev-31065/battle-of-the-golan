@@ -404,11 +404,11 @@ function autoLevelAnswer(correct, seconds) {
   const move = noteAutoAnswer(correct, seconds);
   if (!move) return;
   useDeck(autoDeckId());
-  const number = findDeck(currentDeckId).number;
+  const { number, numberHe } = findDeck(currentDeckId);
   // Wait a moment, so this doesn't cover up "Correct!" or "You earned the Hammer!".
   setTimeout(() => {
-    if (move === "up") showToast(`⬆️ Level up! Now level ${number}`, `⬆️ עוֹלִים רָמָה! עַכְשָׁו רָמָה ${number}`);
-    else showToast(`⬇️ Back to level ${number} for some practice`, `⬇️ חוֹזְרִים לְרָמָה ${number} לְתַרְגּוּל`);
+    if (move === "up") showToast(`⬆️ Level up! Now level ${number}`, `⬆️ עוֹלִים רָמָה! עַכְשָׁו רָמָה ${numberHe}`);
+    else showToast(`⬇️ Back to level ${number} for some practice`, `⬇️ חוֹזְרִים לְרָמָה ${numberHe} לְתַרְגּוּל`);
   }, 2500);
 }
 
@@ -425,7 +425,7 @@ function renderDeckPicker() {
   if (roomDeckId === AUTO) {
     setBilingual(deckProgressEl,
       `Your level: ${deckLabel(deck)} · You know ${known} of ${total} well`,
-      `רָמָה נוֹכְחִית: ${deck.number} · ${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב`);
+      `רָמָה נוֹכְחִית: ${deck.numberHe} · ${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב`);
   } else {
     setBilingual(deckProgressEl,
       `You know ${known} of ${total} well${pickNote}`,
@@ -892,16 +892,23 @@ voiceButton.addEventListener("click", () => {
   else showToast("🤐 Voice off", "הַקּוֹל כָּבוּי");
 });
 
+const levelTag = document.getElementById("level-tag");
+
 function updateHud(p) {
   const playing = client.phase === "playing" && p;
   hudEl.hidden = !playing;
   muteButton.hidden = !playing;
   voiceButton.hidden = !playing;
+  levelTag.hidden = !playing;
   if (!playing) {
     for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
     koMessage.hidden = true;
     return;
   }
+
+  // The level you're on right now (it changes by itself on Auto).
+  const deck = findDeck(currentDeckId);
+  setBilingual(levelTag, `Level ${deck.number}`, `רָמָה ${deck.numberHe}`);
 
   document.getElementById("score-blue").textContent = score.blue;
   document.getElementById("score-red").textContent = score.red;

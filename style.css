@@ -59,6 +59,23 @@ html, body {
 .score-sep { color: #9ca3af; }
 [hidden] { display: none !important; }
 
+/* The small level tag on the left edge of the screen, like "Level 3B / רָמָה 3ב". */
+.level-tag {
+  position: fixed;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%); /* centers it up and down */
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  pointer-events: none;        /* touches pass through to the joystick */
+  z-index: 2;
+}
+
 /* ---------- Joystick ---------- */
 #joystick-zone {
   position: fixed;

@@ -320,21 +320,27 @@ const LEVELS = [
   },
 ];
 
-// ---------- Review levels (2.5, 3.5 ... 15.5) ----------
+// ---------- Level names: A and B ----------
+// Every level has an A part (its new words) and, from level 2 on, a B part
+// (review: its words mixed with earlier ones). So the order is 1A, 2A, 2B, 3A, 3B ... 15B.
+// In Hebrew they're written with Hebrew letters: 3א, 3ב.
+//
+// ---------- Review levels (2B, 3B ... 15B) ----------
 // These are built automatically, so nobody has to write them by hand.
-// Level 12.5 = the words of level 12 + the same number of random words from levels 1–11.
-// (There's no 1.5, because there's nothing before level 1 to review.)
+// Level 12B = the words of level 12 + the same number of random words from levels 1–11.
+// (There's no 1B, because there's nothing before level 1 to review.)
 // The random half is picked again each time the review level is chosen.
 
 // Remember which level each word comes from (quiz.js uses this to borrow
 // wrong answers from the word's OWN level, so a single word isn't next to sentences).
 const homeLevelOf = new Map();
 LEVELS.forEach((level, index) => {
-  level.number = String(index + 1);
+  level.number = (index + 1) + "A";     // shown in English, like "3A"
+  level.numberHe = (index + 1) + "א";   // shown in Hebrew, like "3א"
   for (const word of level.words) homeLevelOf.set(word, level);
 });
 
-// DECKS = every level in order: 1, 2, 2.5, 3, 3.5 ... 15, 15.5.
+// DECKS = every level in order: 1A, 2A, 2B, 3A, 3B ... 15A, 15B.
 const DECKS = [];
 LEVELS.forEach((level, index) => {
   DECKS.push(level);
@@ -342,7 +348,8 @@ LEVELS.forEach((level, index) => {
   const upTo = index + 1;
   DECKS.push({
     id: "review-" + upTo,
-    number: upTo + ".5",
+    number: upTo + "B",
+    numberHe: upTo + "ב",
     english: `Review: levels 1–${upTo}`,
     hebrew: `חֲזָרָה: רָמוֹת 1–${upTo}`,
     review: true,
@@ -387,7 +394,7 @@ function useDeck(deckId) {
   WORDS = deck.review ? mixReviewWords(deck) : deck.words;
 }
 
-// The name shown in the lobby, like "3 · Prefixes: the (הַ) and (וְ)" or "3.5 · Review: levels 1–3".
+// The name shown in the lobby, like "3A · Prefixes: the (הַ) and (וְ)" or "3B · Review: levels 1–3".
 function deckLabel(deck) {
   return `${deck.number} · ${deck.english}`;
 }

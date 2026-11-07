@@ -200,7 +200,7 @@ function autoState() {
   return progress.auto;
 }
 
-// Your Auto level's deck id, like "level-4" or "review-6".
+// Your Auto level's deck id, like "level-4" (level 4A) or "review-6" (level 6B).
 function autoDeckId() {
   return autoState().deckId;
 }
@@ -232,20 +232,25 @@ function noteAutoAnswer(correct, seconds) {
       }
     }
   } else {
-    // 2) Settled. Judge by your last few answers.
-    auto.recent = auto.recent.slice(-AUTO_LEVEL.lookBack);
-    if (auto.recent.length >= AUTO_LEVEL.lookBack) {
-      const right = auto.recent.filter((a) => a.right).length / auto.recent.length;
-      const fast = auto.recent.filter((a) => a.fast).length / auto.recent.length;
-      if (right >= AUTO_LEVEL.upIfRight && fast >= AUTO_LEVEL.upIfFast && index < DECKS.length - 1) {
-        auto.deckId = DECKS[index + 1].id;
-        move = "up";
-      } else if (right < AUTO_LEVEL.downIfRight && index > 0) {
-        auto.deckId = DECKS[index - 1].id;
-        move = "down";
-      }
-      if (move) auto.recent = [];
+    // 2) Settled. Going up looks at a few recent answers; going down looks at more.
+    auto.recent = auto.recent.slice(-Math.max(AUTO_LEVEL.upLookBack, AUTO_LEVEL.downLookBack));
+    // share(list, "right") = what fraction of the answers in the list were right (0 to 1).
+    const share = (list, what) => list.filter((a) => a[what]).length / list.length;
+    const forUp = auto.recent.slice(-AUTO_LEVEL.upLookBack);
+    const forDown = auto.recent.slice(-AUTO_LEVEL.downLookBack);
+    if (forUp.length >= AUTO_LEVEL.upLookBack
+        && share(forUp, "right") >= AUTO_LEVEL.upIfRight
+        && share(forUp, "fast") >= AUTO_LEVEL.upIfFast
+        && index < DECKS.length - 1) {
+      auto.deckId = DECKS[index + 1].id;
+      move = "up";
+    } else if (forDown.length >= AUTO_LEVEL.downLookBack
+        && share(forDown, "right") < AUTO_LEVEL.downIfRight
+        && index > 0) {
+      auto.deckId = DECKS[index - 1].id;
+      move = "down";
     }
+    if (move) auto.recent = [];
   }
 
   saveProgress();

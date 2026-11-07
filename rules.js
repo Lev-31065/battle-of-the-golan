@@ -62,7 +62,7 @@ const VOICE = {
 const REVIEW_STEPS = [
   { questions: 2 },             // level 0: just missed it → very soon
   { questions: 3 },             // level 1: right once
-  { questions: 6 },             // level 2: right twice in a row
+  { questions: 8 },             // level 2: right twice in a row
   { minutes: 10 },              // level 3: right 3 times in a row → a few minutes
   { days: 1, sessions: 1 },     // level 4: next playing session or tomorrow
   { days: 3, sessions: 3 },     // level 5
@@ -77,19 +77,22 @@ const SESSION_GAP_HOURS = 1;
 // When the host picks "Auto", each player gets their own level.
 //   1) Finding your level: start at level 1 and jump up a level after every few
 //      fast right answers. Stop climbing once you slow down or miss a few.
-//   2) After that: look at your last few answers at your level. Almost all right
-//      and mostly fast → up one level. Too many wrong → down one level.
+//   2) After that: moving UP is judged by your last few answers (quick to climb).
+//      Moving DOWN is judged by more answers, and only after you've had time at
+//      the level, so a missed word can come back and you can get it right.
 // Your level is remembered for next time.
 const AUTO_LEVEL = {
-  fastSeconds: 6,       // answering right within this many seconds counts as "fast"
+  fastSeconds: 4,       // answering right within this many seconds counts as "fast"
   // 1) Finding your level
   jumpAfter: 3,         // this many fast right answers in a row → jump up a level
   settleAfter: 3,       // this many slow or wrong answers at one level → that's your level
-  // 2) After that
-  lookBack: 8,          // how many recent answers to judge by
-  upIfRight: 0.85,      // move up if at least 85% right...
-  upIfFast: 0.5,        // ...and at least half of the answers were fast
-  downIfRight: 0.55,    // move down if less than 55% right
+  // 2) After that: going UP
+  upLookBack: 5,        // judge by your last 5 answers at this level
+  upIfRight: 0.8,       // move up if at least 80% were right (4 of 5)...
+  upIfFast: 0.4,        // ...and at least 40% were fast (2 of 5)
+  // 2) After that: going DOWN
+  downLookBack: 10,     // never move down before 10 answers at this level; then judge the last 10
+  downIfRight: 0.4,     // move down if less than 40% were right (3 or fewer of 10)
 };
 
 // ---------- Helpers ----------

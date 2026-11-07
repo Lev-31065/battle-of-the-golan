@@ -8,11 +8,12 @@
 - **Two languages:** every English text has Hebrew with nikud underneath. Gender-neutral wording; name messages give both forms (תָּפַס/תָּפְסָה).
 - **Screens:** home (Play Game, Log in, word count) → account or play (nickname, create/join) → lobby. Messages pop up at the bottom, a bit see-through.
 - **Logins (`account.js` + Supabase):** email + password, or an emailed sign-in link. Sign-up needs "I'm 13 or older". Progress saves to the account and follows you between devices. Tested live and working.
-- **15 levels (`words.js`, 225 questions):** nouns → adjectives → הַ/וְ → no-verb sentences → בְּ/לְ/מִ → infinitives → want/like → present → שֶׁ/כְּשֶׁ → present+אֶת → past → past+אֶת → future → future+אֶת → passive. Verbs show the infinitive as a hint. The host picks the level in the lobby, and everyone plays it.
+- **15 levels (`words.js`, 225 questions):** nouns → adjectives → הַ/וְ → no-verb sentences → בְּ/לְ/מִ → infinitives → want/like → present → שֶׁ/כְּשֶׁ → present+אֶת → past → past+אֶת → future → future+אֶת → passive. Verbs show the infinitive as a hint. Played on phones by Daniel; he checked the nikud and it looks good.
+- **Review levels (`words.js` `DECKS`):** 2.5 … 15.5, built automatically (that level + an equal number of random earlier words, re-picked each time). No 1.5. Wrong answers are borrowed from the word's own level (`homeLevelOf`).
+- **Auto level (default in the lobby):** each player gets their own level (`noteAutoAnswer` in `progress.js`, settings `AUTO_LEVEL` in `rules.js`). Climbs fast from level 1 (3 fast right in a row → next main level) until 3 slow/wrong at one level, then moves ±1 step by the last 8 answers (≥85% right + half fast → up, <55% → down). Saved in progress (follows the account). The host can still pick one level for everyone. Tested in headless Edge only.
 
 ## Unverified or incomplete
-- The 15 levels haven't been played on real phones yet, or with 2+ phones.
-- No teacher has checked the nikud (`words.js` and the interface Hebrew).
+- Auto + review levels not uploaded or tested on real phones yet. The Auto numbers may need tuning.
 - No privacy policy page yet. Needed before real users sign up.
 
 ## Key decisions
@@ -21,6 +22,7 @@
 - **Supabase for logins and data.** The project URL and publishable key in `account.js` are public by design. Security rules in `supabase/setup.sql` mean each person sees only their own rows. Never add the secret/service_role key.
 - **Sign-in link instead of a typed code:** Supabase's email text can't be edited without custom SMTP. Later: Resend plus our own domain (~$10/yr).
 - **Levels are decks:** teacher decks will plug into the same lobby picker.
+- **Auto is per player, not per room:** each phone picks its own questions, so mixed-skill players can share a game. Lobby choice saved as `golan-deck-v2` (new key so everyone starts on Auto).
 - **Interface Hebrew uses dictionary nikud spelling** (כָּחֹל, קִשּׁוּר), the same style as `words.js`.
 
 ## Gotchas
