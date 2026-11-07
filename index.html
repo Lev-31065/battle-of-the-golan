@@ -127,6 +127,8 @@
   <!-- ===== LOBBY: see the teams, wait for the host to start ===== -->
   <div id="lobby" class="screen" hidden>
     <div class="panel lobby-panel">
+      <!-- Leave the room and go back to the first screen. (If the host leaves, the room closes for everyone.) -->
+      <button id="lobby-home" class="back-button" type="button"><span class="en">🏠 Home</span><span class="he" lang="he" dir="rtl">לַמָּסָךְ הָרִאשִׁי</span></button>
       <p class="panel-sub"><span class="en">Room code — friends type this on their phones</span><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span></p>
       <p id="lobby-code" class="room-code">----</p>
       <button id="invite-button" class="secondary-button" type="button"><span class="en">📋 Share invite link</span><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span></button>
@@ -191,8 +193,8 @@
       <p class="winner-trophy">🏆</p>
       <h2 id="winner-title"></h2>
       <p id="winner-score" class="panel-sub"></p>
-      <button id="play-again" class="big-button" type="button" hidden><span class="en">Play again</span><span class="he" lang="he" dir="rtl">מִשְׂחָק חוֹזֵר</span></button>
-      <p id="winner-wait" class="panel-sub" hidden><span class="en">Waiting for the host to start a new game…</span><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל מִשְׂחָק חָדָשׁ…</span></p>
+      <!-- After a few seconds, everyone goes back to the teams screen by themselves (server.js). -->
+      <p class="panel-sub"><span class="en">Back to the teams in a moment…</span><span class="he" lang="he" dir="rtl">עוֹד רֶגַע חוֹזְרִים לַקְּבוּצוֹת…</span></p>
     </div>
   </div>
 

@@ -10,8 +10,9 @@
 const server = {
   hostId: null,
   time: 0,          // the referee's clock (seconds) — every phone syncs to this
-  phase: "lobby",   // "lobby" → "playing" → "over"
+  phase: "lobby",   // "lobby" → "playing" → "over" → (a few seconds later) back to "lobby"
   winner: null,
+  overAt: 0,        // when the last game ended
   players: {},      // every player, by id
   flags: {},
   score: { blue: 0, red: 0 },
@@ -278,6 +279,7 @@ function checkFlagDelivery(p) {
     if (server.score[p.team] >= WIN_SCORE) {
       server.phase = "over";
       server.winner = p.team;
+      server.overAt = server.time; // when the game ended (for going back to the teams)
     }
   } else if (server.time - (p.lastHint || -10) > 3) {
     p.lastHint = server.time;
@@ -293,6 +295,12 @@ function serverUpdate(dt) {
   // Remove players we haven't heard from in 8 seconds (their phone probably went to sleep).
   for (const p of Object.values(server.players)) {
     if (p.id !== server.hostId && server.time - p.lastSeen > 8) serverRemovePlayer(p.id);
+  }
+
+  // The game ended a few seconds ago: everyone goes back to the teams screen (the lobby).
+  if (server.phase === "over" && server.time - server.overAt >= WINNER_SCREEN_TIME) {
+    server.phase = "lobby";
+    resetRound();
   }
 
   if (server.phase !== "playing") return;

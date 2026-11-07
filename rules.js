@@ -29,6 +29,7 @@ const WIN_SCORE = 3;          // captures needed to win
 const CARRY_SLOWDOWN = 0.7;   // carrying a flag = 70% speed
 const FLAG_REACH = 70;        // how close you must be to grab a flag
 const FLAG_RETURN_TIME = 30;  // a dropped flag goes home by itself after this many seconds
+const WINNER_SCREEN_TIME = 6; // seconds the winner screen shows before everyone goes back to the teams
 
 const TEAM_NAMES = { blue: "Blue", red: "Red" };
 // The Hebrew versions (with nikud). Hebrew adjectives change with the noun, and

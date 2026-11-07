@@ -341,6 +341,23 @@ document.getElementById("switch-team").addEventListener("click", () => {
 });
 startButton.addEventListener("click", () => sendToServer({ type: "start" }));
 
+// 🏠 Home: leave the room and go back to the first screen.
+// The host's phone IS the room, so if the host leaves, everyone's game ends.
+// That's why the host has to tap twice (the first tap just warns them).
+const lobbyHomeButton = document.getElementById("lobby-home");
+let homeTapWarnedAt = -Infinity; // when the host was last warned (-Infinity = never)
+lobbyHomeButton.addEventListener("click", () => {
+  if (client.isHost && performance.now() - homeTapWarnedAt > 4000) {
+    homeTapWarnedAt = performance.now();
+    showToast("You're the host: leaving closes the room for everyone. Tap Home again to leave.",
+      "אַתֶּם הַמְּאָרְחִים: אִם תֵּצְאוּ, הַחֶדֶר יִסָּגֵר לְכֻלָּם. לוֹחֲצִים שׁוּב כְּדֵי לָצֵאת.");
+    return;
+  }
+  homeTapWarnedAt = -Infinity;
+  backToHome("", "");
+  showScreen("home");
+});
+
 // Share a link that opens the game with the room code already filled in.
 document.getElementById("invite-button").addEventListener("click", async () => {
   const link = location.origin + location.pathname + "?room=" + client.roomCode;
@@ -519,6 +536,7 @@ function changePhase(phase) {
   client.phase = phase;
   resetStick();
   if (phase === "lobby") {
+    winnerEl.hidden = true; // (coming back after a game ended)
     showScreen("lobby");
   } else if (phase === "playing") {
     showScreen(null);
@@ -696,8 +714,6 @@ function showWinner() {
     `${TEAM_NAMES[client.winner]} team wins!`, `${TEAM_HE[client.winner].team} נִצְּחָה!`);
   setBilingual(document.getElementById("winner-score"),
     `Final score: Blue ${score.blue} – ${score.red} Red`, `תּוֹצָאָה סוֹפִית: כָּחֹל ${score.blue} – ${score.red} אָדֹם`);
-  document.getElementById("play-again").hidden = !client.isHost;
-  document.getElementById("winner-wait").hidden = client.isHost;
   winnerEl.hidden = false;
   launchConfetti(client.winner);
 }
@@ -717,8 +733,6 @@ function launchConfetti(team) {
     layer.appendChild(piece);
   }
 }
-
-document.getElementById("play-again").addEventListener("click", () => sendToServer({ type: "start" }));
 
 // ---------- Moving my player each frame ----------
 
