@@ -430,7 +430,7 @@ function mixReviewWords(deck) {
 
 // ---------- Topic decks ----------
 // Ready-made decks that each practice ONE idea. They're not part of the level ladder
-// (Auto never picks them); the host picks one in the lobby, under "Topics".
+// (Auto never picks them); the teacher picks one in a class game, under "Premade decks".
 // Same format as the levels above (wrong answers, hint, f: for the feminine "I"/"we").
 const TOPIC_DECKS = [
   {

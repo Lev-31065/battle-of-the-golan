@@ -532,8 +532,10 @@ let myLevel = AUTO;
 try { myLevel = localStorage.getItem("golan-my-level") || AUTO; } catch {}
 
 // My level, but only if it still exists (a deck of mine may have been deleted, or I logged out).
+// In a normal room you can only pick Auto or one of the levels: the premade decks
+// and "My decks" are teacher tools, for class games only.
 function myLevelChoice() {
-  return isDeckChoice(myLevel) ? myLevel : AUTO;
+  return DECKS.some((deck) => deck.id === myLevel) ? myLevel : AUTO;
 }
 
 // The deck this phone should be playing right now.
@@ -555,38 +557,43 @@ function pickerValue() {
   return client.roomIsClass ? roomDeckId : myLevelChoice();
 }
 
-// Fill the list (once): Auto first, then the topic decks, then every level and review level.
+// Fill the list: Auto first, then the premade decks (class games only), then every
+// level and review level, then "My decks" (class games only).
 // (An "optgroup" is a labeled section inside a dropdown list.)
-const autoOption = document.createElement("option");
-{
-  autoOption.value = AUTO;
-  autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
-  deckSelect.appendChild(autoOption);
-  const groups = [
-    { label: "🎯 Topics · נוֹשְׂאִים", decks: TOPIC_DECKS },
-    { label: "📈 Levels · רָמוֹת", decks: DECKS },
-  ];
-  for (const { label, decks } of groups) {
-    const group = document.createElement("optgroup");
-    group.label = label;
-    for (const deck of decks) {
-      const option = document.createElement("option");
-      option.value = deck.id;
-      option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
-      group.appendChild(option);
-    }
-    deckSelect.appendChild(group);
+function makeDeckGroup(label, decks) {
+  const group = document.createElement("optgroup");
+  group.label = label;
+  for (const deck of decks) {
+    const option = document.createElement("option");
+    option.value = deck.id;
+    option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
+    group.appendChild(option);
   }
+  return group;
+}
+const autoOption = document.createElement("option");
+autoOption.value = AUTO;
+autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
+const premadeGroup = makeDeckGroup("🎯 Premade decks · חֲפִיסוֹת מוּכָנוֹת", TOPIC_DECKS);
+const levelsGroup = makeDeckGroup("📈 Levels · רָמוֹת", DECKS);
+deckSelect.append(autoOption, levelsGroup);
+
+// Premade decks sit between Auto and the levels, but only in a class game.
+// (We take the whole group out of the list, because iPhones ignore "hidden" on list items.)
+function showPremadeDecks(show) {
+  if (show && !premadeGroup.parentNode) deckSelect.insertBefore(premadeGroup, levelsGroup);
+  if (!show && premadeGroup.parentNode) premadeGroup.remove();
 }
 
-// Teacher decks go in their own group at the bottom of the list:
+// Teacher decks go in their own group at the bottom of the list (class games only):
 // my own decks (if I'm logged in), plus the room's deck if the host sent one.
 const customGroup = document.createElement("optgroup");
 customGroup.label = "📚 My decks · הַחֲפִיסוֹת שֶׁלִּי";
 let customGroupKey = "";
 
 function refreshDeckOptions() {
-  const decks = [...customDecks.values()].filter((deck) =>
+  showPremadeDecks(client.roomIsClass);
+  const decks = !client.roomIsClass ? [] : [...customDecks.values()].filter((deck) =>
     deck.words.length >= DECK_LIMITS.minWords && (isMyDeck(deck.id) || deck.id === roomDeckId));
   // Only rebuild when something changed (this is called often).
   const key = decks.map((deck) => deck.id + deck.english + deck.words.length).join("|");
@@ -663,6 +670,7 @@ function autoLevelAnswer(correct, seconds) {
 
 function renderDeckPicker() {
   // (Only change things that are different: this runs 20 times a second.)
+  refreshDeckOptions(); // the right sections for this kind of room
   const value = pickerValue();
   if (deckSelect.value !== value) deckSelect.value = value;
   // Keep up with the right deck (for example, after logging in here).
