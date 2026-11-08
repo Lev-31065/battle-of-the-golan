@@ -131,6 +131,52 @@ document.getElementById("logout-button").addEventListener("click", async () => {
   showToast("👋 Logged out.", "הִתְנַתַּקְתֶּם.");
 });
 
+// ---------- "Delete my account" ----------
+// Asks "Are you sure?" first. Then it calls delete_my_account (a function in
+// supabase/setup.sql) which removes the login. The account's progress and decks
+// are removed with it. Then we log out on this phone and forget the copy saved here.
+
+const deleteEl = document.getElementById("delete-confirm");
+const deleteYes = document.getElementById("delete-yes");
+const deleteMessage = document.getElementById("delete-message");
+
+document.getElementById("delete-account-button").addEventListener("click", () => {
+  if (!account.user) return;
+  setBilingual(deleteMessage, "");
+  deleteYes.disabled = false;
+  deleteEl.hidden = false;
+});
+
+document.getElementById("delete-no").addEventListener("click", () => { deleteEl.hidden = true; });
+
+deleteYes.addEventListener("click", async () => {
+  if (!supa || !account.user) return;
+  const userId = account.user.id;
+  deleteYes.disabled = true;
+  setBilingual(deleteMessage, "Deleting…", "מוֹחֲקִים…");
+  // Stop saving progress to the account (it's about to be gone).
+  clearTimeout(uploadTimer);
+  uploadTimer = null;
+  account.synced = false;
+
+  const { error } = await supa.rpc("delete_my_account");
+  if (error) {
+    console.warn("Couldn't delete the account:", error.message);
+    account.synced = true;   // nothing was deleted, so saving can carry on
+    deleteYes.disabled = false;
+    setBilingual(deleteMessage, "Something went wrong. Nothing was deleted. Try again later.",
+      "מַשֶּׁהוּ הִשְׁתַּבֵּשׁ. שׁוּם דָּבָר לֹא נִמְחַק. מְנַסִּים שׁוּב מְאֻחָר יוֹתֵר.");
+    return;
+  }
+
+  // Forget this account's copy of the progress on this phone too.
+  try { localStorage.removeItem(GUEST_PROGRESS_KEY + "-" + userId); } catch {}
+  // "local" = just forget the login on this phone (the login no longer exists on Supabase).
+  await supa.auth.signOut({ scope: "local" });
+  deleteEl.hidden = true;
+  showToast("🗑️ Your account was deleted.", "הַחֶשְׁבּוֹן נִמְחַק.");
+});
+
 // ---------- The login / sign-up screen ----------
 
 function openAccountScreen(mode) {
@@ -142,6 +188,7 @@ function openAccountScreen(mode) {
     signup ? "Already have an account? Log in" : "New here? Create an account",
     signup ? "כְּבָר יֵשׁ חֶשְׁבּוֹן? מִתְחַבְּרִים" : "חֲדָשִׁים כָּאן? יוֹצְרִים חֶשְׁבּוֹן");
   ageRow.hidden = !signup;
+  document.getElementById("signup-privacy").hidden = !signup;
   passwordInput.autocomplete = signup ? "new-password" : "current-password";
   setAccountMessage("");
   showScreen("account");

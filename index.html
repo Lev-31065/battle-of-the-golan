@@ -100,8 +100,10 @@
       <div id="account-box" class="account-box" hidden>
         <p id="account-email" class="account-email"></p>
         <button id="logout-button" class="link-button" type="button"><span class="en">Log out</span><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span></button>
+        <button id="delete-account-button" class="link-button danger-link" type="button"><span class="en">Delete my account</span><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span></button>
       </div>
       <p id="progress-summary" class="progress-summary"></p>
+      <a class="privacy-link" href="privacy.html"><span class="en">Privacy</span><span class="he" lang="he" dir="rtl">פְּרָטִיּוּת</span></a>
     </div>
   </div>
 
@@ -118,6 +120,8 @@
         <input id="age-check" type="checkbox">
         <span><span class="en">I'm 13 or older</span><span class="he" lang="he" dir="rtl">אֲנִי בֶּן/בַּת 13 וָמַעְלָה</span></span>
       </label>
+      <!-- Opens in a new tab, so whatever was typed in the form isn't lost. -->
+      <a id="signup-privacy" class="privacy-link" href="privacy.html" target="_blank" rel="noopener" hidden><span class="en">What we save (privacy)</span><span class="he" lang="he" dir="rtl">מָה אֲנַחְנוּ שׁוֹמְרִים (פְּרָטִיּוּת)</span></a>
       <button id="account-submit" class="big-button" type="button"></button>
       <button id="link-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a sign-in link</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קִשּׁוּר בָּאִימֵייל</span></button>
       <p id="account-message" class="home-message"></p>
@@ -195,6 +199,17 @@
       <p id="leave-note" class="panel-sub"></p>
       <button id="leave-yes" class="big-button leave-yes" type="button"><span class="en">Yes, leave</span><span class="he" lang="he" dir="rtl">כֵּן, לָצֵאת</span></button>
       <button id="leave-no" class="secondary-button leave-no" type="button"><span class="en">No, stay</span><span class="he" lang="he" dir="rtl">לֹא, נִשְׁאָרִים</span></button>
+    </div>
+  </div>
+
+  <!-- "Delete your account?" popup (account.js controls it) -->
+  <div id="delete-confirm" class="overlay" hidden>
+    <div class="panel leave-panel">
+      <h2><span class="en">🗑️ Delete your account?</span><span class="he" lang="he" dir="rtl">לִמְחֹק אֶת הַחֶשְׁבּוֹן?</span></h2>
+      <p class="panel-sub"><span class="en">This deletes your login, your saved progress and your decks. It can't be undone.</span><span class="he" lang="he" dir="rtl">זֶה מוֹחֵק אֶת הַחֶשְׁבּוֹן, אֶת הַהִתְקַדְּמוּת הַשְּׁמוּרָה וְאֶת הַחֲפִיסוֹת. אִי אֶפְשָׁר לְבַטֵּל אֶת זֶה.</span></p>
+      <p id="delete-message" class="home-message"></p>
+      <button id="delete-yes" class="big-button leave-yes" type="button"><span class="en">Yes, delete it</span><span class="he" lang="he" dir="rtl">כֵּן, לִמְחֹק</span></button>
+      <button id="delete-no" class="secondary-button leave-no" type="button"><span class="en">No, keep it</span><span class="he" lang="he" dir="rtl">לֹא, לְהַשְׁאִיר</span></button>
     </div>
   </div>
 

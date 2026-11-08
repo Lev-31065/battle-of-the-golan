@@ -376,7 +376,8 @@ const LEVELS = [
 
 // ---------- Level names: A and B ----------
 // Every level has an A part (its new words) and, from level 2 on, a B part
-// (review: its words mixed with earlier ones). So the order is 1A, 2A, 2B, 3A, 3B ... 15B.
+// (review: its words mixed with earlier ones). So the order is 1, 2A, 2B, 3A, 3B ... 15B.
+// Level 1 is just "1", because it has no B part.
 // In Hebrew they're written with Hebrew letters: 3א, 3ב.
 //
 // ---------- Review levels (2B, 3B ... 15B) ----------
@@ -389,8 +390,9 @@ const LEVELS = [
 // wrong answers from the word's OWN level, so a single word isn't next to sentences).
 const homeLevelOf = new Map();
 LEVELS.forEach((level, index) => {
-  level.number = (index + 1) + "A";     // shown in English, like "3A"
-  level.numberHe = (index + 1) + "א";   // shown in Hebrew, like "3א"
+  // Level 1 is just "1" (there's no 1B, so the "A" would be confusing).
+  level.number = index === 0 ? "1" : (index + 1) + "A";     // shown in English, like "3A"
+  level.numberHe = index === 0 ? "1" : (index + 1) + "א";   // shown in Hebrew, like "3א"
   for (const word of level.words) {
     homeLevelOf.set(word, level);
     // A word with an f: part gets a ready-made feminine copy (same English and hint).
@@ -401,7 +403,7 @@ LEVELS.forEach((level, index) => {
   }
 });
 
-// DECKS = every level in order: 1A, 2A, 2B, 3A, 3B ... 15A, 15B.
+// DECKS = every level in order: 1, 2A, 2B, 3A, 3B ... 15A, 15B.
 const DECKS = [];
 LEVELS.forEach((level, index) => {
   DECKS.push(level);

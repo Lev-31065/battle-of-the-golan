@@ -1,14 +1,20 @@
 # Next session
 
-## Where we stopped
-- Built review levels (2.5 … 15.5, auto-mixed) and the Auto level (default; each player gets their own level).
-- Daniel still needs to upload: `words.js`, `progress.js`, `quiz.js`, `game.js`, `server.js`, `rules.js`, `AGENTS.md`, `STATE.md`, `NEXT_SESSION.md`.
+## Where we stopped (2026-11-07)
+- Done and tested on phones: 3A/3B level names and side tag, back to the teams after a game plus the Home button, masculine/feminine choice.
+- Built but not yet confirmed on phones: the two-flags scoring fix, 🚪 leave popup, room code on screen and easier rejoin, iPhone zoom fix, full screen, new Auto numbers, 27 new pronoun sentences.
+- Daniel may still need to upload `words.js` (step 4). The other files from this session were uploaded for testing.
 
 ## Next steps
-1. Upload, then test Auto on 2 phones: one answers fast (should see "Level up!"), one answers slowly/wrong (should stay low). Then the host picks a level like 6.5 and both phones get the review mix.
-2. Tune `AUTO_LEVEL` in `rules.js` if it climbs too fast or too slow.
-3. Build **teacher decks**: a "My decks" page for logged-in users (make, edit, delete; paste lines like `dog = כֶּלֶב`). Their decks appear in the lobby picker when they host, and the host sends the words to every phone. The Supabase `decks` table already exists.
+1. Upload `words.js`, then play levels 10, 11 and 13 (most of the new sentences are there). Check the nikud on the new lines.
+2. Check on phones:
+   - The flag fix: drop the enemy flag in your base, then bring your own flag home. It should score.
+   - Does the iPhone still zoom to 2×?
+   - Does full screen work on Android?
+   - Do the new Auto numbers feel right?
+3. Build **teacher decks**: a "My decks" page for logged-in users (make, edit, delete; paste lines like `dog = כֶּלֶב`). Their decks appear in the lobby picker when they host. The Supabase `decks` table already exists.
 
 ## Open questions for Daniel
-- How does Auto feel: too fast, too slow, or about right?
-- When will there be a privacy policy page, and should we get a domain plus Resend for nicer emails (and typed codes)?
+- If the iPhone still zooms: when exactly does it happen (which screen, and what was tapped)?
+- Level 1 is called "1A" even though there's no 1B. Keep it, or call it just "1"?
+- Privacy page plus "delete my account": when? Domain plus Resend for nicer emails?

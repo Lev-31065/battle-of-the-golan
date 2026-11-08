@@ -474,6 +474,16 @@ button, select, input { touch-action: manipulation; }
 
 /* ---------- Account (login) screen ---------- */
 .account-box { margin-top: 12px; }
+.danger-link { color: #dc2626; }    /* red, because deleting can't be undone */
+/* Small "Privacy" link (home screen and sign-up form) */
+.privacy-link {
+  display: block;
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+}
+.privacy-link[hidden] { display: none; }
 .account-email { margin: 0 0 4px; color: #15803d; font-size: 14px; font-weight: 600; word-break: break-all; }
 .link-button {
   margin-top: 6px;

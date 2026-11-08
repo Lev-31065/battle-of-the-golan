@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+  privacy.html — the privacy page: what the game saves, where, and how to delete it.
+  It's a separate page (not a screen inside index.html), so it can scroll like a normal web page.
+  Every English line has its Hebrew underneath, like the rest of the game.
+  ⚠️ If the game starts saving something new, update this page (and the date at the top).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2d4a22">
+  <title>Privacy · Battle of the Golan</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- This page has its own small set of styles (style.css stops the game screen from scrolling, and this page needs to scroll). -->
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #2d4a22;
+      font-family: "Rubik", sans-serif;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+    .panel {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px 18px;
+      border-radius: 16px;
+      background: white;
+    }
+    h1 { margin: 0 0 4px; font-size: 26px; }
+    h2 { margin: 22px 0 6px; font-size: 19px; }
+    .updated { margin: 0; color: #6b7280; font-size: 14px; }
+    ul { margin: 0; padding-left: 20px; }
+    li { margin-bottom: 10px; }
+    .en, .he { display: block; }
+    .he { font-size: 0.92em; color: #374151; unicode-bidi: isolate; }
+    .back { display: inline-block; margin-bottom: 12px; color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <a class="back" href="index.html"><span class="en">← Back to the game</span><span class="he" lang="he" dir="rtl">חֲזָרָה לַמִּשְׂחָק</span></a>
+
+    <h1><span class="en">🔒 Privacy</span><span class="he" lang="he" dir="rtl">פְּרָטִיּוּת</span></h1>
+    <p class="updated"><span class="en">Battle of the Golan · Last updated: November 8, 2026</span><span class="he" lang="he" dir="rtl">הַקְּרָב עַל הַגּוֹלָן · עֻדְכַּן לָאַחֲרוֹנָה: 8 בְּנוֹבֶמְבֶּר 2026</span></p>
+
+    <h2><span class="en">Playing without an account</span><span class="he" lang="he" dir="rtl">מְשַׂחֲקִים בְּלִי חֶשְׁבּוֹן</span></h2>
+    <ul>
+      <li><span class="en">You don't need an account to play.</span><span class="he" lang="he" dir="rtl">לֹא צָרִיךְ חֶשְׁבּוֹן כְּדֵי לְשַׂחֵק.</span></li>
+      <li><span class="en">Your learning progress and settings are saved only on your phone, in the browser.</span><span class="he" lang="he" dir="rtl">הַהִתְקַדְּמוּת וְהַהַגְדָּרוֹת נִשְׁמָרוֹת רַק בַּטֶּלֶפוֹן שֶׁלָּכֶם, בַּדַּפְדְּפָן.</span></li>
+      <li><span class="en">Your nickname is shown only to the players in your room. We don't save it.</span><span class="he" lang="he" dir="rtl">הַכִּנּוּי שֶׁלָּכֶם מוֹפִיעַ רַק לַשַּׂחְקָנִים בַּחֶדֶר שֶׁלָּכֶם. אֲנַחְנוּ לֹא שׁוֹמְרִים אוֹתוֹ.</span></li>
+    </ul>
+
+    <h2><span class="en">If you make an account</span><span class="he" lang="he" dir="rtl">אִם יוֹצְרִים חֶשְׁבּוֹן</span></h2>
+    <ul>
+      <li><span class="en">You must be 13 or older to make an account.</span><span class="he" lang="he" dir="rtl">צָרִיךְ לִהְיוֹת בְּנֵי 13 וָמַעְלָה כְּדֵי לִיצֹר חֶשְׁבּוֹן.</span></li>
+      <li><span class="en">We save your email, your password (scrambled, so nobody can read it), that you said you're 13 or older, your learning progress, and the word decks you make.</span><span class="he" lang="he" dir="rtl">אֲנַחְנוּ שׁוֹמְרִים אֶת הָאִימֵייל, אֶת הַסִּיסְמָה (מֻצְפֶּנֶת, כָּךְ שֶׁאַף אֶחָד לֹא יָכוֹל לִקְרֹא אוֹתָהּ), אֶת הָאִשּׁוּר שֶׁאַתֶּם בְּנֵי 13 וָמַעְלָה, אֶת הַהִתְקַדְּמוּת וְאֶת חֲפִיסוֹת הַמִּלִּים שֶׁאַתֶּם יוֹצְרִים.</span></li>
+      <li><span class="en">This is stored by Supabase, the service that runs our logins and database.</span><span class="he" lang="he" dir="rtl">הַמֵּידָע הַזֶּה נִשְׁמָר אֵצֶל Supabase, הַשֵּׁרוּת שֶׁמַּפְעִיל אֶת הַחֶשְׁבּוֹנוֹת וְאֶת מְאַגֵּר הַמֵּידָע שֶׁלָּנוּ.</span></li>
+      <li><span class="en">We use your email only to log you in. We don't send ads or newsletters.</span><span class="he" lang="he" dir="rtl">אֲנַחְנוּ מִשְׁתַּמְּשִׁים בָּאִימֵייל רַק כְּדֵי לְחַבֵּר אֶתְכֶם לַחֶשְׁבּוֹן. אֲנַחְנוּ לֹא שׁוֹלְחִים פִּרְסוֹמוֹת.</span></li>
+    </ul>
+
+    <h2><span class="en">Playing together</span><span class="he" lang="he" dir="rtl">מְשַׂחֲקִים בְּיַחַד</span></h2>
+    <ul>
+      <li><span class="en">Phones in a room connect to each other directly. A free service called PeerJS helps them find each other using the room code.</span><span class="he" lang="he" dir="rtl">הַטֶּלֶפוֹנִים בַּחֶדֶר מִתְחַבְּרִים זֶה לָזֶה יָשִׁיר. שֵׁרוּת חִנָּמִי בְּשֵׁם PeerJS עוֹזֵר לָהֶם לִמְצֹא זֶה אֶת זֶה בְּעֶזְרַת קוֹד הַחֶדֶר.</span></li>
+      <li><span class="en">Like any internet connection, connected phones can see each other's internet address (IP address).</span><span class="he" lang="he" dir="rtl">כְּמוֹ בְּכָל חִבּוּר לָאִינְטֶרְנֶט, הַטֶּלֶפוֹנִים הַמְּחֻבָּרִים יְכוֹלִים לִרְאוֹת אֶת כְּתֹבֶת הָאִינְטֶרְנֶט (IP) שֶׁל הַטֶּלֶפוֹנִים הָאֲחֵרִים.</span></li>
+    </ul>
+
+    <h2><span class="en">Other services</span><span class="he" lang="he" dir="rtl">שֵׁרוּתִים אֲחֵרִים</span></h2>
+    <ul>
+      <li><span class="en">The game is hosted on GitHub Pages. Its font comes from Google Fonts, and some of its code comes from unpkg and jsDelivr. Like any website, these services see your internet address when they send files.</span><span class="he" lang="he" dir="rtl">הַמִּשְׂחָק נִמְצָא בְּ־GitHub Pages. הַגּוֹפָן מַגִּיעַ מִ־Google Fonts, וְחֵלֶק מֵהַקּוֹד מַגִּיעַ מִ־unpkg וּמִ־jsDelivr. כְּמוֹ בְּכָל אֲתַר, הַשֵּׁרוּתִים הָאֵלֶּה רוֹאִים אֶת כְּתֹבֶת הָאִינְטֶרְנֶט שֶׁלָּכֶם כְּשֶׁהֵם שׁוֹלְחִים קְבָצִים.</span></li>
+      <li><span class="en">The voice is your phone's built-in voice. The game never uses your microphone.</span><span class="he" lang="he" dir="rtl">הַקּוֹל הוּא הַקּוֹל הַמּוּבְנֶה שֶׁל הַטֶּלֶפוֹן. הַמִּשְׂחָק אַף פַּעַם לֹא מִשְׁתַּמֵּשׁ בַּמִּיקְרוֹפוֹן.</span></li>
+      <li><span class="en">No ads, no tracking, and we never sell your information.</span><span class="he" lang="he" dir="rtl">אֵין פִּרְסוֹמוֹת, אֵין מַעֲקָב, וַאֲנַחְנוּ אַף פַּעַם לֹא מוֹכְרִים אֶת הַמֵּידָע שֶׁלָּכֶם.</span></li>
+    </ul>
+
+    <h2><span class="en">Deleting your information</span><span class="he" lang="he" dir="rtl">מְחִיקַת הַמֵּידָע</span></h2>
+    <ul>
+      <li><span class="en">Logged in? Tap “Delete my account” on the first screen. It removes your account, progress and decks right away.</span><span class="he" lang="he" dir="rtl">מְחֻבָּרִים? לוֹחֲצִים עַל ״מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי״ בַּמָּסָךְ הָרִאשׁוֹן. זֶה מוֹחֵק מִיָּד אֶת הַחֶשְׁבּוֹן, אֶת הַהִתְקַדְּמוּת וְאֶת הַחֲפִיסוֹת.</span></li>
+      <li><span class="en">To remove what's saved on a phone, clear this site's data in the browser settings.</span><span class="he" lang="he" dir="rtl">כְּדֵי לִמְחֹק אֶת מָה שֶׁשָּׁמוּר בַּטֶּלֶפוֹן, מוֹחֲקִים אֶת נְתוּנֵי הָאֲתַר בַּהַגְדָּרוֹת שֶׁל הַדַּפְדְּפָן.</span></li>
+    </ul>
+
+    <h2><span class="en">Questions</span><span class="he" lang="he" dir="rtl">שְׁאֵלוֹת</span></h2>
+    <ul>
+      <li><span class="en">Email: <a href="mailto:concoctors@gmail.com">concoctors@gmail.com</a></span><span class="he" lang="he" dir="rtl">אִימֵייל: <a href="mailto:concoctors@gmail.com">concoctors@gmail.com</a></span></li>
+    </ul>
+  </div>
+</body>
+</html>
