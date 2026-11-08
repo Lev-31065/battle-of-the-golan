@@ -497,7 +497,7 @@ button .he { font-size: 1em; }
 
 /* ---------- Account (login) screen ---------- */
 .account-box { margin-top: 12px; }
-.danger-link { color: #dc2626; }    /* red, because deleting can't be undone */
+.link-button.danger-link { color: #dc2626; }    /* red, because deleting can't be undone */
 /* Small "Privacy" link (home screen and sign-up form) */
 .privacy-link {
   display: block;
@@ -517,6 +517,35 @@ button .he { font-size: 1em; }
   text-decoration: underline;
   cursor: pointer;
 }
+/* ---------- My decks screen (decks.js) ---------- */
+#my-decks-button { margin: 4px 0 2px; }
+/* This page can get long, so the panel scrolls (the rest of the game never scrolls).
+   "pan-y" = up-and-down finger scrolling is allowed here. */
+.decks-panel { max-height: calc(100vh - 24px); overflow-y: auto; touch-action: pan-y; }
+.decks-panel h2 { margin-bottom: 8px; }
+.decks-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.deck-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  background: white;
+  font: 600 16px "Rubik", sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.deck-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-row-count { display: flex; flex-direction: column; flex-shrink: 0; color: #6b7280; font-size: 13px; text-align: right; }
+#deck-editor .text-field { margin-bottom: 10px; }
+/* The big words box: you can select text in it, and it's tall enough to see many lines. */
+.deck-words { min-height: 200px; resize: vertical; font-size: 17px; line-height: 1.5; touch-action: manipulation; }
+#deck-editor .big-button { margin-top: 4px; margin-bottom: 10px; }
+#deck-editor .link-button { display: flex; margin: 4px auto 0; }
+
 #account .text-field { margin-bottom: 10px; }
 #account h2 { margin-bottom: 10px; }
 .check-row { display: flex; align-items: center; gap: 10px; margin: 2px 0 6px; font-size: 15px; font-weight: 600; cursor: pointer; }

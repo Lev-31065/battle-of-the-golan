@@ -439,14 +439,53 @@ let currentDeckId = LEVELS[0].id;
 const AUTO = "auto";
 let roomDeckId = null;
 
-// Find a deck by its id (like "level-3" or "review-3"). Returns undefined if there's no such deck.
-function findDeck(deckId) {
-  return DECKS.find((deck) => deck.id === deckId);
+// ---------- Teacher decks ----------
+// Decks people make on the "My decks" page (decks.js). They're saved in Supabase,
+// and the host's phone sends the one being played to every phone in the room.
+// Their ids look like "custom-" + the database id.
+const CUSTOM_PREFIX = "custom-";
+const customDecks = new Map(); // id → deck (my own decks, plus the room's deck if a host sent one)
+
+// Tidy up a list of words from the database or from another phone:
+// keep only real { english, hebrew } pairs, not too long, not too many.
+function cleanDeckWords(list) {
+  if (!Array.isArray(list)) return [];
+  const clean = [];
+  for (const item of list) {
+    if (!item || typeof item.english !== "string" || typeof item.hebrew !== "string") continue;
+    const english = item.english.trim().slice(0, DECK_LIMITS.maxTextLength);
+    const hebrew = item.hebrew.trim().slice(0, DECK_LIMITS.maxTextLength);
+    if (english && hebrew) clean.push({ english, hebrew });
+    if (clean.length >= DECK_LIMITS.maxWords) break;
+  }
+  return clean;
 }
 
-// Is this something the host is allowed to pick? (Auto, or a real deck.)
+// Add (or replace) a teacher deck so it can be picked and played. Returns the deck.
+function registerCustomDeck(id, name, words) {
+  const cleanName = String(name || "").trim().slice(0, DECK_LIMITS.maxNameLength) || "My deck";
+  const deck = {
+    id,
+    custom: true,
+    number: "📚",
+    numberHe: "📚",
+    english: cleanName,
+    hebrew: cleanName,
+    words: cleanDeckWords(words),
+  };
+  customDecks.set(id, deck);
+  return deck;
+}
+
+// Find a deck by its id (like "level-3", "review-3" or "custom-..."). Returns undefined if there's no such deck.
+function findDeck(deckId) {
+  return DECKS.find((deck) => deck.id === deckId) || customDecks.get(deckId);
+}
+
+// Is this something the host is allowed to pick? (Auto, or a real deck with enough words.)
 function isDeckChoice(deckId) {
-  return deckId === AUTO || !!findDeck(deckId);
+  const deck = findDeck(deckId);
+  return deckId === AUTO || (!!deck && deck.words.length >= DECK_LIMITS.minWords);
 }
 
 // Switch this phone's questions to another deck.
@@ -476,6 +515,8 @@ function forMyGender(word) {
 }
 
 // The name shown in the lobby, like "3A · Prefixes: the (הַ) and (וְ)" or "3B · Review: levels 1–3".
+// Teacher decks are just "📚 Animals".
 function deckLabel(deck) {
+  if (deck.custom) return `📚 ${deck.english}`;
   return `${deck.number} · ${deck.english}`;
 }

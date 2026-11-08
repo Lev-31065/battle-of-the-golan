@@ -20,7 +20,17 @@ const server = {
   speedBox: null,
   events: [],       // things that just happened (hits, messages) to send with the next snapshot
   deckId: "auto",   // "auto" (each player's own level) or the one deck everyone plays (the host picks)
+  customDeck: null, // if the host picked one of their own decks: { id, name, words } to send to every phone
 };
+
+// The host picked the words. A teacher deck only lives on the host's phone, so we
+// also keep a copy to send to everyone (with the next snapshot, and to anyone who asks later).
+function serverSetDeck(deckId) {
+  server.deckId = isDeckChoice(deckId) ? deckId : AUTO;
+  const deck = findDeck(server.deckId);
+  server.customDeck = deck && deck.custom ? { id: deck.id, name: deck.english, words: deck.words } : null;
+  if (server.customDeck) server.events.push({ kind: "deck", deck: server.customDeck });
+}
 
 // The two flags. Each flag is in one of three states:
 //   "home"    — standing on its stand in the middle of its base
@@ -40,7 +50,9 @@ function makeSpeedBox() {
 
 function serverReset(hostId, deckId) {
   server.hostId = hostId;
-  server.deckId = isDeckChoice(deckId) ? deckId : AUTO;
+  server.events = [];
+  server.deckSentAt = -Infinity;
+  serverSetDeck(deckId);
   server.time = 0;
   server.phase = "lobby";
   server.players = {};
@@ -149,7 +161,16 @@ function serverHandle(id, msg) {
     case "deck":
       // Only the host can pick the words, and not in the middle of a battle.
       if (id === server.hostId && server.phase !== "playing" && isDeckChoice(msg.deckId)) {
-        server.deckId = msg.deckId;
+        serverSetDeck(msg.deckId);
+      }
+      break;
+    case "needDeck":
+      // A phone doesn't have the host's teacher deck yet (it just joined). Send it.
+      // (It goes out with the next snapshot. Every phone gets it, which is harmless.)
+      // At most once a second, even if several phones ask at the same moment.
+      if (server.customDeck && server.time - (server.deckSentAt || -Infinity) >= 1) {
+        server.deckSentAt = server.time;
+        server.events.push({ kind: "deck", deck: server.customDeck });
       }
       break;
     case "move":

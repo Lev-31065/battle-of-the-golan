@@ -77,6 +77,7 @@ async function handleUser(user) {
       account.synced = false;
       switchProgressOwner(null);
     }
+    loadMyDecks(); // this account's word decks (decks.js), or none after logging out
   }
   updateAccountUI();
 }

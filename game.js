@@ -396,6 +396,7 @@ function backToHome(english, hebrew) {
   for (const id of Object.keys(players)) delete players[id];
   flags = null;
   speedBox = null;
+  roomDeckId = null; // the next room will tell us its words
   resetTimers();
   closeQuiz();
   shopEl.hidden = true;
@@ -406,10 +407,11 @@ function backToHome(english, hebrew) {
   setHomeMessage(english, hebrew);
 }
 
-// Show one full-screen panel ("home", "account", "play" or "lobby"), or none while playing.
+// Show one full-screen panel ("home", "account", "decks", "play" or "lobby"), or none while playing.
 function showScreen(name) {
   homeEl.hidden = name !== "home";
   accountEl.hidden = name !== "account";
+  decksEl.hidden = name !== "decks";
   playEl.hidden = name !== "play";
   lobbyEl.hidden = name !== "lobby";
   if (name === "home") updateProgressSummary();
@@ -502,6 +504,53 @@ for (const deck of DECKS) {
   deckSelect.appendChild(option);
 }
 
+// Teacher decks go in their own group at the bottom of the list:
+// my own decks (if I'm logged in), plus the room's deck if the host sent one.
+// (An "optgroup" is a labeled section inside a dropdown list.)
+const customGroup = document.createElement("optgroup");
+customGroup.label = "📚 My decks · הַחֲפִיסוֹת שֶׁלִּי";
+let customGroupKey = "";
+
+function refreshDeckOptions() {
+  const decks = [...customDecks.values()].filter((deck) =>
+    deck.words.length >= DECK_LIMITS.minWords && (isMyDeck(deck.id) || deck.id === roomDeckId));
+  // Only rebuild when something changed (this is called often).
+  const key = decks.map((deck) => deck.id + deck.english + deck.words.length).join("|");
+  if (key === customGroupKey) return;
+  customGroupKey = key;
+  customGroup.innerHTML = "";
+  for (const deck of decks) {
+    const option = document.createElement("option");
+    option.value = deck.id;
+    option.textContent = `${deckLabel(deck)} (${deck.words.length})`; // textContent: deck names are typed by people
+    customGroup.appendChild(option);
+  }
+  if (decks.length > 0 && !customGroup.parentNode) deckSelect.appendChild(customGroup);
+  if (decks.length === 0 && customGroup.parentNode) customGroup.remove();
+  if (roomDeckId) deckSelect.value = roomDeckId;
+}
+
+// ---------- Getting the host's teacher deck ----------
+// A teacher deck only lives on the host's phone, so the referee sends it along.
+// If this phone doesn't have it yet (it just joined), ask for it every few seconds until it arrives.
+let deckAskedAt = -Infinity;
+
+function receiveRoomDeck(sent) {
+  if (!sent || typeof sent.id !== "string" || !sent.id.startsWith(CUSTOM_PREFIX)) return;
+  if (client.isHost) return; // the host has its own copy already
+  registerCustomDeck(sent.id, sent.name, sent.words);
+  if (sent.id === roomDeckId) useDeck(roomDeckId);
+  refreshDeckOptions();
+}
+
+function askForMissingDeck() {
+  if (client.isHost || !roomDeckId || roomDeckId === AUTO || findDeck(roomDeckId)) return;
+  const now = performance.now();
+  if (now - deckAskedAt < 3000) return;
+  deckAskedAt = now;
+  sendToHost({ type: "needDeck" });
+}
+
 // The host picked a deck: tell the referee (who tells everyone).
 deckSelect.addEventListener("change", () => {
   try { localStorage.setItem("golan-deck-v2", deckSelect.value); } catch {}
@@ -512,7 +561,9 @@ deckSelect.addEventListener("change", () => {
 // plays its own level; otherwise everyone plays the host's pick.
 function useRoomDeck(deckId) {
   roomDeckId = deckId;
+  // (A teacher deck we don't have yet: keep the old words until it arrives. useDeck ignores unknown ids.)
   useDeck(deckId === AUTO ? autoDeckId() : deckId);
+  refreshDeckOptions();
 }
 
 // quiz.js calls this after every answer. Only does something on Auto.
@@ -615,8 +666,13 @@ function applySnapshot(snap) {
     sendToHost({ type: "join", name: client.name });
   }
 
+  // A teacher deck sent by the host? (Before switching, so it's ready to use.)
+  for (const e of snap.events) {
+    if (e.kind === "deck") receiveRoomDeck(e.deck);
+  }
   // The host picked different words (or Auto)? Switch this phone's questions.
   if (snap.deckId && snap.deckId !== roomDeckId) useRoomDeck(snap.deckId);
+  askForMissingDeck();
 
   flags = snap.flags;
   score = snap.score;
@@ -627,6 +683,8 @@ function applySnapshot(snap) {
   for (const e of snap.events) {
     if (e.kind === "toast") {
       if (e.to === "all" || e.to === client.myId) showToast(e.text, e.he);
+    } else if (e.kind === "deck") {
+      // (handled above)
     } else {
       effects.push({ ...e, born: gameTime });
       if (e.sound && isNearMe(e)) playSound(e.sound);

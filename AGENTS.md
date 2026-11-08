@@ -30,6 +30,7 @@
 - `progress.js`: flashcard memory (spaced repetition) and each player's Auto level (`noteAutoAnswer`; settings in `AUTO_LEVEL` in `rules.js`), saved on the phone, plus the account when logged in
 - `account.js`: optional login (email + password, or an emailed sign-in link; 13+ checkbox to sign up). Typed email codes need custom SMTP so the Supabase email template can be edited and uploading progress to Supabase
 - `supabase/setup.sql`: creates the `decks` and `progress` tables, their security rules, and the `delete_my_account()` function (paste into Supabase's SQL Editor)
+- `decks.js`: the "My decks" page (logged-in only): make/edit/delete word lists saved in Supabase's `decks` table. Lines are `english = hebrew` (a tab works too; Hebrew-left is swapped). Decks register in `customDecks` (`words.js`, ids `custom-<db id>`) and show in the lobby picker under "My decks". The referee keeps a copy (`server.customDeck`) and sends it to phones as a `deck` event; a phone that's missing it sends `needDeck`. Limits in `DECK_LIMITS` (`rules.js`).
 - `privacy.html`: the privacy page (its own page with its own styles, so it can scroll). Update it if the game starts saving something new.
 - `quiz.js`: question popup (`openQuiz`)
 - `draw.js`: all canvas drawing, including the minimap
@@ -41,9 +42,10 @@
 - Write beginner-friendly comments, and explain every change in plain English.
 - Settings belong in `rules.js`, not scattered through the code.
 - Gameplay decisions go in `server.js`. Each phone moves only its own player and asks the referee for everything else.
-- `index.html` loads the scripts in order (map → rules → sound → speech → words → progress → account → quiz → draw → network → server → game). Keep it that way.
+- `index.html` loads the scripts in order (map → rules → sound → speech → words → progress → account → decks → quiz → draw → network → server → game). Keep it that way.
 - Action buttons use `pointerdown` so they work while a finger is on the joystick. Grab and Shop call `resetStick()`, so the player stops. Hit and Drop don't.
 - Show player names with `textContent`, never `innerHTML`.
+- **Buttons show Hebrew on top (bigger) and English underneath.** The HTML still lists English first; CSS flips it (`button .en { order: 1 }`, and the button is a flex box).
 - **Every English text has Hebrew underneath.** In HTML use `<span class="en">…</span><span class="he" lang="he" dir="rtl">…</span>`. In JS use `setBilingual(el, en, he)` (in `rules.js`), `showToast(en, he)`, or `toast(en, he, to)` in the referee. The one exception is the English word in the quiz, because its Hebrew is the answer.
 - Screens: home (masculine/feminine, Play Game / Log in) → account (login) or play (nickname, create/join) → lobby → game → winner → back to lobby. Leaving uses the `leave-confirm` popup. Messages pop up at the bottom; the word card sits at the very top.
 - Keep file names lowercase, because GitHub Pages is case-sensitive.

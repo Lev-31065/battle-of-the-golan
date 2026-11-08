@@ -99,6 +99,8 @@
       <button id="login-button" class="secondary-button" type="button"><span class="en">🔑 Log in or sign up</span><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span></button>
       <div id="account-box" class="account-box" hidden>
         <p id="account-email" class="account-email"></p>
+        <!-- Teachers (or anyone) can make their own word lists here (decks.js). -->
+        <button id="my-decks-button" class="secondary-button" type="button"><span class="en">📚 My decks</span><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span></button>
         <button id="logout-button" class="link-button" type="button"><span class="en">Log out</span><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span></button>
         <button id="delete-account-button" class="link-button danger-link" type="button"><span class="en">Delete my account</span><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span></button>
       </div>
@@ -126,6 +128,36 @@
       <button id="link-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a sign-in link</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קִשּׁוּר בָּאִימֵייל</span></button>
       <p id="account-message" class="home-message"></p>
       <button id="mode-switch" class="link-button" type="button"></button>
+    </div>
+  </div>
+
+  <!-- ===== MY DECKS: make your own word lists (decks.js controls it) ===== -->
+  <div id="decks" class="screen" hidden>
+    <div class="panel home-panel decks-panel">
+      <button id="decks-back" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
+
+      <!-- The list of my decks -->
+      <div id="decks-list-view">
+        <h2><span class="en">📚 My decks</span><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span></h2>
+        <p class="panel-sub"><span class="en">Make your own word lists. When you create a room, pick one in the lobby and everyone plays with your words.</span><span class="he" lang="he" dir="rtl">יוֹצְרִים רְשִׁימוֹת מִלִּים מִשֶּׁלָּכֶם. כְּשֶׁפּוֹתְחִים חֶדֶר, בּוֹחֲרִים אַחַת מֵהֶן, וְכֻלָּם מְשַׂחֲקִים עִם הַמִּלִּים שֶׁלָּכֶם.</span></p>
+        <div id="decks-list" class="decks-list"></div>
+        <p id="decks-status" class="deck-progress"></p>
+        <button id="new-deck-button" class="big-button" type="button"><span class="en">➕ New deck</span><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span></button>
+      </div>
+
+      <!-- Making or changing one deck -->
+      <div id="deck-editor" hidden>
+        <h2 id="deck-editor-title"></h2>
+        <label class="field-label" for="deck-name"><span class="en">Deck name</span><span class="he" lang="he" dir="rtl">שֵׁם הַחֲפִיסָה</span></label>
+        <input id="deck-name" class="text-field" maxlength="80" autocomplete="off" placeholder="e.g. Animals · לְמָשָׁל חַיּוֹת">
+        <label class="field-label" for="deck-words"><span class="en">Words: one per line, English = Hebrew</span><span class="he" lang="he" dir="rtl">מִלִּים: אַחַת בְּכָל שׁוּרָה, אַנְגְּלִית = עִבְרִית</span></label>
+        <textarea id="deck-words" class="text-field deck-words" rows="10" autocomplete="off" spellcheck="false" placeholder="dog = כֶּלֶב&#10;cat = חָתוּל&#10;I eat = אֲנִי אוֹכֵל"></textarea>
+        <p id="deck-count" class="deck-progress"></p>
+        <p id="deck-message" class="home-message"></p>
+        <button id="deck-save" class="big-button" type="button"><span class="en">💾 Save</span><span class="he" lang="he" dir="rtl">שְׁמִירָה</span></button>
+        <button id="deck-cancel" class="secondary-button" type="button"><span class="en">Cancel</span><span class="he" lang="he" dir="rtl">בִּטּוּל</span></button>
+        <button id="deck-delete" class="link-button danger-link" type="button"></button>
+      </div>
     </div>
   </div>
 
@@ -263,6 +295,7 @@
   <script src="words.js"></script>
   <script src="progress.js"></script>
   <script src="account.js"></script>
+  <script src="decks.js"></script>
   <script src="quiz.js"></script>
   <script src="draw.js"></script>
   <script src="network.js"></script>
