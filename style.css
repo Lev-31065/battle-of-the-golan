@@ -297,6 +297,9 @@ button, select, input { touch-action: manipulation; }
   background: rgba(0, 0, 0, 0.45);   /* darkens the game behind the popup */
   z-index: 20;
 }
+/* "Are you sure?" popups can open on top of the home and lobby screens (z-index 30),
+   so they need to be higher still, or they'd be hidden underneath. */
+#leave-confirm, #delete-confirm { z-index: 40; }
 .panel {
   position: relative;
   width: min(440px, 100%);
@@ -447,8 +450,28 @@ button, select, input { touch-action: manipulation; }
 }
 /* Inline spots (like a label inside a sentence) still stack the two lines. */
 .action-button .en, .action-button .he { margin-top: 0; }
-.action-button .he { font-size: 11px; }
+.action-button .he { font-size: 13px; }
+.action-button .en { font-size: 10px; }
 .action-button .button-label { margin-top: 3px; }
+
+/* ---------- Buttons: HEBREW on top (bigger), English underneath (smaller) ----------
+   In the HTML the English comes first, so we use "flex" boxes, which can reorder things:
+   "order: 1" moves the English to the end. (Anything without an order, like the 🔨 emoji
+   in the action buttons, stays where it is, at the top.) */
+.big-button, .secondary-button, .gender-button, .button-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+/* These small buttons sit next to other things, so they use "inline-flex" (flex, but only as wide as their words). */
+.back-button, .link-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+button .en { order: 1; font-size: 0.72em; font-weight: 500; opacity: 0.85; }
+button .he { font-size: 1em; }
 
 /* ---------- Home screen ---------- */
 /* Masculine / feminine picker: two side-by-side buttons; the picked one is blue. */
@@ -464,7 +487,7 @@ button, select, input { touch-action: manipulation; }
   color: #1f2937;
   cursor: pointer;
 }
-.gender-button .he { font-size: 12px; margin-top: 2px; }
+.gender-button .en { margin-top: 2px; }
 .gender-button.picked { border-color: #2563eb; background: #dbeafe; color: #1e3a8a; }
 .play-game-button { margin-top: 16px; padding: 18px; font-size: 22px; }
 #login-button { margin-top: 10px; margin-bottom: 0; }
@@ -483,7 +506,6 @@ button, select, input { touch-action: manipulation; }
   font-size: 13px;
   text-align: center;
 }
-.privacy-link[hidden] { display: none; }
 .account-email { margin: 0 0 4px; color: #15803d; font-size: 14px; font-weight: 600; word-break: break-all; }
 .link-button {
   margin-top: 6px;

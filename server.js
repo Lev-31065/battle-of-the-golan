@@ -75,6 +75,16 @@ function cleanName(name) {
 
 function serverAddPlayer(id, name) {
   if (server.players[id]) return;
+  // Closed the game and came straight back? The old "you" may still be standing there
+  // (we wait 8 seconds before removing a silent phone). If someone with the same
+  // nickname has been silent for 2+ seconds, that's the old you: remove it now.
+  // Like a knockout, it drops any flag and loses the hammer. (Phones that are really
+  // playing check in every second, so a different player with the same name is safe.)
+  for (const old of Object.values(server.players)) {
+    if (old.id !== server.hostId && old.name === cleanName(name) && server.time - old.lastSeen > 2) {
+      serverRemovePlayer(old.id);
+    }
+  }
   // Coming back after leaving (same nickname)? Back on your old team.
   // Otherwise, join whichever team is smaller.
   const everyone = Object.values(server.players);

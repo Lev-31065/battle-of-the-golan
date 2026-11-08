@@ -22,6 +22,8 @@ const client = {
   phase: "home",    // "home" → "lobby" → "playing" → "over"
   winner: null,
   lastSnapshotAt: 0,
+  name: "",         // my nickname (to join again if the referee drops me)
+  joinSentAt: 0,    // when I last asked to join (so I don't ask over and over)
 };
 
 // Everything below gets filled in from the referee's snapshots.
@@ -32,7 +34,17 @@ let speedBox = null;
 const effects = [];   // shockwave rings and floating numbers
 
 let rockPassUntil = 0; // until this time, I can walk through rocks (after answering a rock question)
-let hurtAt = -10;      // when I last took damage (for the screen shake and red flash)
+let hurtAt = -Infinity; // when I last took damage (for the screen shake and red flash)
+
+// Forget every "until this time" timer. Needed when the game clock jumps (joining a
+// different room, or coming back after the phone slept): each room has its own clock,
+// so an old "I got hit at second 900" would look like it's still happening in a room
+// whose clock is at second 50 (the whole screen stayed red and shaking).
+function resetTimers() {
+  hurtAt = -Infinity;
+  rockPassUntil = 0;
+  effects.length = 0;
+}
 
 function myPlayer() {
   return players[client.myId];
@@ -360,6 +372,8 @@ joinButton.addEventListener("click", () => {
       // Remember this room, in case the game gets closed by accident.
       try { localStorage.setItem("golan-last-room", JSON.stringify({ code, at: Date.now() })); } catch {}
       client.lastSnapshotAt = performance.now();
+      client.name = name;
+      client.joinSentAt = performance.now();
       sendToHost({ type: "join", name });
     },
     onMessage: (msg) => {
@@ -382,6 +396,7 @@ function backToHome(english, hebrew) {
   for (const id of Object.keys(players)) delete players[id];
   flags = null;
   speedBox = null;
+  resetTimers();
   closeQuiz();
   shopEl.hidden = true;
   leaveEl.hidden = true;
@@ -559,7 +574,9 @@ function applySnapshot(snap) {
   client.lastSnapshotAt = performance.now();
 
   // Keep our clock in step with the referee's clock.
-  if (Math.abs(snap.time - gameTime) > 0.3) gameTime = snap.time;
+  const clockJump = Math.abs(snap.time - gameTime);
+  if (clockJump > 2) resetTimers(); // a new room, or back from sleep: old timers mean nothing now
+  if (clockJump > 0.3) gameTime = snap.time;
   else gameTime += (snap.time - gameTime) * 0.1;
 
   // Players: add new ones, update existing ones, remove ones who left.
@@ -587,6 +604,15 @@ function applySnapshot(snap) {
   }
   for (const id of Object.keys(players)) {
     if (!stillHere.has(id)) delete players[id];
+  }
+
+  // Not in the game any more? (The referee removes phones it hasn't heard from in
+  // 8 seconds, like when you switch apps.) Ask to join again: you come back at your
+  // base like after a knockout, on the same team.
+  if (!client.isHost && client.myId && !stillHere.has(client.myId) && performance.now() - client.joinSentAt > 2000) {
+    client.joinSentAt = performance.now();
+    resetTimers();
+    sendToHost({ type: "join", name: client.name });
   }
 
   // The host picked different words (or Auto)? Switch this phone's questions.
