@@ -535,10 +535,8 @@ button, select, input { touch-action: manipulation; }
 }
 .deck-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .deck-row-count { display: flex; flex-direction: column; flex-shrink: 0; color: #6b7280; font-size: 13px; text-align: right; }
-#deck-editor .text-field { margin-bottom: 10px; }
-.deck-tip { margin: -4px 0 8px; color: #6b7280; font-size: 13px; line-height: 1.4; }
-/* The big words box: you can select text in it, and it's tall enough to see many lines. */
-.deck-words { min-height: 200px; resize: vertical; font-size: 17px; line-height: 1.5; touch-action: manipulation; }
+#deck-name { margin-bottom: 10px; max-width: 480px; }
+.deck-tip { margin: 0 0 10px; color: #6b7280; font-size: 13px; line-height: 1.4; }
 #deck-editor .big-button { margin-top: 4px; margin-bottom: 10px; }
 #deck-editor .link-button { display: flex; margin: 4px auto 0; }
 
@@ -656,3 +654,60 @@ button, select, input { touch-action: manipulation; }
 }
 .dropdown-item.picked { background: #dbeafe; color: #1e3a8a; font-weight: 700; }
 .dropdown-item:active { background: #eff6ff; }
+
+/* ---------- The deck editor: a table of words (decks.js) ---------- */
+/* Columns (right to left, because the table is dir="rtl"): # | Hebrew | English | wrong answers | 🗑 */
+.word-table { border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: white; }
+.word-head, .word-row {
+  display: grid;
+  grid-template-columns: 36px minmax(140px, 1.2fr) minmax(140px, 1fr) minmax(200px, 2fr) 44px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+}
+.word-head { background: #f3f4f6; color: #4b5563; font-size: 13px; font-weight: 700; }
+.word-head .en { font-size: 11px; }
+.word-row { border-top: 1px solid #f3f4f6; }
+.word-row:nth-child(even) { background: #fafafa; }
+/* A row with only Hebrew or only English (it can't be saved like that) */
+.word-row.problem { background: #fef2f2; }
+.word-row.problem .word-he, .word-row.problem .word-en { border-color: #f87171; }
+.word-num { color: #9ca3af; font-size: 13px; text-align: center; }
+.word-he, .word-en, .wrong-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font: 500 16px "Rubik", sans-serif;
+  background: white;
+}
+.word-he { font-size: 18px; }
+.word-he:focus, .word-en:focus, .wrong-input:focus { outline: none; border-color: #7c3aed; }
+/* Wrong answers: little tags in a row that wraps onto more lines if needed */
+.wrong-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wrong-list { display: contents; }
+.wrong-chip { display: inline-flex; align-items: center; border: 2px solid #fecaca; border-radius: 999px; background: #fef2f2; padding-inline-end: 2px; }
+.wrong-chip .wrong-input { width: 100px; padding: 4px 10px; border: 0; border-radius: 999px; background: transparent; font-size: 15px; }
+.wrong-remove { border: 0; background: none; color: #b91c1c; font-size: 13px; cursor: pointer; padding: 2px 6px; }
+.add-wrong { width: 32px; height: 32px; border: 2px dashed #a78bfa; border-radius: 50%; background: white; font-size: 13px; cursor: pointer; }
+.add-wrong:hover { background: #ede9fe; }
+.fem-tag { color: #db2777; font-weight: 800; cursor: help; }
+.word-delete { width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; font-size: 16px; cursor: pointer; opacity: 0.6; }
+.word-delete:hover { opacity: 1; background: #fee2e2; }
+.add-word-button { width: auto; margin: 10px 0 0; padding: 10px 18px; }
+.editor-actions { display: flex; gap: 10px; margin-top: 12px; }
+.editor-actions .big-button { width: auto; min-width: 200px; margin-top: 0; }
+.editor-actions .secondary-button { width: auto; min-width: 140px; margin-bottom: 0; }
+/* Small screens: each word becomes a little card instead of a table row */
+@media (max-width: 760px) {
+  .word-head { display: none; }
+  .word-row { grid-template-columns: 28px 1fr 1fr 36px; }
+  .word-row .wrong-cell { grid-column: 2 / 4; grid-row: 2; }
+  .editor-actions { flex-direction: column; }
+  .editor-actions .big-button, .editor-actions .secondary-button { width: 100%; }
+}
+/* Browsers that can: each wrong-answer box is just as wide as its words */
+@supports (field-sizing: content) {
+  .wrong-chip .wrong-input { width: auto; field-sizing: content; min-width: 60px; max-width: 240px; }
+}

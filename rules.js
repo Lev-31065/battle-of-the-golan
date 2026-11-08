@@ -101,6 +101,7 @@ const DECK_LIMITS = {
   minWords: 4,          // a question shows 4 answers, so a deck needs at least 4 words
   maxWords: 200,        // the host sends the whole deck to every phone, so keep it reasonable
   maxTextLength: 120,   // longest English or Hebrew part of one line (in letters)
+  maxWrong: 5,          // most wrong answers a teacher can add to one word (a question shows 3 of them, picked at random)
   maxNameLength: 80,    // longest deck name (the database allows up to 80)
 };
 

@@ -540,8 +540,23 @@ let roomDeckId = null;
 const CUSTOM_PREFIX = "custom-";
 const customDecks = new Map(); // id → deck (my own decks, plus the room's deck if a host sent one)
 
+// Tidy up a list of wrong answers: real text, not too long, no repeats, never the right answer.
+function cleanWrongAnswers(list, rightAnswer) {
+  if (!Array.isArray(list)) return [];
+  const clean = [];
+  for (const item of list) {
+    if (typeof item !== "string") continue;
+    const text = item.trim().slice(0, DECK_LIMITS.maxTextLength);
+    if (text && text !== rightAnswer && !clean.includes(text)) clean.push(text);
+    if (clean.length >= DECK_LIMITS.maxWrong) break;
+  }
+  return clean;
+}
+
 // Tidy up a list of words from the database or from another phone:
 // keep only real { english, hebrew } pairs, not too long, not too many.
+// Optional: wrong (the teacher's own wrong answers) and f (a feminine version,
+// from a copied premade deck: { hebrew, wrong }).
 function cleanDeckWords(list) {
   if (!Array.isArray(list)) return [];
   const clean = [];
@@ -549,7 +564,15 @@ function cleanDeckWords(list) {
     if (!item || typeof item.english !== "string" || typeof item.hebrew !== "string") continue;
     const english = item.english.trim().slice(0, DECK_LIMITS.maxTextLength);
     const hebrew = item.hebrew.trim().slice(0, DECK_LIMITS.maxTextLength);
-    if (english && hebrew) clean.push({ english, hebrew });
+    if (!english || !hebrew) continue;
+    const word = { english, hebrew };
+    const wrong = cleanWrongAnswers(item.wrong, hebrew);
+    if (wrong.length > 0) word.wrong = wrong;
+    if (item.f && typeof item.f.hebrew === "string" && item.f.hebrew.trim()) {
+      const fHebrew = item.f.hebrew.trim().slice(0, DECK_LIMITS.maxTextLength);
+      word.f = { hebrew: fHebrew, wrong: cleanWrongAnswers(item.f.wrong, fHebrew) };
+    }
+    clean.push(word);
     if (clean.length >= DECK_LIMITS.maxWords) break;
   }
   return clean;
@@ -567,6 +590,15 @@ function registerCustomDeck(id, name, words) {
     hebrew: cleanName,
     words: cleanDeckWords(words),
   };
+  // Like the levels: a word with an f: part gets a ready-made feminine copy, and
+  // wrong answers are borrowed from this deck.
+  for (const word of deck.words) {
+    homeLevelOf.set(word, deck);
+    if (word.f) {
+      word.feminine = { ...word, ...word.f };
+      homeLevelOf.set(word.feminine, deck);
+    }
+  }
   customDecks.set(id, deck);
   return deck;
 }

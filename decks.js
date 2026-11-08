@@ -26,7 +26,7 @@ const decksStatus = document.getElementById("decks-status");
 const deckEditor = document.getElementById("deck-editor");
 const deckEditorTitle = document.getElementById("deck-editor-title");
 const deckNameInput = document.getElementById("deck-name");
-const deckWordsInput = document.getElementById("deck-words");
+const wordRows = document.getElementById("word-rows");
 const deckCount = document.getElementById("deck-count");
 const deckMessage = document.getElementById("deck-message");
 const deckSaveButton = document.getElementById("deck-save");
@@ -136,9 +136,20 @@ function renderDeckList() {
   // Column 2: the premade decks (one idea each).
   const premadeList = document.getElementById("premade-list");
   premadeList.innerHTML = "";
+  // Each has a 📋 button: "copy & edit" makes it one of MY decks, which I can change.
   for (const deck of TOPIC_DECKS) {
     const n = deck.words.length;
-    premadeList.appendChild(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`));
+    const line = document.createElement("div");
+    line.className = "deck-line";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "deck-edit";
+    copy.textContent = "📋";
+    copy.title = "Copy & edit · הַעְתָּקָה וַעֲרִיכָה";
+    copy.setAttribute("aria-label", "Copy and edit this deck");
+    copy.addEventListener("click", () => openDeckEditor(null, deck));
+    line.append(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`), copy);
+    premadeList.appendChild(line);
   }
 
   // Column 3: Auto, then every level.
@@ -189,72 +200,256 @@ document.getElementById("decks-back").addEventListener("click", () => {
 
 document.getElementById("new-deck-button").addEventListener("click", () => openDeckEditor(null));
 
-// ---------- Reading the words box ----------
+// ---------- The words table ----------
+// Each row of the table is one word: Hebrew | English | wrong answers (➕) | 🗑.
+// The rows live in the page itself (no separate list): to save, we read them back.
 
 const HEBREW_LETTERS = /[֐-׿]/; // the range of Hebrew letters and nikud in Unicode
 
-// Turn the typed text into a word list. Also returns the line numbers that didn't make sense.
-function parseDeckText(text) {
-  const words = [];
-  const badLines = [];
-  const seen = new Set();
-  text.split(/\r?\n/).forEach((rawLine, index) => {
-    const line = rawLine.trim();
-    if (!line) return; // empty lines are fine
-    // Split at the first "=" (or, if there isn't one, at the first tab).
-    const splitAt = line.includes("=") ? line.indexOf("=") : line.indexOf("\t");
-    if (splitAt === -1) {
-      badLines.push(index + 1);
-      return;
-    }
-    // Normally the Hebrew comes first. But if only the SECOND part has Hebrew
-    // letters (someone typed English first), swap them.
-    let hebrew = line.slice(0, splitAt).trim();
-    let english = line.slice(splitAt + 1).trim();
-    if (!HEBREW_LETTERS.test(hebrew) && HEBREW_LETTERS.test(english)) [english, hebrew] = [hebrew, english];
-    if (!english || !hebrew || english.length > DECK_LIMITS.maxTextLength || hebrew.length > DECK_LIMITS.maxTextLength) {
-      badLines.push(index + 1);
-      return;
-    }
-    const key = english + "|" + hebrew;
-    if (seen.has(key)) return; // the same line twice: keep one
-    seen.add(key);
-    words.push({ english, hebrew });
-  });
-  return { words, badLines };
+// A small text box (used for the Hebrew, the English and each wrong answer).
+function makeBox(className, value, dir, placeholder) {
+  const box = document.createElement("input");
+  box.className = className;
+  box.value = value || "";
+  box.dir = dir;
+  box.autocomplete = "off";
+  box.spellcheck = false;
+  box.maxLength = DECK_LIMITS.maxTextLength;
+  if (placeholder) box.placeholder = placeholder;
+  return box;
 }
 
-// The little line under the box: "12 words", plus any lines that need fixing.
+// One wrong answer: a little tag you can type in, with ✕ to remove it.
+function addWrongAnswer(row, text, focus) {
+  const list = row.querySelector(".wrong-list");
+  if (list.children.length >= DECK_LIMITS.maxWrong) return;
+  const chip = document.createElement("span");
+  chip.className = "wrong-chip";
+  const box = makeBox("wrong-input", text, "rtl", "תְּשׁוּבָה שְׁגוּיָה");
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "wrong-remove";
+  remove.textContent = "✕";
+  remove.setAttribute("aria-label", "Remove wrong answer");
+  remove.addEventListener("click", () => { chip.remove(); updateRowExtras(row); });
+  chip.append(box, remove);
+  list.appendChild(chip);
+  updateRowExtras(row);
+  if (focus) box.focus();
+}
+
+// Hide ➕ when a word already has the most wrong answers allowed.
+function updateRowExtras(row) {
+  const full = row.querySelector(".wrong-list").children.length >= DECK_LIMITS.maxWrong;
+  row.querySelector(".add-wrong").hidden = full;
+}
+
+// Add a row to the table. word = { hebrew, english, wrong, f } (all optional).
+// after = put it right after this row (otherwise at the end).
+function addWordRow(word = {}, after = null) {
+  const row = document.createElement("div");
+  row.className = "word-row";
+  const number = document.createElement("span");
+  number.className = "word-num";
+  const hebrew = makeBox("word-he", word.hebrew, "rtl", "לְמָשָׁל: כֶּלֶב");
+  hebrew.lang = "he";
+  const english = makeBox("word-en", word.english, "ltr", "e.g. dog");
+  // The wrong answers, and the ➕ that adds one.
+  const wrongCell = document.createElement("div");
+  wrongCell.className = "wrong-cell";
+  const wrongList = document.createElement("span");
+  wrongList.className = "wrong-list";
+  const addWrong = document.createElement("button");
+  addWrong.type = "button";
+  addWrong.className = "add-wrong";
+  addWrong.textContent = "➕";
+  addWrong.title = "Add a wrong answer · הוֹסָפַת תְּשׁוּבָה שְׁגוּיָה";
+  addWrong.setAttribute("aria-label", "Add a wrong answer");
+  addWrong.addEventListener("click", () => addWrongAnswer(row, "", true));
+  wrongCell.append(wrongList, addWrong);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "word-delete";
+  remove.textContent = "🗑️";
+  remove.title = "Delete this word · מְחִיקַת הַמִּלָּה";
+  remove.setAttribute("aria-label", "Delete this word");
+  remove.addEventListener("click", () => {
+    row.remove();
+    if (wordRows.children.length === 0) addWordRow();
+    renumberRows();
+  });
+  row.append(number, hebrew, english, wrongCell, remove);
+
+  // A word copied from a premade deck may have a feminine version ("I"/"we" sentences).
+  // We keep it as long as the Hebrew isn't changed, and show a small tag so the teacher knows.
+  if (word.f) {
+    row.feminine = { hebrew: word.f.hebrew, wrong: word.f.wrong || [], forHebrew: word.hebrew };
+    const tag = document.createElement("span");
+    tag.className = "fem-tag";
+    tag.textContent = "♀";
+    tag.title = `Feminine version · לְשׁוֹן נְקֵבָה: ${word.f.hebrew}`;
+    wrongCell.appendChild(tag);
+  }
+
+  if (after && after.nextSibling) wordRows.insertBefore(row, after.nextSibling);
+  else wordRows.appendChild(row);
+  for (const text of word.wrong || []) addWrongAnswer(row, text, false);
+  updateRowExtras(row);
+  renumberRows();
+  return row;
+}
+
+function renumberRows() {
+  [...wordRows.children].forEach((row, index) => {
+    row.querySelector(".word-num").textContent = index + 1;
+  });
+  updateDeckCount();
+}
+
+// Read the table back into a word list. Rows with nothing typed are skipped.
+// problems = row numbers that have only one side (Hebrew without English, or the other way).
+function readWordRows() {
+  const words = [];
+  const problems = [];
+  const seen = new Set();
+  [...wordRows.children].forEach((row, index) => {
+    let hebrew = row.querySelector(".word-he").value.trim();
+    let english = row.querySelector(".word-en").value.trim();
+    const filled = Boolean(hebrew || english);
+    const bad = filled && (!hebrew || !english);
+    row.classList.toggle("problem", bad);
+    if (!filled) return;
+    if (bad) { problems.push(index + 1); return; }
+    // Typed the English in the Hebrew box (and the other way around)? Swap them.
+    if (!HEBREW_LETTERS.test(hebrew) && HEBREW_LETTERS.test(english)) [english, hebrew] = [hebrew, english];
+    const key = english + "|" + hebrew;
+    if (seen.has(key)) return; // the same word twice: keep one
+    seen.add(key);
+    const word = { english, hebrew };
+    const wrong = cleanWrongAnswers([...row.querySelectorAll(".wrong-input")].map((box) => box.value), hebrew);
+    if (wrong.length > 0) word.wrong = wrong;
+    if (row.feminine && row.feminine.forHebrew === hebrew) {
+      word.f = { hebrew: row.feminine.hebrew, wrong: row.feminine.wrong };
+    }
+    words.push(word);
+  });
+  return { words, problems };
+}
+
+// Pasted text from a spreadsheet or a list: one word per line.
+// A line is "hebrew = english | wrong | wrong", or columns separated by tabs:
+// Hebrew, English, then any extra columns are wrong answers.
+function parsePastedWords(text) {
+  const words = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    let parts;
+    if (line.includes("\t")) {
+      parts = line.split("\t");
+    } else if (line.includes("=")) {
+      const [pair, ...wrong] = line.split("|");
+      const at = pair.indexOf("=");
+      parts = [pair.slice(0, at), pair.slice(at + 1), ...wrong];
+    } else {
+      parts = [line];
+    }
+    parts = parts.map((part) => part.trim());
+    let [hebrew = "", english = "", ...wrong] = parts;
+    // English first? (Only the second part has Hebrew letters.) Swap them.
+    if (!HEBREW_LETTERS.test(hebrew) && HEBREW_LETTERS.test(english)) [english, hebrew] = [hebrew, english];
+    words.push({ hebrew, english, wrong: wrong.filter(Boolean) });
+  }
+  return words;
+}
+
+// Pasting several lines (or columns) into a box fills in several rows at once.
+wordRows.addEventListener("paste", (event) => {
+  const box = event.target;
+  if (!box.classList.contains("word-he") && !box.classList.contains("word-en")) return;
+  const text = (event.clipboardData || window.clipboardData).getData("text");
+  if (!/[\n\t]/.test(text.trim())) return; // just one word: paste it normally
+  event.preventDefault();
+  let row = box.closest(".word-row");
+  parsePastedWords(text).forEach((word, index) => {
+    const rowIsEmpty = !row.querySelector(".word-he").value.trim() && !row.querySelector(".word-en").value.trim();
+    if (index === 0 && rowIsEmpty) {
+      // Fill the row you pasted into.
+      row.querySelector(".word-he").value = word.hebrew;
+      row.querySelector(".word-en").value = word.english;
+      for (const wrong of word.wrong) addWrongAnswer(row, wrong, false);
+    } else {
+      row = addWordRow(word, row);
+    }
+  });
+  // Too many rows for a deck? Remove the extras from the end.
+  while (wordRows.children.length > DECK_LIMITS.maxWords) wordRows.lastChild.remove();
+  renumberRows();
+});
+
+// Enter moves along, like a spreadsheet: Hebrew → English → next row's Hebrew
+// (adding a new row at the end). In a wrong answer, Enter adds another one.
+wordRows.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  const box = event.target;
+  const row = box.closest(".word-row");
+  if (!row || box.tagName !== "INPUT") return;
+  event.preventDefault();
+  if (box.classList.contains("word-he")) {
+    row.querySelector(".word-en").focus();
+  } else if (box.classList.contains("word-en")) {
+    let next = row.nextElementSibling;
+    if (!next && wordRows.children.length < DECK_LIMITS.maxWords) next = addWordRow();
+    if (next) next.querySelector(".word-he").focus();
+  } else if (box.classList.contains("wrong-input")) {
+    if (box.value.trim()) addWrongAnswer(row, "", true);
+  }
+});
+
+wordRows.addEventListener("input", updateDeckCount);
+
+document.getElementById("add-word-button").addEventListener("click", () => {
+  if (wordRows.children.length >= DECK_LIMITS.maxWords) return;
+  addWordRow().querySelector(".word-he").focus();
+});
+
+// The little line under the table: "12 words", plus any rows that need fixing.
 function updateDeckCount() {
-  const { words, badLines } = parseDeckText(deckWordsInput.value);
+  const { words, problems } = readWordRows();
   let english = `${words.length} words`;
   let hebrew = `${words.length} מִלִּים`;
   if (words.length < DECK_LIMITS.minWords) {
     english += ` · at least ${DECK_LIMITS.minWords}`;
     hebrew += ` · לְפָחוֹת ${DECK_LIMITS.minWords}`;
   }
-  if (badLines.length > 0) {
-    const list = badLines.slice(0, 5).join(", ") + (badLines.length > 5 ? "…" : "");
-    english += ` · ⚠️ Check line ${list}`;
-    hebrew += ` · ⚠️ בּוֹדְקִים אֶת שׁוּרָה ${list}`;
+  if (problems.length > 0) {
+    const list = problems.slice(0, 5).join(", ") + (problems.length > 5 ? "…" : "");
+    english += ` · ⚠️ Row ${list} needs both Hebrew and English`;
+    hebrew += ` · ⚠️ בְּשׁוּרָה ${list} צָרִיךְ גַּם עִבְרִית וְגַם אַנְגְּלִית`;
   }
   setBilingual(deckCount, english, hebrew);
 }
-deckWordsInput.addEventListener("input", updateDeckCount);
 
 // ---------- The editor ----------
 
-function openDeckEditor(deckId) {
+// deckId = one of my decks to change, or null for a new deck.
+// copyFrom = a premade deck to start from (makes a NEW deck with its words).
+function openDeckEditor(deckId, copyFrom = null) {
   editingDeckId = deckId;
   const deck = deckId ? customDecks.get(deckId) : null;
+  wordRows.innerHTML = "";
   if (deck) {
     setBilingual(deckEditorTitle, "✏️ Edit deck", "עֲרִיכַת חֲפִיסָה");
     deckNameInput.value = deck.english;
-    deckWordsInput.value = deck.words.map((w) => `${w.hebrew} = ${w.english}`).join("\n");
+    for (const word of deck.words) addWordRow(word);
+  } else if (copyFrom) {
+    setBilingual(deckEditorTitle, "📋 Copy of a premade deck", "הֶעְתֵּק שֶׁל חֲפִיסָה מוּכָנָה");
+    deckNameInput.value = copyFrom.hebrew.slice(0, DECK_LIMITS.maxNameLength);
+    for (const word of copyFrom.words) addWordRow(word);
   } else {
     setBilingual(deckEditorTitle, "➕ New deck", "חֲפִיסָה חֲדָשָׁה");
     deckNameInput.value = "";
-    deckWordsInput.value = "";
+    for (let i = 0; i < 5; i++) addWordRow(); // 5 empty rows to start with
   }
   deckDeleteButton.hidden = !deck; // nothing to delete yet for a new deck
   disarmDelete();
@@ -263,6 +458,7 @@ function openDeckEditor(deckId) {
   updateDeckCount();
   decksListView.hidden = true;
   deckEditor.hidden = false;
+  decksEl.querySelector(".decks-panel").scrollTop = 0;
 }
 
 document.getElementById("deck-cancel").addEventListener("click", showDeckList);
@@ -275,14 +471,14 @@ function setDeckMessage(english, hebrew, isInfo) {
 deckSaveButton.addEventListener("click", async () => {
   if (!supa || !account.user) return;
   const name = deckNameInput.value.trim().slice(0, DECK_LIMITS.maxNameLength);
-  const { words, badLines } = parseDeckText(deckWordsInput.value);
+  const { words, problems } = readWordRows();
   if (!name) {
     deckNameInput.focus();
     return setDeckMessage("Give the deck a name.", "נוֹתְנִים לַחֲפִיסָה שֵׁם.");
   }
-  if (badLines.length > 0) {
-    return setDeckMessage(`Each line needs Hebrew = English. Check line ${badLines.join(", ")}.`,
-      `בְּכָל שׁוּרָה צָרִיךְ עִבְרִית = אַנְגְּלִית. בּוֹדְקִים אֶת שׁוּרָה ${badLines.join(", ")}.`);
+  if (problems.length > 0) {
+    return setDeckMessage(`Each row needs both Hebrew and English. Check row ${problems.join(", ")}.`,
+      `בְּכָל שׁוּרָה צָרִיךְ גַּם עִבְרִית וְגַם אַנְגְּלִית. בּוֹדְקִים אֶת שׁוּרָה ${problems.join(", ")}.`);
   }
   if (words.length < DECK_LIMITS.minWords) {
     return setDeckMessage(`A deck needs at least ${DECK_LIMITS.minWords} words.`, `בַּחֲפִיסָה צְרִיכוֹת לִהְיוֹת לְפָחוֹת ${DECK_LIMITS.minWords} מִלִּים.`);
