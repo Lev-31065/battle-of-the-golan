@@ -24,6 +24,8 @@ const client = {
   lastSnapshotAt: 0,
   name: "",         // my nickname (to join again if the referee drops me)
   joinSentAt: 0,    // when I last asked to join (so I don't ask over and over)
+  hostingClass: false, // true if I came from the teacher dashboard ("Host a class game")
+  roomIsClass: false,  // true if the room I'm in is a class game (the referee says so)
 };
 
 // Everything below gets filled in from the referee's snapshots.
@@ -224,16 +226,27 @@ function showToast(english, hebrew) {
 
 const homeEl = document.getElementById("home");
 const playEl = document.getElementById("play");
+const modesEl = document.getElementById("modes");
 const lobbyEl = document.getElementById("lobby");
 
-// "Play Game" goes to the play screen (nickname + create/join a room). "Back" comes home.
-document.getElementById("play-game-button").addEventListener("click", () => {
+// The play screen (nickname + create/join a room) comes in two kinds:
+//   normal:     from "Play Game" on the home screen. Everyone picks their own level.
+//   class game: from "Host a class game" on the teacher dashboard. The host picks the
+//               words for everyone, so there's no "join" box (teachers host, they don't join).
+function openPlayScreen(classGame) {
+  client.hostingClass = classGame;
+  document.getElementById("class-note").hidden = !classGame;
+  document.getElementById("join-area").hidden = classGame;
+  setHomeMessage("");
   enterFullscreen();
   showScreen("play");
-});
+}
+
+document.getElementById("play-game-button").addEventListener("click", () => openPlayScreen(false));
+// "Back" goes to wherever you came from: the teacher dashboard or the home screen.
 document.getElementById("back-button").addEventListener("click", () => {
   setHomeMessage("");
-  showScreen("home");
+  showScreen(client.hostingClass ? "decks" : "home");
 });
 
 // Masculine / feminine buttons. The picked one is highlighted (words.js remembers the choice).
@@ -329,18 +342,33 @@ function readNickname() {
   return name;
 }
 
+// "Create a room" → first pick which game to play (the game-mode screen).
 createButton.addEventListener("click", () => {
-  const name = readNickname();
-  if (!name) return;
+  if (!readNickname()) return;
   enterFullscreen();
+  showScreen("modes");
+});
+document.getElementById("modes-back").addEventListener("click", () => showScreen("play"));
+for (const button of document.querySelectorAll(".mode-button[data-mode]")) {
+  button.addEventListener("click", () => createRoom(button.dataset.mode));
+}
+
+// Picked a game: open the room. (mode = "ctf" for Capture the Flag; more games later.)
+function createRoom(mode) {
+  const name = readNickname();
+  if (!name) { showScreen("play"); return; }
+  showScreen("play"); // shows "Creating a room…" (or what went wrong)
   setHomeButtons(false);
   setHomeMessage("Creating a room…", "פּוֹתְחִים חֶדֶר…", true);
+  const classGame = client.hostingClass;
   hostRoom({
     onReady: (code, myId) => {
       client.isHost = true;
       client.myId = myId;
       client.roomCode = code;
-      serverReset(myId, savedDeckId());
+      // A class game starts on the teacher's last pick. A normal room is always
+      // Auto on the referee's side: each phone then plays the level its player picks.
+      serverReset(myId, classGame ? savedDeckId() : AUTO, { classGame, mode });
       serverAddPlayer(myId, name);
       applySnapshot(serverSnapshot());
     },
@@ -351,7 +379,7 @@ createButton.addEventListener("click", () => {
       setHomeMessage(english, hebrew);
     },
   });
-});
+}
 
 joinButton.addEventListener("click", () => {
   const name = readNickname();
@@ -392,6 +420,7 @@ function backToHome(english, hebrew) {
   disconnect();
   client.isHost = false;
   client.myId = null;
+  client.roomIsClass = false;
   client.phase = "home";
   for (const id of Object.keys(players)) delete players[id];
   flags = null;
@@ -407,12 +436,13 @@ function backToHome(english, hebrew) {
   setHomeMessage(english, hebrew);
 }
 
-// Show one full-screen panel ("home", "account", "decks", "play" or "lobby"), or none while playing.
+// Show one full-screen panel ("home", "account", "decks", "play", "modes" or "lobby"), or none while playing.
 function showScreen(name) {
   homeEl.hidden = name !== "home";
   accountEl.hidden = name !== "account";
   decksEl.hidden = name !== "decks";
   playEl.hidden = name !== "play";
+  modesEl.hidden = name !== "modes";
   lobbyEl.hidden = name !== "lobby";
   if (name === "home") updateProgressSummary();
 }
@@ -481,19 +511,54 @@ document.getElementById("invite-button").addEventListener("click", async () => {
 
 // ---------- Picking the word deck (in the lobby) ----------
 
+// There are two kinds of rooms:
+//   class game (a teacher hosts from the dashboard): the host picks the words for EVERYONE.
+//              The referee sends that pick (deckId) to every phone.
+//   normal room: the referee always says Auto, and each player picks their OWN level
+//              on their own phone. Nobody else sees or is affected by that pick.
+
 const deckSelect = document.getElementById("deck-select");
+const deckLabelEl = document.getElementById("deck-label");
 const deckProgressEl = document.getElementById("deck-progress");
 
-// The host's last choice is remembered on their phone for next time (Auto if none yet).
+// The teacher's last class-game pick is remembered on their device for next time (Auto if none yet).
 // ("-v2" so everyone starts on Auto once, even if they picked a level before Auto existed.)
 function savedDeckId() {
   try { return localStorage.getItem("golan-deck-v2") || AUTO; } catch { return AUTO; }
 }
 
+// My own level for normal rooms, remembered on this phone (Auto if none yet).
+let myLevel = AUTO;
+try { myLevel = localStorage.getItem("golan-my-level") || AUTO; } catch {}
+
+// My level, but only if it still exists (a deck of mine may have been deleted, or I logged out).
+function myLevelChoice() {
+  return isDeckChoice(myLevel) ? myLevel : AUTO;
+}
+
+// The deck this phone should be playing right now.
+function playedDeckId() {
+  if (roomDeckId && roomDeckId !== AUTO) return roomDeckId; // the teacher picked for everyone
+  if (client.roomIsClass) return autoDeckId();                // the teacher picked Auto
+  const mine = myLevelChoice();                               // a normal room: my own pick
+  return mine === AUTO ? autoDeckId() : mine;
+}
+
+// Am I on Auto right now? (Then my level moves up and down as I answer.)
+function playingAuto() {
+  if (roomDeckId !== AUTO) return false;
+  return client.roomIsClass || myLevelChoice() === AUTO;
+}
+
+// What the lobby's list should show: the room's pick in a class game, my own pick otherwise.
+function pickerValue() {
+  return client.roomIsClass ? roomDeckId : myLevelChoice();
+}
+
 // Fill the list (once): Auto first, then the topic decks, then every level and review level.
 // (An "optgroup" is a labeled section inside a dropdown list.)
+const autoOption = document.createElement("option");
 {
-  const autoOption = document.createElement("option");
   autoOption.value = AUTO;
   autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
   deckSelect.appendChild(autoOption);
@@ -536,7 +601,7 @@ function refreshDeckOptions() {
   }
   if (decks.length > 0 && !customGroup.parentNode) deckSelect.appendChild(customGroup);
   if (decks.length === 0 && customGroup.parentNode) customGroup.remove();
-  if (roomDeckId) deckSelect.value = roomDeckId;
+  if (roomDeckId) deckSelect.value = pickerValue();
 }
 
 // ---------- Getting the host's teacher deck ----------
@@ -560,24 +625,31 @@ function askForMissingDeck() {
   sendToHost({ type: "needDeck" });
 }
 
-// The host picked a deck: tell the referee (who tells everyone).
 deckSelect.addEventListener("change", () => {
-  try { localStorage.setItem("golan-deck-v2", deckSelect.value); } catch {}
-  sendToServer({ type: "deck", deckId: deckSelect.value });
+  if (client.roomIsClass) {
+    // Class game: the teacher picked for everyone. Tell the referee (who tells everyone).
+    try { localStorage.setItem("golan-deck-v2", deckSelect.value); } catch {}
+    sendToServer({ type: "deck", deckId: deckSelect.value });
+  } else {
+    // Normal room: this is just MY level. Nobody else is affected.
+    myLevel = deckSelect.value;
+    try { localStorage.setItem("golan-my-level", myLevel); } catch {}
+    useDeck(playedDeckId());
+  }
 });
 
 // The room's choice changed (from the referee's snapshot). On Auto, this phone
-// plays its own level; otherwise everyone plays the host's pick.
+// plays its own level (or its own pick, in a normal room); otherwise everyone plays the teacher's pick.
 function useRoomDeck(deckId) {
   roomDeckId = deckId;
   // (A teacher deck we don't have yet: keep the old words until it arrives. useDeck ignores unknown ids.)
-  useDeck(deckId === AUTO ? autoDeckId() : deckId);
+  useDeck(playedDeckId());
   refreshDeckOptions();
 }
 
 // quiz.js calls this after every answer. Only does something on Auto.
 function autoLevelAnswer(correct, seconds) {
-  if (roomDeckId !== AUTO) return;
+  if (!playingAuto()) return;
   const move = noteAutoAnswer(correct, seconds);
   if (!move) return;
   useDeck(autoDeckId());
@@ -591,15 +663,26 @@ function autoLevelAnswer(correct, seconds) {
 
 function renderDeckPicker() {
   // (Only change things that are different: this runs 20 times a second.)
-  if (deckSelect.value !== roomDeckId) deckSelect.value = roomDeckId;
-  // On Auto, keep up with your own level (for example, after logging in here).
-  if (roomDeckId === AUTO && currentDeckId !== autoDeckId()) useDeck(autoDeckId());
-  if (deckSelect.disabled !== !client.isHost) deckSelect.disabled = !client.isHost; // only the host can change it
+  const value = pickerValue();
+  if (deckSelect.value !== value) deckSelect.value = value;
+  // Keep up with the right deck (for example, after logging in here).
+  const played = playedDeckId();
+  if (currentDeckId !== played) useDeck(played);
+  // Class game: only the host (teacher) can change it. Normal room: everyone picks their own.
+  const canPick = client.roomIsClass ? client.isHost : true;
+  if (deckSelect.disabled !== !canPick) deckSelect.disabled = !canPick;
+  let pickNote = "", pickNoteHe = "";
+  if (client.roomIsClass) {
+    setBilingual(deckLabelEl, "📚 Words for this game", "הַמִּלִּים בַּמִּשְׂחָק");
+    setOptionText(autoOption, "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית");
+    if (!client.isHost) { pickNote = " · The teacher picks the words"; pickNoteHe = " · הַמּוֹרֶה בּוֹחֵר אֶת הַמִּלִּים"; }
+  } else {
+    setBilingual(deckLabelEl, "📚 Your level (everyone picks their own)", "הָרָמָה שֶׁלִּי (כָּל אֶחָד בּוֹחֵר לְעַצְמוֹ)");
+    setOptionText(autoOption, "🤖 Auto (my level) · אוֹטוֹמָטִי");
+  }
   const deck = findDeck(currentDeckId);
   const { known, total } = deckProgress(deck);
-  const pickNote = client.isHost ? "" : " · The host picks the words";
-  const pickNoteHe = client.isHost ? "" : " · הַמְּאָרֵחַ בּוֹחֵר אֶת הַמִּלִּים";
-  if (roomDeckId === AUTO) {
+  if (playingAuto()) {
     setBilingual(deckProgressEl,
       `Your level: ${deckLabel(deck)} · You know ${known} of ${total} well`,
       `רָמָה נוֹכְחִית: ${deck.numberHe} · ${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב`);
@@ -608,6 +691,11 @@ function renderDeckPicker() {
       `You know ${known} of ${total} well${pickNote}`,
       `${known} מִתּוֹךְ ${total} יְדוּעוֹת הֵיטֵב${pickNoteHe}`);
   }
+}
+
+// Change a dropdown option's words, only if they're different (renderDeckPicker runs a lot).
+function setOptionText(option, text) {
+  if (option.textContent !== text) option.textContent = text;
 }
 
 function renderLobby(hostId) {
@@ -674,6 +762,9 @@ function applySnapshot(snap) {
     resetTimers();
     sendToHost({ type: "join", name: client.name });
   }
+
+  // Is this a class game (the teacher picks the words) or a normal room (everyone picks their own)?
+  client.roomIsClass = Boolean(snap.classGame);
 
   // A teacher deck sent by the host? (Before switching, so it's ready to use.)
   for (const e of snap.events) {

@@ -21,6 +21,8 @@ const server = {
   events: [],       // things that just happened (hits, messages) to send with the next snapshot
   deckId: "auto",   // "auto" (each player's own level) or the one deck everyone plays (the host picks)
   customDeck: null, // if the host picked one of their own decks: { id, name, words } to send to every phone
+  classGame: false, // true = a teacher's class game: only then can the host pick the words for everyone
+  mode: "ctf",      // which game: "ctf" = Capture the Flag (two more games are coming)
 };
 
 // The host picked the words. A teacher deck only lives on the host's phone, so we
@@ -48,11 +50,15 @@ function makeSpeedBox() {
   };
 }
 
-function serverReset(hostId, deckId) {
+// Start a fresh room. options: { classGame: true/false, mode: "ctf" }
+function serverReset(hostId, deckId, options = {}) {
   server.hostId = hostId;
   server.events = [];
   server.deckSentAt = -Infinity;
-  serverSetDeck(deckId);
+  server.classGame = Boolean(options.classGame);
+  server.mode = options.mode || "ctf";
+  // A normal room is always Auto here: each phone plays the level its own player picks.
+  serverSetDeck(server.classGame ? deckId : AUTO);
   server.time = 0;
   server.phase = "lobby";
   server.players = {};
@@ -159,8 +165,8 @@ function serverHandle(id, msg) {
       if (id === server.hostId) serverStartGame();
       break;
     case "deck":
-      // Only the host can pick the words, and not in the middle of a battle.
-      if (id === server.hostId && server.phase !== "playing" && isDeckChoice(msg.deckId)) {
+      // Only the host of a CLASS game can pick the words for everyone, and not in the middle of a battle.
+      if (server.classGame && id === server.hostId && server.phase !== "playing" && isDeckChoice(msg.deckId)) {
         serverSetDeck(msg.deckId);
       }
       break;
@@ -409,6 +415,8 @@ function serverSnapshot() {
     winner: server.winner,
     hostId: server.hostId,
     deckId: server.deckId,
+    classGame: server.classGame,
+    mode: server.mode,
     score: { ...server.score },
     flags: { blue: { ...server.flags.blue }, red: { ...server.flags.red } },
     speedBox: { ...server.speedBox },

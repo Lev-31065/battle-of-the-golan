@@ -99,8 +99,9 @@
       <button id="login-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span><span class="en">🔑 Log in or sign up</span></button>
       <div id="account-box" class="account-box" hidden>
         <p id="account-email" class="account-email"></p>
-        <!-- Teachers (or anyone) can make their own word lists here (decks.js). -->
-        <button id="my-decks-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></button>
+        <!-- The teacher dashboard: make your own decks and host class games (decks.js).
+             Free for now; later this is the door that needs a paid account. -->
+        <button id="teacher-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">אֵזוֹר הַמּוֹרֶה</span><span class="en">🎓 Teacher dashboard</span></button>
         <button id="logout-button" class="link-button" type="button"><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span><span class="en">Log out</span></button>
         <button id="delete-account-button" class="link-button danger-link" type="button"><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span><span class="en">Delete my account</span></button>
       </div>
@@ -131,18 +132,20 @@
     </div>
   </div>
 
-  <!-- ===== MY DECKS: make your own word lists (decks.js controls it) ===== -->
+  <!-- ===== TEACHER DASHBOARD: host a class game, make your own word lists (decks.js controls it) ===== -->
   <div id="decks" class="screen" hidden>
     <div class="panel home-panel decks-panel">
       <button id="decks-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
 
-      <!-- The list of my decks -->
+      <!-- The dashboard: the class-game button, then the list of my decks -->
       <div id="decks-list-view">
-        <h2><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></h2>
-        <p class="panel-sub"><span class="he" lang="he" dir="rtl">יוֹצְרִים רְשִׁימוֹת מִלִּים מִשֶּׁלָּכֶם. כְּשֶׁפּוֹתְחִים חֶדֶר, בּוֹחֲרִים אַחַת מֵהֶן, וְכֻלָּם מְשַׂחֲקִים עִם הַמִּלִּים שֶׁלָּכֶם.</span><span class="en">Make your own word lists. When you create a room, pick one in the lobby and everyone plays with your words.</span></p>
+        <h2><span class="he" lang="he" dir="rtl">אֵזוֹר הַמּוֹרֶה</span><span class="en">🎓 Teacher dashboard</span></h2>
+        <p class="panel-sub"><span class="he" lang="he" dir="rtl">בְּמִשְׂחָק כִּתָּה, אַתֶּם בּוֹחֲרִים אֶת הַמִּלִּים לְכֻלָּם: רָמָה, נוֹשֵׂא אוֹ חֲפִיסָה שֶׁלָּכֶם.</span><span class="en">In a class game, you pick the words for everyone: a level, a topic or one of your own decks.</span></p>
+        <button id="class-game-button" class="big-button class-game-button" type="button"><span class="he" lang="he" dir="rtl">פְּתִיחַת מִשְׂחָק לַכִּתָּה</span><span class="en">🏫 Host a class game</span></button>
+        <h3 class="decks-heading"><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></h3>
         <div id="decks-list" class="decks-list"></div>
         <p id="decks-status" class="deck-progress"></p>
-        <button id="new-deck-button" class="big-button" type="button"><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span><span class="en">➕ New deck</span></button>
+        <button id="new-deck-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span><span class="en">➕ New deck</span></button>
       </div>
 
       <!-- Making or changing one deck -->
@@ -167,15 +170,42 @@
   <div id="play" class="screen" hidden>
     <div class="panel home-panel">
       <button id="back-button" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
+      <!-- Only shown when you came from the teacher dashboard ("Host a class game"). -->
+      <p id="class-note" class="class-note" hidden><span class="he" lang="he" dir="rtl">🎓 מִשְׂחָק כִּתָּה: אַתֶּם בּוֹחֲרִים אֶת הַמִּלִּים לְכֻלָּם.</span><span class="en">Class game: you pick the words for everyone.</span></p>
       <label class="field-label" for="name-input"><span class="he" lang="he" dir="rtl">כִּנּוּי</span><span class="en">Your nickname</span></label>
       <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="לְמָשָׁל: דָּנִי · e.g. Dani">
       <button id="create-button" class="big-button" type="button"><span class="he" lang="he" dir="rtl">פְּתִיחַת חֶדֶר</span><span class="en">Create a room</span></button>
-      <div class="or-line"><span><span class="he" lang="he" dir="rtl">אוֹ הִצְטָרְפוּת לְחֶדֶר שֶׁל חָבֵר</span><span class="en">or join a friend's room</span></span></div>
-      <div class="join-row">
-        <input id="code-input" class="text-field code-field" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code">
-        <button id="join-button" class="big-button join-button" type="button"><span class="he" lang="he" dir="rtl">הִצְטָרְפוּת</span><span class="en">Join</span></button>
+      <!-- Hidden for class games (a teacher hosts, they don't join). -->
+      <div id="join-area">
+        <div class="or-line"><span><span class="he" lang="he" dir="rtl">אוֹ הִצְטָרְפוּת לְחֶדֶר שֶׁל חָבֵר</span><span class="en">or join a friend's room</span></span></div>
+        <div class="join-row">
+          <input id="code-input" class="text-field code-field" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code">
+          <button id="join-button" class="big-button join-button" type="button"><span class="he" lang="he" dir="rtl">הִצְטָרְפוּת</span><span class="en">Join</span></button>
+        </div>
       </div>
       <p id="home-message" class="home-message"></p>
+    </div>
+  </div>
+
+  <!-- ===== GAME MODES: after "Create a room", pick which game to play ===== -->
+  <div id="modes" class="screen" hidden>
+    <div class="panel home-panel modes-panel">
+      <button id="modes-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
+      <h2><span class="he" lang="he" dir="rtl">אֵיזֶה מִשְׂחָק?</span><span class="en">Pick a game</span></h2>
+      <!-- data-mode = the name the referee uses for this game (server.js). -->
+      <button class="mode-button" data-mode="ctf" type="button">
+        <span class="mode-icon">🚩</span>
+        <span class="mode-text"><b><span class="he" lang="he" dir="rtl">תְּפִיסַת הַדֶּגֶל</span><span class="en">Capture the Flag</span></b><small><span class="he" lang="he" dir="rtl">שְׁתֵּי קְבוּצוֹת, דֶּגֶל אֶחָד לְכָל קְבוּצָה</span><span class="en">Two teams, one flag each</span></small></span>
+      </button>
+      <!-- Two more games are coming. They can't be picked yet. -->
+      <button class="mode-button" type="button" disabled>
+        <span class="mode-icon">🔒</span>
+        <span class="mode-text"><b><span class="he" lang="he" dir="rtl">בְּקָרוֹב</span><span class="en">Coming soon</span></b><small><span class="he" lang="he" dir="rtl">מִשְׂחָק חָדָשׁ בַּדֶּרֶךְ</span><span class="en">A new game is on the way</span></small></span>
+      </button>
+      <button class="mode-button" type="button" disabled>
+        <span class="mode-icon">🔒</span>
+        <span class="mode-text"><b><span class="he" lang="he" dir="rtl">בְּקָרוֹב</span><span class="en">Coming soon</span></b><small><span class="he" lang="he" dir="rtl">מִשְׂחָק חָדָשׁ בַּדֶּרֶךְ</span><span class="en">A new game is on the way</span></small></span>
+      </button>
     </div>
   </div>
 
@@ -191,9 +221,10 @@
         <div class="team team-blue"><h3><span class="he" lang="he" dir="rtl">כָּחֹל</span><span class="en">🔵 Blue</span></h3><ul id="blue-list"></ul></div>
         <div class="team team-red"><h3><span class="he" lang="he" dir="rtl">אָדֹם</span><span class="en">🔴 Red</span></h3><ul id="red-list"></ul></div>
       </div>
-      <!-- Which words to play with. Only the host can change it. -->
+      <!-- Which words to play with. In a class game only the host (teacher) picks, for everyone.
+           In a normal game everyone picks their own level. (game.js swaps the label.) -->
       <div class="deck-picker">
-        <label class="field-label" for="deck-select"><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span><span class="en">📚 Words for this game</span></label>
+        <label id="deck-label" class="field-label" for="deck-select"><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span><span class="en">📚 Words for this game</span></label>
         <select id="deck-select" class="text-field deck-select"></select>
         <p id="deck-progress" class="deck-progress"></p>
       </div>

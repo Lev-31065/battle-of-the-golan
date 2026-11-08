@@ -1,4 +1,8 @@
-// decks.js — the "My decks" page: make, change and delete your own word lists.
+// decks.js — the Teacher dashboard: host a class game, and make, change and
+// delete your own word lists ("My decks").
+//
+// A class game = a room where the host (the teacher) picks the words for everyone.
+// The dashboard is free for now; later it will need a paid account.
 //
 // Only for logged-in players (the decks are saved in the account, in Supabase's
 // "decks" table, which already exists — see supabase/setup.sql).
@@ -7,9 +11,9 @@
 // and each line is HEBREW = ENGLISH, typed right-to-left.
 //
 // How a teacher uses it:
-//   1. Log in → 📚 My decks → ➕ New deck.
+//   1. Log in → 🎓 Teacher dashboard → ➕ New deck.
 //   2. Type a name, and one word per line, like:   כֶּלֶב = dog
-//   3. Save. Then Create a room: the deck shows up in the lobby's word list
+//   3. Save. Then 🏫 Host a class game: the deck shows up in the lobby's word list
 //      under "My decks". The host's phone sends the words to everyone's phone.
 //
 // Also accepted: a TAB instead of "=" (so you can paste two columns from a
@@ -100,11 +104,14 @@ function showDeckList() {
   renderDeckList();
 }
 
-document.getElementById("my-decks-button").addEventListener("click", () => {
+document.getElementById("teacher-button").addEventListener("click", () => {
   showDeckList();
   showScreen("decks");
   loadMyDecks(); // fresh copy (maybe you changed a deck on another phone)
 });
+
+// "Host a class game": go to the play screen in class-game mode (game.js).
+document.getElementById("class-game-button").addEventListener("click", () => openPlayScreen(true));
 
 document.getElementById("decks-back").addEventListener("click", () => {
   if (!deckEditor.hidden) showDeckList(); // from the editor → back to the list
