@@ -368,7 +368,7 @@ function createRoom(mode) {
       client.roomCode = code;
       // A class game starts on the teacher's last pick. A normal room is always
       // Auto on the referee's side: each phone then plays the level its player picks.
-      serverReset(myId, classGame ? savedDeckId() : AUTO, { classGame, mode });
+      serverReset(myId, classGame ? teacherPickId() : AUTO, { classGame, mode });
       serverAddPlayer(myId, name);
       applySnapshot(serverSnapshot());
     },
@@ -521,11 +521,7 @@ const deckSelect = document.getElementById("deck-select");
 const deckLabelEl = document.getElementById("deck-label");
 const deckProgressEl = document.getElementById("deck-progress");
 
-// The teacher's last class-game pick is remembered on their device for next time (Auto if none yet).
-// ("-v2" so everyone starts on Auto once, even if they picked a level before Auto existed.)
-function savedDeckId() {
-  try { return localStorage.getItem("golan-deck-v2") || AUTO; } catch { return AUTO; }
-}
+// (The teacher's class-game pick is made on the dashboard: teacherPickId() in decks.js.)
 
 // My own level for normal rooms, remembered on this phone (Auto if none yet).
 let myLevel = AUTO;
@@ -688,6 +684,7 @@ function renderDeckPicker() {
     setBilingual(deckLabelEl, "📚 Your level (everyone picks their own)", "הָרָמָה שֶׁלִּי (כָּל אֶחָד בּוֹחֵר לְעַצְמוֹ)");
     setOptionText(autoOption, "🤖 Auto (my level) · אוֹטוֹמָטִי");
   }
+  updateDeckDropdown();
   const deck = findDeck(currentDeckId);
   const { known, total } = deckProgress(deck);
   if (playingAuto()) {
@@ -705,6 +702,84 @@ function renderDeckPicker() {
 function setOptionText(option, text) {
   if (option.textContent !== text) option.textContent = text;
 }
+
+// ---------- Our own dropdown for the word list ----------
+// A phone's built-in list covers the whole screen, so we draw our own: a button that
+// opens a short scrolling list right under it. The hidden <select> still holds the
+// choice, so everything above keeps working with deckSelect as before.
+
+const dropdownButton = document.getElementById("deck-dropdown-button");
+const dropdownText = document.getElementById("deck-dropdown-text");
+const dropdownList = document.getElementById("deck-dropdown-list");
+
+// Keep the button in step with the hidden <select> (its words, and whether you can tap it).
+function updateDeckDropdown() {
+  const option = deckSelect.selectedOptions[0];
+  const text = option ? option.textContent : "";
+  if (dropdownText.textContent !== text) dropdownText.textContent = text;
+  if (dropdownButton.disabled !== deckSelect.disabled) dropdownButton.disabled = deckSelect.disabled;
+  if (deckSelect.disabled) closeDeckDropdown();
+}
+
+// Copy the <select>'s sections and options into our list.
+function buildDeckDropdown() {
+  dropdownList.textContent = "";
+  const addItem = (option) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "dropdown-item" + (option.value === deckSelect.value ? " picked" : "");
+    item.setAttribute("role", "option");
+    item.textContent = option.textContent; // textContent: teacher deck names are typed by people
+    item.addEventListener("click", () => chooseFromDropdown(option.value));
+    dropdownList.appendChild(item);
+  };
+  for (const child of deckSelect.children) {
+    if (child.tagName === "OPTGROUP") {
+      const heading = document.createElement("div");
+      heading.className = "dropdown-heading";
+      heading.textContent = child.label;
+      dropdownList.appendChild(heading);
+      for (const option of child.children) addItem(option);
+    } else {
+      addItem(child);
+    }
+  }
+}
+
+function openDeckDropdown() {
+  buildDeckDropdown();
+  dropdownList.hidden = false;
+  dropdownButton.setAttribute("aria-expanded", "true");
+  // Scroll the list so the current choice is showing.
+  const picked = dropdownList.querySelector(".picked");
+  if (picked) dropdownList.scrollTop = picked.offsetTop - dropdownList.clientHeight / 2;
+}
+
+function closeDeckDropdown() {
+  if (dropdownList.hidden) return;
+  dropdownList.hidden = true;
+  dropdownButton.setAttribute("aria-expanded", "false");
+}
+
+// Picked something: put it in the hidden <select>, and let its "change" code do the rest.
+function chooseFromDropdown(value) {
+  closeDeckDropdown();
+  if (value === deckSelect.value) return;
+  deckSelect.value = value;
+  deckSelect.dispatchEvent(new Event("change"));
+  updateDeckDropdown();
+}
+
+dropdownButton.addEventListener("click", () => {
+  if (dropdownList.hidden) openDeckDropdown();
+  else closeDeckDropdown();
+});
+// Tapping anywhere else closes the list.
+document.addEventListener("pointerdown", (event) => {
+  if (!dropdownList.hidden && !dropdownList.contains(event.target) && !dropdownButton.contains(event.target)) {
+    closeDeckDropdown();
+  }
+});
 
 function renderLobby(hostId) {
   document.getElementById("lobby-code").textContent = client.roomCode;
@@ -812,6 +887,7 @@ function isNearMe(event) {
 function changePhase(phase) {
   client.phase = phase;
   resetStick();
+  closeDeckDropdown(); // (in case the word list was open when the battle started)
   if (phase === "lobby") {
     winnerEl.hidden = true; // (coming back after a game ended)
     showScreen("lobby");

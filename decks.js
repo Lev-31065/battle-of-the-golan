@@ -73,24 +73,93 @@ async function loadMyDecks() {
 
 // ---------- The list ----------
 
+// ---------- Picking the words for the class game ----------
+// The teacher clicks a deck in one of the 3 columns. It's remembered on this computer
+// ("golan-deck-v2"), and "Host a class game" starts with it.
+
+// The picked deck, if it's still allowed (one of my decks might have been deleted).
+function teacherPickId() {
+  let id = AUTO;
+  try { id = localStorage.getItem("golan-deck-v2") || AUTO; } catch {}
+  if (id === AUTO) return AUTO;
+  const deck = findDeck(id);
+  if (!deck) return AUTO;
+  if (deck.custom && !isMyDeck(id)) return AUTO;
+  return isDeckChoice(id) ? id : AUTO;
+}
+
+function setTeacherPick(id) {
+  try { localStorage.setItem("golan-deck-v2", id); } catch {}
+  renderDeckList();
+}
+
+// One clickable row. english/hebrew = the two lines; detail = small gray text on the right.
+function makePickRow(id, english, hebrew, detail, detailHe) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "deck-row" + (id === teacherPickId() ? " picked" : "");
+  const name = document.createElement("span");
+  name.className = "deck-row-name";
+  setBilingual(name, english, hebrew); // (setBilingual uses textContent: typed names can't break the page)
+  row.appendChild(name);
+  if (detail) {
+    const count = document.createElement("span");
+    count.className = "deck-row-count";
+    setBilingual(count, detail, detailHe);
+    row.appendChild(count);
+  }
+  row.addEventListener("click", () => setTeacherPick(id));
+  return row;
+}
+
 function renderDeckList() {
+  // Column 1: my own decks. Each has a ✏️ button to change it.
   decksList.innerHTML = "";
   for (const id of myDeckIds) {
     const deck = customDecks.get(id);
     if (!deck) continue;
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "deck-row";
-    const name = document.createElement("span");
-    name.className = "deck-row-name";
-    name.textContent = deck.english; // textContent: a name someone typed can't break the page
-    const count = document.createElement("span");
-    count.className = "deck-row-count";
-    setBilingual(count, `${deck.words.length} words`, `${deck.words.length} מִלִּים`);
-    row.append(name, count);
-    row.addEventListener("click", () => openDeckEditor(id));
-    decksList.appendChild(row);
+    const line = document.createElement("div");
+    line.className = "deck-line";
+    const n = deck.words.length;
+    const row = makePickRow(id, deck.english, "", `${n} words`, `${n} מִלִּים`);
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "deck-edit";
+    edit.textContent = "✏️";
+    edit.title = "Edit · עֲרִיכָה";
+    edit.setAttribute("aria-label", "Edit deck");
+    edit.addEventListener("click", () => openDeckEditor(id));
+    line.append(row, edit);
+    decksList.appendChild(line);
   }
+
+  // Column 2: the premade decks (one idea each).
+  const premadeList = document.getElementById("premade-list");
+  premadeList.innerHTML = "";
+  for (const deck of TOPIC_DECKS) {
+    const n = deck.words.length;
+    premadeList.appendChild(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`));
+  }
+
+  // Column 3: Auto, then every level.
+  const levelsList = document.getElementById("levels-list");
+  levelsList.innerHTML = "";
+  levelsList.appendChild(makePickRow(AUTO, "🤖 Auto: a level for each player", "אוֹטוֹמָטִי: רָמָה אִישִׁית"));
+  for (const deck of DECKS) {
+    levelsList.appendChild(makePickRow(deck.id, `${deck.number} · ${deck.english}`, `${deck.numberHe} · ${deck.hebrew}`));
+  }
+
+  // Under the Host button: what the class will play.
+  const picked = teacherPickId();
+  const pickEl = document.getElementById("teacher-pick");
+  if (picked === AUTO) {
+    setBilingual(pickEl, "Words: 🤖 Auto (each student plays their own level)", "מִלִּים: אוֹטוֹמָטִי (כָּל תַּלְמִיד בָּרָמָה שֶׁלּוֹ)");
+  } else {
+    const deck = findDeck(picked);
+    const hebrewName = deck.custom ? `📚 ${deck.english}` : deck.topic ? `🎯 ${deck.hebrew}` : `${deck.numberHe} · ${deck.hebrew}`;
+    setBilingual(pickEl, `Words: ${deckLabel(deck)}`, `מִלִּים: ${hebrewName}`);
+  }
+
   if (myDeckIds.length === 0) {
     setBilingual(decksStatus, "No decks yet. Tap “New deck” to make one.", "עֲדַיִן אֵין חֲפִיסוֹת. לוֹחֲצִים עַל ״חֲפִיסָה חֲדָשָׁה״.");
   } else {

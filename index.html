@@ -137,15 +137,31 @@
     <div class="panel home-panel decks-panel">
       <button id="decks-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
 
-      <!-- The dashboard: the class-game button, then the list of my decks -->
+      <!-- The dashboard: the class-game button, then 3 columns to pick the words from.
+           Clicking a deck picks it (highlighted); the class game starts with it. -->
       <div id="decks-list-view">
         <h2><span class="he" lang="he" dir="rtl">אֵזוֹר הַמּוֹרֶה</span><span class="en">🎓 Teacher dashboard</span></h2>
-        <p class="panel-sub"><span class="he" lang="he" dir="rtl">בְּמִשְׂחָק כִּתָּה, אַתֶּם בּוֹחֲרִים אֶת הַמִּלִּים לְכֻלָּם: רָמָה, נוֹשֵׂא אוֹ חֲפִיסָה שֶׁלָּכֶם.</span><span class="en">In a class game, you pick the words for everyone: a level, a topic or one of your own decks.</span></p>
-        <button id="class-game-button" class="big-button class-game-button" type="button"><span class="he" lang="he" dir="rtl">פְּתִיחַת מִשְׂחָק לַכִּתָּה</span><span class="en">🏫 Host a class game</span></button>
-        <h3 class="decks-heading"><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></h3>
-        <div id="decks-list" class="decks-list"></div>
-        <p id="decks-status" class="deck-progress"></p>
-        <button id="new-deck-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span><span class="en">➕ New deck</span></button>
+        <p class="panel-sub"><span class="he" lang="he" dir="rtl">בּוֹחֲרִים אֶת הַמִּלִּים לְמַטָּה, וּפוֹתְחִים מִשְׂחָק. כָּל הַכִּתָּה תְּשַׂחֵק עִם הַמִּלִּים הָאֵלֶּה.</span><span class="en">Pick the words below, then host. The whole class plays with those words.</span></p>
+        <div class="host-row">
+          <button id="class-game-button" class="big-button class-game-button" type="button"><span class="he" lang="he" dir="rtl">פְּתִיחַת מִשְׂחָק לַכִּתָּה</span><span class="en">🏫 Host a class game</span></button>
+          <p id="teacher-pick" class="teacher-pick"></p>
+        </div>
+        <div class="deck-columns">
+          <section class="deck-column">
+            <h3 class="decks-heading"><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></h3>
+            <div id="decks-list" class="decks-list"></div>
+            <p id="decks-status" class="deck-progress"></p>
+            <button id="new-deck-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span><span class="en">➕ New deck</span></button>
+          </section>
+          <section class="deck-column">
+            <h3 class="decks-heading"><span class="he" lang="he" dir="rtl">חֲפִיסוֹת מוּכָנוֹת</span><span class="en">🎯 Premade decks</span></h3>
+            <div id="premade-list" class="decks-list"></div>
+          </section>
+          <section class="deck-column">
+            <h3 class="decks-heading"><span class="he" lang="he" dir="rtl">רָמוֹת</span><span class="en">📈 Levels</span></h3>
+            <div id="levels-list" class="decks-list levels-list"></div>
+          </section>
+        </div>
       </div>
 
       <!-- Making or changing one deck -->
@@ -216,17 +232,23 @@
       <button id="lobby-home" class="back-button" type="button"><span class="he" lang="he" dir="rtl">לַמָּסָךְ הָרִאשִׁי</span><span class="en">🏠 Home</span></button>
       <p class="panel-sub"><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span><span class="en">Room code — friends type this on their phones</span></p>
       <p id="lobby-code" class="room-code">----</p>
+      <!-- Which words to play with. In a class game only the host (teacher) picks, for everyone.
+           In a normal game everyone picks their own level. (game.js swaps the label.)
+           The real <select> is hidden: it holds the choice, and game.js draws our own
+           dropdown from it (a phone's built-in list takes up the whole screen). -->
+      <div class="deck-picker">
+        <label id="deck-label" class="field-label" for="deck-dropdown-button"><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span><span class="en">📚 Words for this game</span></label>
+        <select id="deck-select" class="deck-select" hidden></select>
+        <button id="deck-dropdown-button" class="text-field dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span id="deck-dropdown-text" class="dropdown-text"></span><span class="dropdown-arrow">▾</span>
+        </button>
+        <div id="deck-dropdown-list" class="dropdown-list" role="listbox" hidden></div>
+        <p id="deck-progress" class="deck-progress"></p>
+      </div>
       <button id="invite-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span><span class="en">📋 Share invite link</span></button>
       <div class="teams">
         <div class="team team-blue"><h3><span class="he" lang="he" dir="rtl">כָּחֹל</span><span class="en">🔵 Blue</span></h3><ul id="blue-list"></ul></div>
         <div class="team team-red"><h3><span class="he" lang="he" dir="rtl">אָדֹם</span><span class="en">🔴 Red</span></h3><ul id="red-list"></ul></div>
-      </div>
-      <!-- Which words to play with. In a class game only the host (teacher) picks, for everyone.
-           In a normal game everyone picks their own level. (game.js swaps the label.) -->
-      <div class="deck-picker">
-        <label id="deck-label" class="field-label" for="deck-select"><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span><span class="en">📚 Words for this game</span></label>
-        <select id="deck-select" class="text-field deck-select"></select>
-        <p id="deck-progress" class="deck-progress"></p>
       </div>
       <button id="switch-team" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
       <button id="start-button" class="big-button" type="button" hidden><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span><span class="en">Start the battle!</span></button>
