@@ -3,14 +3,17 @@
 // Only for logged-in players (the decks are saved in the account, in Supabase's
 // "decks" table, which already exists — see supabase/setup.sql).
 //
+// It's written for Hebrew-speaking (ulpan) teachers: the page is Hebrew-first,
+// and each line is HEBREW = ENGLISH, typed right-to-left.
+//
 // How a teacher uses it:
 //   1. Log in → 📚 My decks → ➕ New deck.
-//   2. Type a name, and one word per line, like:   dog = כֶּלֶב
+//   2. Type a name, and one word per line, like:   כֶּלֶב = dog
 //   3. Save. Then Create a room: the deck shows up in the lobby's word list
 //      under "My decks". The host's phone sends the words to everyone's phone.
 //
 // Also accepted: a TAB instead of "=" (so you can paste two columns from a
-// spreadsheet), and Hebrew on the left (it gets swapped around automatically).
+// spreadsheet), and English first (whichever side has Hebrew letters is the Hebrew).
 
 const decksEl = document.getElementById("decks");
 const decksListView = document.getElementById("decks-list-view");
@@ -128,10 +131,11 @@ function parseDeckText(text) {
       badLines.push(index + 1);
       return;
     }
-    let english = line.slice(0, splitAt).trim();
-    let hebrew = line.slice(splitAt + 1).trim();
-    // Hebrew typed on the left? Swap them.
-    if (HEBREW_LETTERS.test(english) && !HEBREW_LETTERS.test(hebrew)) [english, hebrew] = [hebrew, english];
+    // Normally the Hebrew comes first. But if only the SECOND part has Hebrew
+    // letters (someone typed English first), swap them.
+    let hebrew = line.slice(0, splitAt).trim();
+    let english = line.slice(splitAt + 1).trim();
+    if (!HEBREW_LETTERS.test(hebrew) && HEBREW_LETTERS.test(english)) [english, hebrew] = [hebrew, english];
     if (!english || !hebrew || english.length > DECK_LIMITS.maxTextLength || hebrew.length > DECK_LIMITS.maxTextLength) {
       badLines.push(index + 1);
       return;
@@ -170,7 +174,7 @@ function openDeckEditor(deckId) {
   if (deck) {
     setBilingual(deckEditorTitle, "✏️ Edit deck", "עֲרִיכַת חֲפִיסָה");
     deckNameInput.value = deck.english;
-    deckWordsInput.value = deck.words.map((w) => `${w.english} = ${w.hebrew}`).join("\n");
+    deckWordsInput.value = deck.words.map((w) => `${w.hebrew} = ${w.english}`).join("\n");
   } else {
     setBilingual(deckEditorTitle, "➕ New deck", "חֲפִיסָה חֲדָשָׁה");
     deckNameInput.value = "";
@@ -201,8 +205,8 @@ deckSaveButton.addEventListener("click", async () => {
     return setDeckMessage("Give the deck a name.", "נוֹתְנִים לַחֲפִיסָה שֵׁם.");
   }
   if (badLines.length > 0) {
-    return setDeckMessage(`Each line needs English = Hebrew. Check line ${badLines.join(", ")}.`,
-      `בְּכָל שׁוּרָה צָרִיךְ אַנְגְּלִית = עִבְרִית. בּוֹדְקִים אֶת שׁוּרָה ${badLines.join(", ")}.`);
+    return setDeckMessage(`Each line needs Hebrew = English. Check line ${badLines.join(", ")}.`,
+      `בְּכָל שׁוּרָה צָרִיךְ עִבְרִית = אַנְגְּלִית. בּוֹדְקִים אֶת שׁוּרָה ${badLines.join(", ")}.`);
   }
   if (words.length < DECK_LIMITS.minWords) {
     return setDeckMessage(`A deck needs at least ${DECK_LIMITS.minWords} words.`, `בַּחֲפִיסָה צְרִיכוֹת לִהְיוֹת לְפָחוֹת ${DECK_LIMITS.minWords} מִלִּים.`);

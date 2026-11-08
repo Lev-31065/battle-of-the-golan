@@ -428,6 +428,100 @@ function mixReviewWords(deck) {
   return [...deck.newLevel.words, ...earlier.slice(0, deck.newLevel.words.length)];
 }
 
+// ---------- Topic decks ----------
+// Ready-made decks that each practice ONE idea. They're not part of the level ladder
+// (Auto never picks them); the host picks one in the lobby, under "Topics".
+// Same format as the levels above (wrong answers, hint, f: for the feminine "I"/"we").
+const TOPIC_DECKS = [
+  {
+    id: "topic-pronouns", english: "Pronouns: I, you, he, she…", hebrew: "כִּנּוּיֵי גּוּף: אֲנִי, אַתָּה, הוּא…",
+    words: [
+      { english: "I", hebrew: "אֲנִי", wrong: ["אַתָּה", "הוּא", "אֲנַחְנוּ"] },
+      { english: "you (m.)", hebrew: "אַתָּה", wrong: ["אַתְּ", "אַתֶּם", "הוּא"] },
+      { english: "you (f.)", hebrew: "אַתְּ", wrong: ["אַתָּה", "אַתֶּן", "הִיא"] },
+      { english: "he", hebrew: "הוּא", wrong: ["הִיא", "הֵם", "אַתָּה"] },
+      { english: "she", hebrew: "הִיא", wrong: ["הוּא", "הֵן", "אַתְּ"] },
+      { english: "we", hebrew: "אֲנַחְנוּ", wrong: ["אֲנִי", "הֵם", "אַתֶּם"] },
+      { english: "you all (m.)", hebrew: "אַתֶּם", wrong: ["אַתֶּן", "הֵם", "אַתָּה"] },
+      { english: "you all (f.)", hebrew: "אַתֶּן", wrong: ["אַתֶּם", "הֵן", "אַתְּ"] },
+      { english: "they (m.)", hebrew: "הֵם", wrong: ["הֵן", "אַתֶּם", "הוּא"] },
+      { english: "they (f.)", hebrew: "הֵן", wrong: ["הֵם", "אַתֶּן", "הִיא"] },
+      { english: "he is a teacher", hebrew: "הוּא מוֹרֶה", wrong: ["הִיא מוֹרֶה", "הוּא מוֹרָה", "הֵם מוֹרִים"] },
+      { english: "she is a teacher", hebrew: "הִיא מוֹרָה", wrong: ["הוּא מוֹרָה", "הִיא מוֹרֶה", "הֵן מוֹרוֹת"] },
+      { english: "I am a student", hebrew: "אֲנִי תַּלְמִיד", wrong: ["אֲנִי תַּלְמִידָה", "אַתָּה תַּלְמִיד", "אֲנַחְנוּ תַּלְמִידִים"],
+        f: { hebrew: "אֲנִי תַּלְמִידָה", wrong: ["אֲנִי תַּלְמִיד", "אַתְּ תַּלְמִידָה", "אֲנַחְנוּ תַּלְמִידוֹת"] } },
+      { english: "you (f.) are here", hebrew: "אַתְּ כָּאן", wrong: ["אַתָּה כָּאן", "הִיא כָּאן", "אַתֶּן כָּאן"] },
+      { english: "we are at home", hebrew: "אֲנַחְנוּ בַּבַּיִת", wrong: ["הֵם בַּבַּיִת", "אֲנִי בַּבַּיִת", "אַתֶּם בַּבַּיִת"] },
+      { english: "you all (m.) are students", hebrew: "אַתֶּם תַּלְמִידִים", wrong: ["אַתֶּן תַּלְמִידוֹת", "הֵם תַּלְמִידִים", "אַתָּה תַּלְמִיד"] },
+      { english: "they (m.) are in the park", hebrew: "הֵם בַּפַּארְק", wrong: ["הֵן בַּפַּארְק", "אַתֶּם בַּפַּארְק", "הוּא בַּפַּארְק"] },
+      { english: "they (f.) are friends", hebrew: "הֵן חֲבֵרוֹת", wrong: ["הֵם חֲבֵרִים", "הֵן חֲבֵרִים", "אַתֶּן חֲבֵרוֹת"] },
+    ],
+  },
+  {
+    // אֶת + a pronoun = one word: "they love HER" = הֵם אוֹהֲבִים אוֹתָהּ (not "הֵם אוֹהֲבִים הִיא").
+    id: "topic-object-pronouns", english: "Object pronouns: me, him, her… (אוֹתִי, אוֹתוֹ, אוֹתָהּ)", hebrew: "אֶת + כִּנּוּי: אוֹתִי, אוֹתוֹ, אוֹתָהּ…",
+    words: [
+      { english: "me", hint: "אֶת + אֲנִי", hebrew: "אוֹתִי", wrong: ["אוֹתוֹ", "אוֹתָנוּ", "אֲנִי"] },
+      { english: "you (m.)", hint: "אֶת + אַתָּה", hebrew: "אוֹתְךָ", wrong: ["אוֹתָךְ", "אַתָּה", "אֶתְכֶם"] },
+      { english: "you (f.)", hint: "אֶת + אַתְּ", hebrew: "אוֹתָךְ", wrong: ["אוֹתְךָ", "אַתְּ", "אֶתְכֶן"] },
+      { english: "him", hint: "אֶת + הוּא", hebrew: "אוֹתוֹ", wrong: ["אוֹתָהּ", "הוּא", "אוֹתָם"] },
+      { english: "her", hint: "אֶת + הִיא", hebrew: "אוֹתָהּ", wrong: ["אוֹתוֹ", "הִיא", "אוֹתָן"] },
+      { english: "us", hint: "אֶת + אֲנַחְנוּ", hebrew: "אוֹתָנוּ", wrong: ["אוֹתִי", "אֲנַחְנוּ", "אוֹתָם"] },
+      { english: "you all (m.)", hint: "אֶת + אַתֶּם", hebrew: "אֶתְכֶם", wrong: ["אֶתְכֶן", "אַתֶּם", "אוֹתָם"] },
+      { english: "you all (f.)", hint: "אֶת + אַתֶּן", hebrew: "אֶתְכֶן", wrong: ["אֶתְכֶם", "אַתֶּן", "אוֹתָן"] },
+      { english: "them (m.)", hint: "אֶת + הֵם", hebrew: "אוֹתָם", wrong: ["אוֹתָן", "הֵם", "אוֹתוֹ"] },
+      { english: "them (f.)", hint: "אֶת + הֵן", hebrew: "אוֹתָן", wrong: ["אוֹתָם", "הֵן", "אוֹתָהּ"] },
+      { english: "they (m.) like her", hint: "לֶאֱהֹב", hebrew: "הֵם אוֹהֲבִים אוֹתָהּ", wrong: ["הֵם אוֹהֲבִים הִיא", "הֵם אוֹהֲבִים אוֹתוֹ", "הֵם אוֹהֲבִים אֶת הִיא"] },
+      { english: "she loves him", hint: "לֶאֱהֹב", hebrew: "הִיא אוֹהֶבֶת אוֹתוֹ", wrong: ["הִיא אוֹהֶבֶת הוּא", "הִיא אוֹהֶבֶת אוֹתָהּ", "הִיא אוֹהֶבֶת אֶת הוּא"] },
+      { english: "he knows me", hint: "לְהַכִּיר", hebrew: "הוּא מַכִּיר אוֹתִי", wrong: ["הוּא מַכִּיר אֲנִי", "הוּא מַכִּיר אוֹתוֹ", "הוּא מַכִּירָה אוֹתִי"] },
+      { english: "I see you (m.)", hint: "לִרְאוֹת", hebrew: "אֲנִי רוֹאֶה אוֹתְךָ", wrong: ["אֲנִי רוֹאֶה אַתָּה", "אֲנִי רוֹאֶה אוֹתָךְ", "אֲנִי רוֹאָה אוֹתְךָ"],
+        f: { hebrew: "אֲנִי רוֹאָה אוֹתְךָ", wrong: ["אֲנִי רוֹאָה אַתָּה", "אֲנִי רוֹאָה אוֹתָךְ", "אֲנִי רוֹאֶה אוֹתְךָ"] } },
+      { english: "I love you (f.)", hint: "לֶאֱהֹב", hebrew: "אֲנִי אוֹהֵב אוֹתָךְ", wrong: ["אֲנִי אוֹהֵב אַתְּ", "אֲנִי אוֹהֵב אוֹתְךָ", "אֲנִי אוֹהֶבֶת אוֹתָךְ"],
+        f: { hebrew: "אֲנִי אוֹהֶבֶת אוֹתָךְ", wrong: ["אֲנִי אוֹהֶבֶת אַתְּ", "אֲנִי אוֹהֶבֶת אוֹתְךָ", "אֲנִי אוֹהֵב אוֹתָךְ"] } },
+      { english: "you (f.) understand me", hint: "לְהָבִין", hebrew: "אַתְּ מְבִינָה אוֹתִי", wrong: ["אַתְּ מְבִינָה אֲנִי", "אַתָּה מֵבִין אוֹתִי", "אַתְּ מְבִינָה אוֹתָךְ"] },
+      { english: "we invite you all (m.)", hint: "לְהַזְמִין", hebrew: "אֲנַחְנוּ מַזְמִינִים אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינִים אַתֶּם", "אֲנַחְנוּ מַזְמִינִים אוֹתָם", "אֲנַחְנוּ מַזְמִינִים אֶתְכֶן"],
+        f: { hebrew: "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינוֹת אַתֶּם", "אֲנַחְנוּ מַזְמִינוֹת אוֹתָם", "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶן"] } },
+      { english: "the teacher asks us", hint: "לִשְׁאֹל", hebrew: "הַמּוֹרֶה שׁוֹאֵל אוֹתָנוּ", wrong: ["הַמּוֹרֶה שׁוֹאֵל אֲנַחְנוּ", "הַמּוֹרֶה שׁוֹאֵל אוֹתָם", "הַמּוֹרֶה שׁוֹאֵל אוֹתִי"] },
+      { english: "Dana sees them (m.)", hint: "לִרְאוֹת", hebrew: "דָּנָה רוֹאָה אוֹתָם", wrong: ["דָּנָה רוֹאָה הֵם", "דָּנָה רוֹאָה אוֹתָן", "דָּנָה רוֹאָה אוֹתוֹ"] },
+      { english: "they (f.) know them (f.)", hint: "לְהַכִּיר", hebrew: "הֵן מַכִּירוֹת אוֹתָן", wrong: ["הֵן מַכִּירוֹת הֵן", "הֵן מַכִּירוֹת אוֹתָם", "הֵם מַכִּירִים אוֹתָן"] },
+    ],
+  },
+  {
+    // All the one-letter prefixes (אוֹתִיּוֹת הַשִּׁמּוּשׁ) mixed together, including two at once (וּבַ־, וּמִ־).
+    id: "topic-prefixes", english: "All the prefixes: הַ וְ בְּ לְ מִ שֶׁ כְּשֶׁ", hebrew: "אוֹתִיּוֹת הַשִּׁמּוּשׁ: הַ וְ בְּ לְ מִ שֶׁ כְּשֶׁ",
+    words: [
+      { english: "and the girl", hebrew: "וְהַיַּלְדָּה", wrong: ["הַיַּלְדָּה", "וְיַלְדָּה", "וְהַיֶּלֶד"] },
+      { english: "in the sea", hebrew: "בַּיָּם", wrong: ["לַיָּם", "מֵהַיָּם", "הַיָּם"] },
+      { english: "to the sea", hebrew: "לַיָּם", wrong: ["בַּיָּם", "מֵהַיָּם", "לְיָם"] },
+      { english: "from the sea", hebrew: "מֵהַיָּם", wrong: ["לַיָּם", "בַּיָּם", "מִיָּם"] },
+      { english: "in a book", hebrew: "בְּסֵפֶר", wrong: ["בַּסֵּפֶר", "לְסֵפֶר", "מִסֵּפֶר"] },
+      { english: "with a pen", hebrew: "בְּעֵט", wrong: ["לְעֵט", "מֵעֵט", "עֵט"] },
+      { english: "from the store", hebrew: "מֵהַחֲנוּת", wrong: ["לַחֲנוּת", "בַּחֲנוּת", "מֵחֲנוּת"] },
+      { english: "for the children", hebrew: "לַיְלָדִים", wrong: ["בַּיְלָדִים", "מֵהַיְלָדִים", "הַיְלָדִים"] },
+      { english: "and in the house", hebrew: "וּבַבַּיִת", wrong: ["בַּבַּיִת", "וּבְבַיִת", "וְהַבַּיִת"] },
+      { english: "and to the city", hebrew: "וְלָעִיר", wrong: ["לָעִיר", "וּבָעִיר", "וְהָעִיר"] },
+      { english: "and from Jerusalem", hebrew: "וּמִירוּשָׁלַיִם", wrong: ["מִירוּשָׁלַיִם", "וְלִירוּשָׁלַיִם", "וּבִירוּשָׁלַיִם"] },
+      { english: "the boy that I saw", hebrew: "הַיֶּלֶד שֶׁרָאִיתִי", wrong: ["הַיֶּלֶד רָאִיתִי", "הַיֶּלֶד כְּשֶׁרָאִיתִי", "הַיֶּלֶד שֶׁרָאָה"] },
+      { english: "the book that is in the bag", hebrew: "הַסֵּפֶר שֶׁבַּתִּיק", wrong: ["הַסֵּפֶר בַּתִּיק", "הַסֵּפֶר שֶׁבְּתִיק", "הַסֵּפֶר שֶׁלַּתִּיק"] },
+      { english: "when we arrived", hebrew: "כְּשֶׁהִגַּעְנוּ", wrong: ["שֶׁהִגַּעְנוּ", "כְּשֶׁהִגִּיעוּ", "כְּהִגַּעְנוּ"] },
+    ],
+  },
+];
+
+// Get the topic decks ready, like the levels: label them, and make the feminine copies.
+for (const topic of TOPIC_DECKS) {
+  topic.topic = true;
+  topic.number = "🎯";
+  topic.numberHe = "🎯";
+  for (const word of topic.words) {
+    homeLevelOf.set(word, topic);
+    if (word.f) {
+      word.feminine = { ...word, ...word.f };
+      homeLevelOf.set(word.feminine, topic);
+    }
+  }
+}
+
 // ---------- The deck being played right now ----------
 
 // WORDS = the words of the deck being played. quiz.js and progress.js ask questions from it.
@@ -479,7 +573,9 @@ function registerCustomDeck(id, name, words) {
 
 // Find a deck by its id (like "level-3", "review-3" or "custom-..."). Returns undefined if there's no such deck.
 function findDeck(deckId) {
-  return DECKS.find((deck) => deck.id === deckId) || customDecks.get(deckId);
+  return DECKS.find((deck) => deck.id === deckId)
+    || TOPIC_DECKS.find((deck) => deck.id === deckId)
+    || customDecks.get(deckId);
 }
 
 // Is this something the host is allowed to pick? (Auto, or a real deck with enough words.)
@@ -518,5 +614,6 @@ function forMyGender(word) {
 // Teacher decks are just "📚 Animals".
 function deckLabel(deck) {
   if (deck.custom) return `📚 ${deck.english}`;
+  if (deck.topic) return `🎯 ${deck.english}`;
   return `${deck.number} · ${deck.english}`;
 }

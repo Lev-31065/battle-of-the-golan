@@ -585,16 +585,25 @@ function drawEffects(ctx, effects, time) {
       ctx.stroke();
     } else if (e.kind === "text") {
       ctx.globalAlpha = 1 - t;
-      ctx.font = "800 26px Rubik, sans-serif";
       ctx.textAlign = "center";
       ctx.lineWidth = 5;
       ctx.strokeStyle = "rgba(0,0,0,0.7)";
-      ctx.strokeText(e.text, e.x, e.y - t * 45);
       ctx.fillStyle = e.color;
-      ctx.fillText(e.text, e.x, e.y - t * 45);
-      if (e.he) { // Hebrew line underneath
-        ctx.strokeText(e.he, e.x, e.y + 28 - t * 45);
-        ctx.fillText(e.he, e.x, e.y + 28 - t * 45);
+      const y = e.y - t * 45;
+      if (e.he) {
+        // Hebrew on top (big), English underneath (smaller).
+        ctx.font = "800 26px Rubik, sans-serif";
+        ctx.strokeText(e.he, e.x, y);
+        ctx.fillText(e.he, e.x, y);
+        ctx.font = "700 17px Rubik, sans-serif";
+        ctx.lineWidth = 4;
+        ctx.strokeText(e.text, e.x, y + 22);
+        ctx.fillText(e.text, e.x, y + 22);
+      } else {
+        // Just one line (like "-25").
+        ctx.font = "800 26px Rubik, sans-serif";
+        ctx.strokeText(e.text, e.x, y);
+        ctx.fillText(e.text, e.x, y);
       }
       ctx.globalAlpha = 1;
     }

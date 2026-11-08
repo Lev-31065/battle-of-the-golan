@@ -490,23 +490,32 @@ function savedDeckId() {
   try { return localStorage.getItem("golan-deck-v2") || AUTO; } catch { return AUTO; }
 }
 
-// Fill the list (once): Auto first, then every level and review level.
+// Fill the list (once): Auto first, then the topic decks, then every level and review level.
+// (An "optgroup" is a labeled section inside a dropdown list.)
 {
   const autoOption = document.createElement("option");
   autoOption.value = AUTO;
   autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
   deckSelect.appendChild(autoOption);
-}
-for (const deck of DECKS) {
-  const option = document.createElement("option");
-  option.value = deck.id;
-  option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
-  deckSelect.appendChild(option);
+  const groups = [
+    { label: "🎯 Topics · נוֹשְׂאִים", decks: TOPIC_DECKS },
+    { label: "📈 Levels · רָמוֹת", decks: DECKS },
+  ];
+  for (const { label, decks } of groups) {
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const deck of decks) {
+      const option = document.createElement("option");
+      option.value = deck.id;
+      option.textContent = `${deckLabel(deck)} · ${deck.hebrew}`;
+      group.appendChild(option);
+    }
+    deckSelect.appendChild(group);
+  }
 }
 
 // Teacher decks go in their own group at the bottom of the list:
 // my own decks (if I'm logged in), plus the room's deck if the host sent one.
-// (An "optgroup" is a labeled section inside a dropdown list.)
 const customGroup = document.createElement("optgroup");
 customGroup.label = "📚 My decks · הַחֲפִיסוֹת שֶׁלִּי";
 let customGroupKey = "";

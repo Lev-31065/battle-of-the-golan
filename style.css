@@ -442,22 +442,21 @@ button, select, input { touch-action: manipulation; }
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);  /* keeps white text readable over bright grass */
 }
 
-/* ---------- Two languages: English on top, Hebrew underneath ---------- */
+/* ---------- Two languages: HEBREW on top (bigger), English underneath (smaller) ----------
+   (Everywhere except the level list in the lobby, which is one line per level.)
+   The HTML and setBilingual() always put the Hebrew first. */
 .en, .he { display: block; }
 .he {
-  font-size: 0.9em;
+  font-size: 1em;
   unicode-bidi: isolate;       /* keeps Hebrew and English from mixing up their reading direction */
 }
-/* Inline spots (like a label inside a sentence) still stack the two lines. */
+.en { font-size: 0.75em; font-weight: 500; opacity: 0.85; }
 .action-button .en, .action-button .he { margin-top: 0; }
 .action-button .he { font-size: 13px; }
 .action-button .en { font-size: 10px; }
 .action-button .button-label { margin-top: 3px; }
 
-/* ---------- Buttons: HEBREW on top (bigger), English underneath (smaller) ----------
-   In the HTML the English comes first, so we use "flex" boxes, which can reorder things:
-   "order: 1" moves the English to the end. (Anything without an order, like the 🔨 emoji
-   in the action buttons, stays where it is, at the top.) */
+/* Buttons: the two lines sit centered, one above the other. */
 .big-button, .secondary-button, .gender-button, .button-label {
   display: flex;
   flex-direction: column;
@@ -470,8 +469,6 @@ button, select, input { touch-action: manipulation; }
   flex-direction: column;
   align-items: center;
 }
-button .en { order: 1; font-size: 0.72em; font-weight: 500; opacity: 0.85; }
-button .he { font-size: 1em; }
 
 /* ---------- Home screen ---------- */
 /* Masculine / feminine picker: two side-by-side buttons; the picked one is blue. */
@@ -541,6 +538,7 @@ button .he { font-size: 1em; }
 .deck-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .deck-row-count { display: flex; flex-direction: column; flex-shrink: 0; color: #6b7280; font-size: 13px; text-align: right; }
 #deck-editor .text-field { margin-bottom: 10px; }
+.deck-tip { margin: -4px 0 8px; color: #6b7280; font-size: 13px; line-height: 1.4; }
 /* The big words box: you can select text in it, and it's tall enough to see many lines. */
 .deck-words { min-height: 200px; resize: vertical; font-size: 17px; line-height: 1.5; touch-action: manipulation; }
 #deck-editor .big-button { margin-top: 4px; margin-bottom: 10px; }

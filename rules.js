@@ -130,7 +130,8 @@ function nearShop(p, extraReach = 0) {
   return Math.hypot(p.x - shop.x, p.y - (shop.y + 40)) < 110 + extraReach;
 }
 
-// Put English on top and Hebrew underneath, inside any box on the page.
+// Put Hebrew on top (bigger) and English underneath (smaller), inside any box on the page.
+// (Hebrew first, so players read the Hebrew before they reach for the English.)
 //     setBilingual(someElement, "Shop", "חנות");
 // Uses textContent (never innerHTML), so player names can't break the page.
 // If the box already shows these exact words, it does nothing (cheap to call every frame).
@@ -139,10 +140,6 @@ function setBilingual(element, english, hebrew) {
   if (element.dataset.bi === key) return;
   element.dataset.bi = key;
   element.textContent = "";
-  const en = document.createElement("span");
-  en.className = "en";
-  en.textContent = english;
-  element.appendChild(en);
   if (hebrew) {
     const he = document.createElement("span");
     he.className = "he";
@@ -151,6 +148,10 @@ function setBilingual(element, english, hebrew) {
     he.textContent = hebrew;
     element.appendChild(he);
   }
+  const en = document.createElement("span");
+  en.className = "en";
+  en.textContent = english;
+  element.appendChild(en);
 }
 
 // Keep a position inside the map.

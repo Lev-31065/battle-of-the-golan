@@ -35,8 +35,8 @@
     <div id="weapon-chip" class="chip"></div>
     <div id="carry-chip" class="chip carry-chip" hidden></div>
     <div id="boost-chip" class="chip boost-chip" hidden></div>
-    <div id="water-chip" class="chip water-chip" hidden><span class="en">🌊 In the river — very slow!</span><span class="he" lang="he" dir="rtl">בַּנָּהָר — אִטִּי מְאֹד!</span></div>
-    <div id="bush-chip" class="chip bush-chip" hidden><span class="en">🌿 In a bush — slow!</span><span class="he" lang="he" dir="rtl">בַּשִּׂיחַ — אִטִּי!</span></div>
+    <div id="water-chip" class="chip water-chip" hidden><span class="he" lang="he" dir="rtl">בַּנָּהָר — אִטִּי מְאֹד!</span><span class="en">🌊 In the river — very slow!</span></div>
+    <div id="bush-chip" class="chip bush-chip" hidden><span class="he" lang="he" dir="rtl">בַּשִּׂיחַ — אִטִּי!</span><span class="en">🌿 In a bush — slow!</span></div>
   </div>
 
   <!-- Sound on/off. Sits under the minimap in the top-right corner. -->
@@ -70,62 +70,62 @@
 
   <!-- Action buttons on the right. Each one only appears when you can use it. -->
   <div class="actions">
-    <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="en">Shop</span><span class="he" lang="he" dir="rtl">חֲנוּת</span></button>
+    <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="he" lang="he" dir="rtl">חֲנוּת</span><span class="en">Shop</span></button>
     <button id="flag-button" class="action-button flag" type="button" hidden>🚩<span id="flag-button-label" class="button-label"></span></button>
-    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span class="en">Hit</span><span class="he" lang="he" dir="rtl">לְהַכּוֹת</span></button>
+    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span class="he" lang="he" dir="rtl">לְהַכּוֹת</span><span class="en">Hit</span></button>
   </div>
 
   <!--
     A note on the two languages: every English text has its Hebrew right under it, like this:
-      <span class="en">English</span><span class="he" lang="he" dir="rtl">עברית</span>
+      <span class="he" lang="he" dir="rtl">עברית</span><span class="en">English</span>
     (lang="he" tells the phone it's Hebrew; dir="rtl" means it reads right-to-left.)
   -->
 
   <!-- ===== HOME SCREEN: the first thing you see ===== -->
   <div id="home" class="screen">
     <div class="panel home-panel welcome-panel">
-      <h1><span class="en">⚔️ Battle of the Golan</span><span class="he" lang="he" dir="rtl">הַקְּרָב עַל הַגּוֹלָן</span></h1>
-      <p class="panel-sub"><span class="en">Capture the flag — and learn Hebrew while you do it!</span><span class="he" lang="he" dir="rtl">תּוֹפְסִים אֶת הַדֶּגֶל וְלוֹמְדִים עִבְרִית בַּדֶּרֶךְ!</span></p>
+      <h1><span class="he" lang="he" dir="rtl">הַקְּרָב עַל הַגּוֹלָן</span><span class="en">⚔️ Battle of the Golan</span></h1>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">תּוֹפְסִים אֶת הַדֶּגֶל וְלוֹמְדִים עִבְרִית בַּדֶּרֶךְ!</span><span class="en">Capture the flag — and learn Hebrew while you do it!</span></p>
       <!-- Masculine or feminine: which version of "I" and "we" sentences you get (words.js). -->
       <div class="gender-picker">
-        <p class="field-label"><span class="en">When a question says "I" or "we", use:</span><span class="he" lang="he" dir="rtl">כְּשֶׁהַשְּׁאֵלָה אוֹמֶרֶת ״אֲנִי״ אוֹ ״אֲנַחְנוּ״:</span></p>
+        <p class="field-label"><span class="he" lang="he" dir="rtl">כְּשֶׁהַשְּׁאֵלָה אוֹמֶרֶת ״אֲנִי״ אוֹ ״אֲנַחְנוּ״:</span><span class="en">When a question says "I" or "we", use:</span></p>
         <div class="gender-row">
-          <button id="gender-m" class="gender-button" type="button"><span class="en">Masculine</span><span class="he" lang="he" dir="rtl">לְשׁוֹן זָכָר · אֲנִי רוֹצֶה</span></button>
-          <button id="gender-f" class="gender-button" type="button"><span class="en">Feminine</span><span class="he" lang="he" dir="rtl">לְשׁוֹן נְקֵבָה · אֲנִי רוֹצָה</span></button>
+          <button id="gender-m" class="gender-button" type="button"><span class="he" lang="he" dir="rtl">לְשׁוֹן זָכָר · אֲנִי רוֹצֶה</span><span class="en">Masculine</span></button>
+          <button id="gender-f" class="gender-button" type="button"><span class="he" lang="he" dir="rtl">לְשׁוֹן נְקֵבָה · אֲנִי רוֹצָה</span><span class="en">Feminine</span></button>
         </div>
       </div>
-      <button id="play-game-button" class="big-button play-game-button" type="button"><span class="en">▶ Play Game</span><span class="he" lang="he" dir="rtl">לְשַׂחֵק</span></button>
+      <button id="play-game-button" class="big-button play-game-button" type="button"><span class="he" lang="he" dir="rtl">לְשַׂחֵק</span><span class="en">▶ Play Game</span></button>
       <!-- Logging in is optional (account.js). It saves your progress to your account. -->
-      <button id="login-button" class="secondary-button" type="button"><span class="en">🔑 Log in or sign up</span><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span></button>
+      <button id="login-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span><span class="en">🔑 Log in or sign up</span></button>
       <div id="account-box" class="account-box" hidden>
         <p id="account-email" class="account-email"></p>
         <!-- Teachers (or anyone) can make their own word lists here (decks.js). -->
-        <button id="my-decks-button" class="secondary-button" type="button"><span class="en">📚 My decks</span><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span></button>
-        <button id="logout-button" class="link-button" type="button"><span class="en">Log out</span><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span></button>
-        <button id="delete-account-button" class="link-button danger-link" type="button"><span class="en">Delete my account</span><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span></button>
+        <button id="my-decks-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></button>
+        <button id="logout-button" class="link-button" type="button"><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span><span class="en">Log out</span></button>
+        <button id="delete-account-button" class="link-button danger-link" type="button"><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span><span class="en">Delete my account</span></button>
       </div>
       <p id="progress-summary" class="progress-summary"></p>
-      <a class="privacy-link" href="privacy.html"><span class="en">Privacy</span><span class="he" lang="he" dir="rtl">פְּרָטִיּוּת</span></a>
+      <a class="privacy-link" href="privacy.html"><span class="he" lang="he" dir="rtl">פְּרָטִיּוּת</span><span class="en">Privacy</span></a>
     </div>
   </div>
 
   <!-- ===== ACCOUNT SCREEN: log in or create an account (account.js controls it) ===== -->
   <div id="account" class="screen" hidden>
     <div class="panel home-panel">
-      <button id="account-back" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
+      <button id="account-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
       <h2 id="account-title"></h2>
-      <label class="field-label" for="email-input"><span class="en">Email</span><span class="he" lang="he" dir="rtl">אִימֵייל</span></label>
+      <label class="field-label" for="email-input"><span class="he" lang="he" dir="rtl">אִימֵייל</span><span class="en">Email</span></label>
       <input id="email-input" class="text-field" type="email" autocomplete="email" inputmode="email" placeholder="name@example.com">
-      <label class="field-label" for="password-input"><span class="en">Password</span><span class="he" lang="he" dir="rtl">סִיסְמָה</span></label>
+      <label class="field-label" for="password-input"><span class="he" lang="he" dir="rtl">סִיסְמָה</span><span class="en">Password</span></label>
       <input id="password-input" class="text-field" type="password" autocomplete="current-password">
       <label id="age-row" class="check-row" hidden>
         <input id="age-check" type="checkbox">
-        <span><span class="en">I'm 13 or older</span><span class="he" lang="he" dir="rtl">אֲנִי בֶּן/בַּת 13 וָמַעְלָה</span></span>
+        <span><span class="he" lang="he" dir="rtl">אֲנִי בֶּן/בַּת 13 וָמַעְלָה</span><span class="en">I'm 13 or older</span></span>
       </label>
       <!-- Opens in a new tab, so whatever was typed in the form isn't lost. -->
-      <a id="signup-privacy" class="privacy-link" href="privacy.html" target="_blank" rel="noopener" hidden><span class="en">What we save (privacy)</span><span class="he" lang="he" dir="rtl">מָה אֲנַחְנוּ שׁוֹמְרִים (פְּרָטִיּוּת)</span></a>
+      <a id="signup-privacy" class="privacy-link" href="privacy.html" target="_blank" rel="noopener" hidden><span class="he" lang="he" dir="rtl">מָה אֲנַחְנוּ שׁוֹמְרִים (פְּרָטִיּוּת)</span><span class="en">What we save (privacy)</span></a>
       <button id="account-submit" class="big-button" type="button"></button>
-      <button id="link-button" class="secondary-button code-button" type="button"><span class="en">✉️ No password? Email me a sign-in link</span><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קִשּׁוּר בָּאִימֵייל</span></button>
+      <button id="link-button" class="secondary-button code-button" type="button"><span class="he" lang="he" dir="rtl">בְּלִי סִיסְמָה? שׁוֹלְחִים לִי קִשּׁוּר בָּאִימֵייל</span><span class="en">✉️ No password? Email me a sign-in link</span></button>
       <p id="account-message" class="home-message"></p>
       <button id="mode-switch" class="link-button" type="button"></button>
     </div>
@@ -134,28 +134,30 @@
   <!-- ===== MY DECKS: make your own word lists (decks.js controls it) ===== -->
   <div id="decks" class="screen" hidden>
     <div class="panel home-panel decks-panel">
-      <button id="decks-back" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
+      <button id="decks-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
 
       <!-- The list of my decks -->
       <div id="decks-list-view">
-        <h2><span class="en">📚 My decks</span><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span></h2>
-        <p class="panel-sub"><span class="en">Make your own word lists. When you create a room, pick one in the lobby and everyone plays with your words.</span><span class="he" lang="he" dir="rtl">יוֹצְרִים רְשִׁימוֹת מִלִּים מִשֶּׁלָּכֶם. כְּשֶׁפּוֹתְחִים חֶדֶר, בּוֹחֲרִים אַחַת מֵהֶן, וְכֻלָּם מְשַׂחֲקִים עִם הַמִּלִּים שֶׁלָּכֶם.</span></p>
+        <h2><span class="he" lang="he" dir="rtl">הַחֲפִיסוֹת שֶׁלִּי</span><span class="en">📚 My decks</span></h2>
+        <p class="panel-sub"><span class="he" lang="he" dir="rtl">יוֹצְרִים רְשִׁימוֹת מִלִּים מִשֶּׁלָּכֶם. כְּשֶׁפּוֹתְחִים חֶדֶר, בּוֹחֲרִים אַחַת מֵהֶן, וְכֻלָּם מְשַׂחֲקִים עִם הַמִּלִּים שֶׁלָּכֶם.</span><span class="en">Make your own word lists. When you create a room, pick one in the lobby and everyone plays with your words.</span></p>
         <div id="decks-list" class="decks-list"></div>
         <p id="decks-status" class="deck-progress"></p>
-        <button id="new-deck-button" class="big-button" type="button"><span class="en">➕ New deck</span><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span></button>
+        <button id="new-deck-button" class="big-button" type="button"><span class="he" lang="he" dir="rtl">חֲפִיסָה חֲדָשָׁה</span><span class="en">➕ New deck</span></button>
       </div>
 
       <!-- Making or changing one deck -->
       <div id="deck-editor" hidden>
         <h2 id="deck-editor-title"></h2>
-        <label class="field-label" for="deck-name"><span class="en">Deck name</span><span class="he" lang="he" dir="rtl">שֵׁם הַחֲפִיסָה</span></label>
-        <input id="deck-name" class="text-field" maxlength="80" autocomplete="off" placeholder="e.g. Animals · לְמָשָׁל חַיּוֹת">
-        <label class="field-label" for="deck-words"><span class="en">Words: one per line, English = Hebrew</span><span class="he" lang="he" dir="rtl">מִלִּים: אַחַת בְּכָל שׁוּרָה, אַנְגְּלִית = עִבְרִית</span></label>
-        <textarea id="deck-words" class="text-field deck-words" rows="10" autocomplete="off" spellcheck="false" placeholder="dog = כֶּלֶב&#10;cat = חָתוּל&#10;I eat = אֲנִי אוֹכֵל"></textarea>
+        <label class="field-label" for="deck-name"><span class="he" lang="he" dir="rtl">שֵׁם הַחֲפִיסָה</span><span class="en">Deck name</span></label>
+        <input id="deck-name" class="text-field" dir="auto" maxlength="80" autocomplete="off" placeholder="לְמָשָׁל: חַיּוֹת · e.g. Animals">
+        <label class="field-label" for="deck-words"><span class="he" lang="he" dir="rtl">מִלִּים: אַחַת בְּכָל שׁוּרָה, עִבְרִית = אַנְגְּלִית</span><span class="en">Words: one per line, Hebrew = English</span></label>
+        <!-- dir="rtl": written for Hebrew-speaking teachers, so lines start on the right with the Hebrew. -->
+        <textarea id="deck-words" class="text-field deck-words" dir="rtl" rows="10" autocomplete="off" spellcheck="false" placeholder="כֶּלֶב = dog&#10;חָתוּל = cat&#10;אֲנִי אוֹכֵל = I eat"></textarea>
+        <p class="deck-tip"><span class="he" lang="he" dir="rtl">טִיפּ: אֶפְשָׁר לְהַדְבִּיק שְׁתֵּי עַמּוּדוֹת מֵאֶקְסֶל אוֹ מִגּוּגֶל שִׁיטְס. נִקּוּד לֹא חוֹבָה. כְּדַאי לְהוֹסִיף מִשְׁפָּטִים קְצָרִים, לֹא רַק מִלִּים.</span><span class="en">Tip: you can paste two columns from Excel or Google Sheets. Nikud is optional. Short sentences work too, not just words.</span></p>
         <p id="deck-count" class="deck-progress"></p>
         <p id="deck-message" class="home-message"></p>
-        <button id="deck-save" class="big-button" type="button"><span class="en">💾 Save</span><span class="he" lang="he" dir="rtl">שְׁמִירָה</span></button>
-        <button id="deck-cancel" class="secondary-button" type="button"><span class="en">Cancel</span><span class="he" lang="he" dir="rtl">בִּטּוּל</span></button>
+        <button id="deck-save" class="big-button" type="button"><span class="he" lang="he" dir="rtl">שְׁמִירָה</span><span class="en">💾 Save</span></button>
+        <button id="deck-cancel" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">בִּטּוּל</span><span class="en">Cancel</span></button>
         <button id="deck-delete" class="link-button danger-link" type="button"></button>
       </div>
     </div>
@@ -164,14 +166,14 @@
   <!-- ===== PLAY SCREEN: type a nickname, then create or join a room ===== -->
   <div id="play" class="screen" hidden>
     <div class="panel home-panel">
-      <button id="back-button" class="back-button" type="button"><span class="en">← Back</span><span class="he" lang="he" dir="rtl">חֲזָרָה</span></button>
-      <label class="field-label" for="name-input"><span class="en">Your nickname</span><span class="he" lang="he" dir="rtl">כִּנּוּי</span></label>
-      <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="e.g. Dani · לְמָשָׁל דָּנִי">
-      <button id="create-button" class="big-button" type="button"><span class="en">Create a room</span><span class="he" lang="he" dir="rtl">פְּתִיחַת חֶדֶר</span></button>
-      <div class="or-line"><span><span class="en">or join a friend's room</span><span class="he" lang="he" dir="rtl">אוֹ הִצְטָרְפוּת לְחֶדֶר שֶׁל חָבֵר</span></span></div>
+      <button id="back-button" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
+      <label class="field-label" for="name-input"><span class="he" lang="he" dir="rtl">כִּנּוּי</span><span class="en">Your nickname</span></label>
+      <input id="name-input" class="text-field" maxlength="12" autocomplete="off" placeholder="לְמָשָׁל: דָּנִי · e.g. Dani">
+      <button id="create-button" class="big-button" type="button"><span class="he" lang="he" dir="rtl">פְּתִיחַת חֶדֶר</span><span class="en">Create a room</span></button>
+      <div class="or-line"><span><span class="he" lang="he" dir="rtl">אוֹ הִצְטָרְפוּת לְחֶדֶר שֶׁל חָבֵר</span><span class="en">or join a friend's room</span></span></div>
       <div class="join-row">
         <input id="code-input" class="text-field code-field" maxlength="4" autocomplete="off" placeholder="CODE" aria-label="Room code">
-        <button id="join-button" class="big-button join-button" type="button"><span class="en">Join</span><span class="he" lang="he" dir="rtl">הִצְטָרְפוּת</span></button>
+        <button id="join-button" class="big-button join-button" type="button"><span class="he" lang="he" dir="rtl">הִצְטָרְפוּת</span><span class="en">Join</span></button>
       </div>
       <p id="home-message" class="home-message"></p>
     </div>
@@ -181,31 +183,31 @@
   <div id="lobby" class="screen" hidden>
     <div class="panel lobby-panel">
       <!-- Leave the room and go back to the first screen. (If the host leaves, the room closes for everyone.) -->
-      <button id="lobby-home" class="back-button" type="button"><span class="en">🏠 Home</span><span class="he" lang="he" dir="rtl">לַמָּסָךְ הָרִאשִׁי</span></button>
-      <p class="panel-sub"><span class="en">Room code — friends type this on their phones</span><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span></p>
+      <button id="lobby-home" class="back-button" type="button"><span class="he" lang="he" dir="rtl">לַמָּסָךְ הָרִאשִׁי</span><span class="en">🏠 Home</span></button>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span><span class="en">Room code — friends type this on their phones</span></p>
       <p id="lobby-code" class="room-code">----</p>
-      <button id="invite-button" class="secondary-button" type="button"><span class="en">📋 Share invite link</span><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span></button>
+      <button id="invite-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span><span class="en">📋 Share invite link</span></button>
       <div class="teams">
-        <div class="team team-blue"><h3><span class="en">🔵 Blue</span><span class="he" lang="he" dir="rtl">כָּחֹל</span></h3><ul id="blue-list"></ul></div>
-        <div class="team team-red"><h3><span class="en">🔴 Red</span><span class="he" lang="he" dir="rtl">אָדֹם</span></h3><ul id="red-list"></ul></div>
+        <div class="team team-blue"><h3><span class="he" lang="he" dir="rtl">כָּחֹל</span><span class="en">🔵 Blue</span></h3><ul id="blue-list"></ul></div>
+        <div class="team team-red"><h3><span class="he" lang="he" dir="rtl">אָדֹם</span><span class="en">🔴 Red</span></h3><ul id="red-list"></ul></div>
       </div>
       <!-- Which words to play with. Only the host can change it. -->
       <div class="deck-picker">
-        <label class="field-label" for="deck-select"><span class="en">📚 Words for this game</span><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span></label>
+        <label class="field-label" for="deck-select"><span class="he" lang="he" dir="rtl">הַמִּלִּים בַּמִּשְׂחָק</span><span class="en">📚 Words for this game</span></label>
         <select id="deck-select" class="text-field deck-select"></select>
         <p id="deck-progress" class="deck-progress"></p>
       </div>
-      <button id="switch-team" class="secondary-button" type="button"><span class="en">⇄ Switch team</span><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span></button>
-      <button id="start-button" class="big-button" type="button" hidden><span class="en">Start the battle!</span><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span></button>
-      <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="en">Waiting for the host to start…</span><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל…</span></p>
+      <button id="switch-team" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
+      <button id="start-button" class="big-button" type="button" hidden><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span><span class="en">Start the battle!</span></button>
+      <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל…</span><span class="en">Waiting for the host to start…</span></p>
       <details class="how-to">
-        <summary><span class="en">How to play</span><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span></summary>
-        <p><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span></p>
-        <p><span class="en">🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</span><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלָה בְּעִבְרִית כְּדֵי לְקַבֵּל <b>פַּטִּישׁ</b>.</span></p>
-        <p><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span><span class="he" lang="he" dir="rtl">עוֹנִים עַל שְׁאֵלָה כְּדֵי <b>לִתְפֹּס אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב</b>, וּמַחֲזִירִים אוֹתוֹ לַבָּסִיס. הַקְּבוּצָה הָרִאשׁוֹנָה שֶׁמַּגִּיעָה לְ־<b>3</b> מְנַצַּחַת!</span></p>
-        <p><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span><span class="he" lang="he" dir="rtl">הִפִּילוּ אֶתְכֶם? הַדֶּגֶל נוֹפֵל, וְחוֹזְרִים לַבָּסִיס בְּלִי כְּלוּם.</span></p>
-        <p><span class="en">🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</span><span class="he" lang="he" dir="rtl">אִי אֶפְשָׁר לַעֲבֹר דֶּרֶךְ סְלָעִים. נִתְקָעִים בְּסֶלַע? עוֹנִים עַל שְׁאֵלָה כְּדֵי לַעֲבֹר.</span></p>
-        <p><span class="en">⚡ Smash the speed box in the middle for a burst of speed.</span><span class="he" lang="he" dir="rtl">שׁוֹבְרִים אֶת קֻפְסַת הַמְּהִירוּת בָּאֶמְצַע וְרָצִים מַהֵר יוֹתֵר.</span></p>
+        <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
+        <p><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span></p>
+        <p><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלָה בְּעִבְרִית כְּדֵי לְקַבֵּל <b>פַּטִּישׁ</b>.</span><span class="en">🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</span></p>
+        <p><span class="he" lang="he" dir="rtl">עוֹנִים עַל שְׁאֵלָה כְּדֵי <b>לִתְפֹּס אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב</b>, וּמַחֲזִירִים אוֹתוֹ לַבָּסִיס. הַקְּבוּצָה הָרִאשׁוֹנָה שֶׁמַּגִּיעָה לְ־<b>3</b> מְנַצַּחַת!</span><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span></p>
+        <p><span class="he" lang="he" dir="rtl">הִפִּילוּ אֶתְכֶם? הַדֶּגֶל נוֹפֵל, וְחוֹזְרִים לַבָּסִיס בְּלִי כְּלוּם.</span><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span></p>
+        <p><span class="he" lang="he" dir="rtl">אִי אֶפְשָׁר לַעֲבֹר דֶּרֶךְ סְלָעִים. נִתְקָעִים בְּסֶלַע? עוֹנִים עַל שְׁאֵלָה כְּדֵי לַעֲבֹר.</span><span class="en">🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</span></p>
+        <p><span class="he" lang="he" dir="rtl">שׁוֹבְרִים אֶת קֻפְסַת הַמְּהִירוּת בָּאֶמְצַע וְרָצִים מַהֵר יוֹתֵר.</span><span class="en">⚡ Smash the speed box in the middle for a burst of speed.</span></p>
       </details>
     </div>
   </div>
@@ -214,11 +216,11 @@
   <div id="shop" class="overlay" hidden>
     <div class="panel">
       <button id="shop-close" class="close-button" type="button" aria-label="Close shop">✕</button>
-      <h2><span class="en">🛒 Shop</span><span class="he" lang="he" dir="rtl">חֲנוּת</span></h2>
-      <p class="panel-sub"><span class="en">Tap a weapon to buy it. You pay by answering a Hebrew question!</span><span class="he" lang="he" dir="rtl">לוֹחֲצִים עַל נֶשֶׁק כְּדֵי לִקְנוֹת אוֹתוֹ. מְשַׁלְּמִים בִּתְשׁוּבָה לִשְׁאֵלָה בְּעִבְרִית!</span></p>
+      <h2><span class="he" lang="he" dir="rtl">חֲנוּת</span><span class="en">🛒 Shop</span></h2>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">לוֹחֲצִים עַל נֶשֶׁק כְּדֵי לִקְנוֹת אוֹתוֹ. מְשַׁלְּמִים בִּתְשׁוּבָה לִשְׁאֵלָה בְּעִבְרִית!</span><span class="en">Tap a weapon to buy it. You pay by answering a Hebrew question!</span></p>
       <button id="buy-hammer" class="shop-item" type="button">
         <span class="shop-icon">🔨</span>
-        <span class="shop-text"><b><span class="en">Hammer</span><span class="he" lang="he" dir="rtl">פַּטִּישׁ</span></b><small><span class="en">Hits every enemy close to you</span><span class="he" lang="he" dir="rtl">פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב</span></small></span>
+        <span class="shop-text"><b><span class="he" lang="he" dir="rtl">פַּטִּישׁ</span><span class="en">Hammer</span></b><small><span class="he" lang="he" dir="rtl">פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב</span><span class="en">Hits every enemy close to you</span></small></span>
         <span id="hammer-status" class="shop-price"></span>
       </button>
     </div>
@@ -227,21 +229,21 @@
   <!-- "Are you sure you want to leave?" popup (game.js controls it) -->
   <div id="leave-confirm" class="overlay" hidden>
     <div class="panel leave-panel">
-      <h2><span class="en">🚪 Leave the game?</span><span class="he" lang="he" dir="rtl">לָצֵאת מֵהַמִּשְׂחָק?</span></h2>
+      <h2><span class="he" lang="he" dir="rtl">לָצֵאת מֵהַמִּשְׂחָק?</span><span class="en">🚪 Leave the game?</span></h2>
       <p id="leave-note" class="panel-sub"></p>
-      <button id="leave-yes" class="big-button leave-yes" type="button"><span class="en">Yes, leave</span><span class="he" lang="he" dir="rtl">כֵּן, לָצֵאת</span></button>
-      <button id="leave-no" class="secondary-button leave-no" type="button"><span class="en">No, stay</span><span class="he" lang="he" dir="rtl">לֹא, נִשְׁאָרִים</span></button>
+      <button id="leave-yes" class="big-button leave-yes" type="button"><span class="he" lang="he" dir="rtl">כֵּן, לָצֵאת</span><span class="en">Yes, leave</span></button>
+      <button id="leave-no" class="secondary-button leave-no" type="button"><span class="he" lang="he" dir="rtl">לֹא, נִשְׁאָרִים</span><span class="en">No, stay</span></button>
     </div>
   </div>
 
   <!-- "Delete your account?" popup (account.js controls it) -->
   <div id="delete-confirm" class="overlay" hidden>
     <div class="panel leave-panel">
-      <h2><span class="en">🗑️ Delete your account?</span><span class="he" lang="he" dir="rtl">לִמְחֹק אֶת הַחֶשְׁבּוֹן?</span></h2>
-      <p class="panel-sub"><span class="en">This deletes your login, your saved progress and your decks. It can't be undone.</span><span class="he" lang="he" dir="rtl">זֶה מוֹחֵק אֶת הַחֶשְׁבּוֹן, אֶת הַהִתְקַדְּמוּת הַשְּׁמוּרָה וְאֶת הַחֲפִיסוֹת. אִי אֶפְשָׁר לְבַטֵּל אֶת זֶה.</span></p>
+      <h2><span class="he" lang="he" dir="rtl">לִמְחֹק אֶת הַחֶשְׁבּוֹן?</span><span class="en">🗑️ Delete your account?</span></h2>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">זֶה מוֹחֵק אֶת הַחֶשְׁבּוֹן, אֶת הַהִתְקַדְּמוּת הַשְּׁמוּרָה וְאֶת הַחֲפִיסוֹת. אִי אֶפְשָׁר לְבַטֵּל אֶת זֶה.</span><span class="en">This deletes your login, your saved progress and your decks. It can't be undone.</span></p>
       <p id="delete-message" class="home-message"></p>
-      <button id="delete-yes" class="big-button leave-yes" type="button"><span class="en">Yes, delete it</span><span class="he" lang="he" dir="rtl">כֵּן, לִמְחֹק</span></button>
-      <button id="delete-no" class="secondary-button leave-no" type="button"><span class="en">No, keep it</span><span class="he" lang="he" dir="rtl">לֹא, לְהַשְׁאִיר</span></button>
+      <button id="delete-yes" class="big-button leave-yes" type="button"><span class="he" lang="he" dir="rtl">כֵּן, לִמְחֹק</span><span class="en">Yes, delete it</span></button>
+      <button id="delete-no" class="secondary-button leave-no" type="button"><span class="he" lang="he" dir="rtl">לֹא, לְהַשְׁאִיר</span><span class="en">No, keep it</span></button>
     </div>
   </div>
 
@@ -250,7 +252,7 @@
     <div class="panel quiz-panel">
       <button id="quiz-close" class="close-button" type="button" aria-label="Close question">✕</button>
       <p id="quiz-title" class="quiz-title"></p>
-      <p class="quiz-ask"><span class="en">How do you say this in Hebrew?</span><span class="he" lang="he" dir="rtl">אֵיךְ אוֹמְרִים אֶת זֶה בְּעִבְרִית?</span></p>
+      <p class="quiz-ask"><span class="he" lang="he" dir="rtl">אֵיךְ אוֹמְרִים אֶת זֶה בְּעִבְרִית?</span><span class="en">How do you say this in Hebrew?</span></p>
       <!-- The English word being asked. (No Hebrew under this one — that would give away the answer!) -->
       <p id="quiz-prompt" class="quiz-prompt"></p>
       <!-- A helper under the English, like the infinitive: (לֶאֱכֹל) -->
@@ -268,14 +270,14 @@
       <h2 id="winner-title"></h2>
       <p id="winner-score" class="panel-sub"></p>
       <!-- After a few seconds, everyone goes back to the teams screen by themselves (server.js). -->
-      <p class="panel-sub"><span class="en">Back to the teams in a moment…</span><span class="he" lang="he" dir="rtl">עוֹד רֶגַע חוֹזְרִים לַקְּבוּצוֹת…</span></p>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">עוֹד רֶגַע חוֹזְרִים לַקְּבוּצוֹת…</span><span class="en">Back to the teams in a moment…</span></p>
     </div>
   </div>
 
   <!-- The word card at the very top: English with the Hebrew underneath, shown while it's read out loud -->
   <div id="word-card" class="word-card" hidden>
-    <span id="word-card-english" class="word-card-english"></span>
     <span id="word-card-hebrew" class="word-card-hebrew" lang="he" dir="rtl"></span>
+    <span id="word-card-english" class="word-card-english"></span>
   </div>
 
   <!-- A short message that pops up at the bottom and fades away -->
