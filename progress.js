@@ -201,6 +201,8 @@ function autoState() {
 }
 
 // Your Auto level's deck id, like "level-4" (level 4A) or "review-6" (level 6B).
+// (From level 11 on, the id's number is one less than the level shown, e.g. "level-11" = 12A,
+//  because the object-pronoun level was added later as level 11.)
 function autoDeckId() {
   return autoState().deckId;
 }

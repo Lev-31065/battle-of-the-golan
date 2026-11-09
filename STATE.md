@@ -58,4 +58,6 @@
   - For a test page, copy `index.html` with a `<base href="file:///…/battle-of-the-golan/">` and an extra `<script>` at the end, run it with `--dump-dom`, and capture the output directly. `Start-Process` redirection came back empty.
   - Git Bash garbles Hebrew in command lines (curl showed "???"). Use PowerShell for anything with Hebrew text.
   - Use `--enable-logging=stderr` to see real errors.
+  - Add `--user-data-dir=<scratchpad>\edgeprofile` and pipe to `Out-String`. Without its own profile, headless Edge hands off to the Edge that's already open and prints nothing.
+  - Level ids ≠ level numbers from 11 on (`level-object-pronouns` = 11A, `level-11` = 12A …). Ids never change, so saved Auto levels stay put. Add new levels with a name-style id.
   - Use `-Infinity` (not 0) for "never happened" timestamps.

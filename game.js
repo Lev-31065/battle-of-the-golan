@@ -553,8 +553,8 @@ function pickerValue() {
   return client.roomIsClass ? roomDeckId : myLevelChoice();
 }
 
-// Fill the list: Auto first, then the premade decks (class games only), then every
-// level and review level, then "My decks" (class games only).
+// Fill the list: Auto first, then "My decks" and the premade decks (class games only),
+// then every level and review level.
 // (An "optgroup" is a labeled section inside a dropdown list.)
 function makeDeckGroup(label, decks) {
   const group = document.createElement("optgroup");
@@ -581,7 +581,7 @@ function showPremadeDecks(show) {
   if (!show && premadeGroup.parentNode) premadeGroup.remove();
 }
 
-// Teacher decks go in their own group at the bottom of the list (class games only):
+// Teacher decks go in their own group right under Auto (class games only):
 // my own decks (if I'm logged in), plus the room's deck if the host sent one.
 const customGroup = document.createElement("optgroup");
 customGroup.label = "📚 My decks · הַחֲפִיסוֹת שֶׁלִּי";
@@ -602,7 +602,8 @@ function refreshDeckOptions() {
     option.textContent = `${deckLabel(deck)} (${deck.words.length})`; // textContent: deck names are typed by people
     customGroup.appendChild(option);
   }
-  if (decks.length > 0 && !customGroup.parentNode) deckSelect.appendChild(customGroup);
+  // Right under Auto, so a teacher sees their own decks first.
+  if (decks.length > 0 && !customGroup.parentNode) autoOption.after(customGroup);
   if (decks.length === 0 && customGroup.parentNode) customGroup.remove();
   if (roomDeckId) deckSelect.value = pickerValue();
 }

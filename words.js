@@ -274,12 +274,40 @@ const LEVELS = [
         f: { hebrew: "אֲנִי שׁוֹמַעַת אֶת הַמּוּזִיקָה", wrong: ["אֲנִי שׁוֹמַעַת הַמּוּזִיקָה", "אֲנִי שׁוֹמֵעַ אֶת הַמּוּזִיקָה", "אֲנִי שׁוֹמַעַת אֶת מוּזִיקָה"] } },
       { english: "the teacher (m.) writes the word", hint: "לִכְתֹּב", hebrew: "הַמּוֹרֶה כּוֹתֵב אֶת הַמִּלָּה", wrong: ["הַמּוֹרֶה כּוֹתֵב הַמִּלָּה", "הַמּוֹרֶה כּוֹתֵב אֶת מִלָּה", "הַמּוֹרֶה כּוֹתֶבֶת אֶת הַמִּלָּה"] },
       { english: "he knows the answer", hint: "לָדַעַת", hebrew: "הוּא יוֹדֵעַ אֶת הַתְּשׁוּבָה", wrong: ["הוּא יוֹדֵעַ הַתְּשׁוּבָה", "הוּא יוֹדֵעַ אֶת תְּשׁוּבָה", "הוּא יוֹדַעַת אֶת הַתְּשׁוּבָה"] },
-      // אֶת + him/her/them becomes one word: אוֹתוֹ (him), אוֹתָהּ (her), אוֹתָם (them, m.), אוֹתָן (them, f.)
+      { english: "you all (f.) open the window", hint: "לִפְתֹּחַ", hebrew: "אַתֶּן פּוֹתְחוֹת אֶת הַחַלּוֹן", wrong: ["אַתֶּן פּוֹתְחוֹת הַחַלּוֹן", "אַתֶּם פּוֹתְחִים אֶת הַחַלּוֹן", "אַתֶּן פּוֹתְחוֹת אֶת חַלּוֹן"] },
+    ],
+  },
+  {
+    // Level 11: אֶת + a pronoun becomes ONE word: "he sees ME" = הוּא רוֹאֶה אוֹתִי (not "הוּא רוֹאֶה אֲנִי").
+    // (Its id isn't "level-11": ids never change, so saved Auto levels and picks keep pointing
+    //  at the same words. The level NUMBER shown to players comes from the order in this list.)
+    id: "level-object-pronouns", english: "Object pronouns: me, him, her (אוֹתִי, אוֹתוֹ, אוֹתָהּ)", hebrew: "אֶת + כִּנּוּי: אוֹתִי, אוֹתוֹ, אוֹתָהּ",
+    words: [
+      { english: "me", hint: "אֶת + אֲנִי", hebrew: "אוֹתִי", wrong: ["אוֹתוֹ", "אוֹתָנוּ", "אֲנִי"] },
+      { english: "you (m.)", hint: "אֶת + אַתָּה", hebrew: "אוֹתְךָ", wrong: ["אוֹתָךְ", "אַתָּה", "אֶתְכֶם"] },
+      { english: "you (f.)", hint: "אֶת + אַתְּ", hebrew: "אוֹתָךְ", wrong: ["אוֹתְךָ", "אַתְּ", "אֶתְכֶן"] },
+      { english: "him", hint: "אֶת + הוּא", hebrew: "אוֹתוֹ", wrong: ["אוֹתָהּ", "הוּא", "אוֹתָם"] },
+      { english: "her", hint: "אֶת + הִיא", hebrew: "אוֹתָהּ", wrong: ["אוֹתוֹ", "הִיא", "אוֹתָן"] },
+      { english: "us", hint: "אֶת + אֲנַחְנוּ", hebrew: "אוֹתָנוּ", wrong: ["אוֹתִי", "אֲנַחְנוּ", "אוֹתָם"] },
+      { english: "you all (m.)", hint: "אֶת + אַתֶּם", hebrew: "אֶתְכֶם", wrong: ["אֶתְכֶן", "אַתֶּם", "אוֹתָם"] },
+      { english: "you all (f.)", hint: "אֶת + אַתֶּן", hebrew: "אֶתְכֶן", wrong: ["אֶתְכֶם", "אַתֶּן", "אוֹתָן"] },
+      { english: "them (m.)", hint: "אֶת + הֵם", hebrew: "אוֹתָם", wrong: ["אוֹתָן", "הֵם", "אוֹתוֹ"] },
+      { english: "them (f.)", hint: "אֶת + הֵן", hebrew: "אוֹתָן", wrong: ["אוֹתָם", "הֵן", "אוֹתָהּ"] },
+      { english: "he knows me", hint: "לְהַכִּיר", hebrew: "הוּא מַכִּיר אוֹתִי", wrong: ["הוּא מַכִּיר אֲנִי", "הוּא מַכִּיר אוֹתוֹ", "הוּא מַכִּירָה אוֹתִי"] },
+      { english: "I see you (m.)", hint: "לִרְאוֹת", hebrew: "אֲנִי רוֹאֶה אוֹתְךָ", wrong: ["אֲנִי רוֹאֶה אַתָּה", "אֲנִי רוֹאֶה אוֹתָךְ", "אֲנִי רוֹאָה אוֹתְךָ"],
+        f: { hebrew: "אֲנִי רוֹאָה אוֹתְךָ", wrong: ["אֲנִי רוֹאָה אַתָּה", "אֲנִי רוֹאָה אוֹתָךְ", "אֲנִי רוֹאֶה אוֹתְךָ"] } },
+      { english: "I love you (f.)", hint: "לֶאֱהֹב", hebrew: "אֲנִי אוֹהֵב אוֹתָךְ", wrong: ["אֲנִי אוֹהֵב אַתְּ", "אֲנִי אוֹהֵב אוֹתְךָ", "אֲנִי אוֹהֶבֶת אוֹתָךְ"],
+        f: { hebrew: "אֲנִי אוֹהֶבֶת אוֹתָךְ", wrong: ["אֲנִי אוֹהֶבֶת אַתְּ", "אֲנִי אוֹהֶבֶת אוֹתְךָ", "אֲנִי אוֹהֵב אוֹתָךְ"] } },
+      { english: "she loves him", hint: "לֶאֱהֹב", hebrew: "הִיא אוֹהֶבֶת אוֹתוֹ", wrong: ["הִיא אוֹהֶבֶת הוּא", "הִיא אוֹהֶבֶת אוֹתָהּ", "הִיא אוֹהֶבֶת אֶת הוּא"] },
+      { english: "they (m.) like her", hint: "לֶאֱהֹב", hebrew: "הֵם אוֹהֲבִים אוֹתָהּ", wrong: ["הֵם אוֹהֲבִים הִיא", "הֵם אוֹהֲבִים אוֹתוֹ", "הֵם אוֹהֲבִים אֶת הִיא"] },
+      { english: "the teacher asks us", hint: "לִשְׁאֹל", hebrew: "הַמּוֹרֶה שׁוֹאֵל אוֹתָנוּ", wrong: ["הַמּוֹרֶה שׁוֹאֵל אֲנַחְנוּ", "הַמּוֹרֶה שׁוֹאֵל אוֹתָם", "הַמּוֹרֶה שׁוֹאֵל אוֹתִי"] },
+      { english: "we invite you all (m.)", hint: "לְהַזְמִין", hebrew: "אֲנַחְנוּ מַזְמִינִים אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינִים אַתֶּם", "אֲנַחְנוּ מַזְמִינִים אוֹתָם", "אֲנַחְנוּ מַזְמִינִים אֶתְכֶן"],
+        f: { hebrew: "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינוֹת אַתֶּם", "אֲנַחְנוּ מַזְמִינוֹת אוֹתָם", "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶן"] } },
+      { english: "you (f.) understand me", hint: "לְהָבִין", hebrew: "אַתְּ מְבִינָה אוֹתִי", wrong: ["אַתְּ מְבִינָה אֲנִי", "אַתָּה מֵבִין אוֹתִי", "אַתְּ מְבִינָה אוֹתָךְ"] },
       { english: "he sees them (m.)", hint: "לִרְאוֹת", hebrew: "הוּא רוֹאֶה אוֹתָם", wrong: ["הוּא רוֹאֶה אוֹתָן", "הוּא רוֹאֶה אֶת הֵם", "הוּא רוֹאֶה הֵם"] },
       { english: "she knows them (f.)", hint: "לְהַכִּיר", hebrew: "הִיא מַכִּירָה אוֹתָן", wrong: ["הִיא מַכִּירָה אוֹתָם", "הִיא מַכִּירָה אֶת הֵן", "הִיא מַכִּיר אוֹתָן"] },
       { english: "they (f.) hear him", hint: "לִשְׁמֹעַ", hebrew: "הֵן שׁוֹמְעוֹת אוֹתוֹ", wrong: ["הֵן שׁוֹמְעוֹת אוֹתָהּ", "הֵן שׁוֹמְעוֹת אֶת הוּא", "הֵם שׁוֹמְעִים אוֹתוֹ"] },
       { english: "you all (m.) see her", hint: "לִרְאוֹת", hebrew: "אַתֶּם רוֹאִים אוֹתָהּ", wrong: ["אַתֶּם רוֹאִים אוֹתוֹ", "אַתֶּם רוֹאִים אֶת הִיא", "אַתֶּן רוֹאוֹת אוֹתָהּ"] },
-      { english: "you all (f.) open the window", hint: "לִפְתֹּחַ", hebrew: "אַתֶּן פּוֹתְחוֹת אֶת הַחַלּוֹן", wrong: ["אַתֶּן פּוֹתְחוֹת הַחַלּוֹן", "אַתֶּם פּוֹתְחִים אֶת הַחַלּוֹן", "אַתֶּן פּוֹתְחוֹת אֶת חַלּוֹן"] },
     ],
   },
   {
@@ -318,6 +346,10 @@ const LEVELS = [
       { english: "I saw them (m.)", hint: "לִרְאוֹת", hebrew: "רָאִיתִי אוֹתָם", wrong: ["רָאִיתִי אוֹתָן", "רָאִיתִי אֶת הֵם", "רָאִינוּ אוֹתָם"] },
       { english: "you all (m.) heard her", hint: "לִשְׁמֹעַ", hebrew: "שְׁמַעְתֶּם אוֹתָהּ", wrong: ["שְׁמַעְתֶּם אוֹתוֹ", "שְׁמַעְתֶּם אֶת הִיא", "שְׁמַעְתֶּן אוֹתָהּ"] },
       { english: "they (f.) met David", hint: "לִפְגֹּשׁ", hebrew: "הֵן פָּגְשׁוּ אֶת דָּוִד", wrong: ["הֵן פָּגְשׁוּ דָּוִד", "הֵן פָּגְשָׁה אֶת דָּוִד", "הֵן פּוֹגְשׁוֹת אֶת דָּוִד"] },
+      // More object pronouns (review of the object-pronoun level), now in the past:
+      { english: "he saw me", hint: "לִרְאוֹת", hebrew: "הוּא רָאָה אוֹתִי", wrong: ["הוּא רָאָה אֲנִי", "הוּא רָאָה אוֹתוֹ", "הוּא רָאֲתָה אוֹתִי"] },
+      { english: "she invited us", hint: "לְהַזְמִין", hebrew: "הִיא הִזְמִינָה אוֹתָנוּ", wrong: ["הִיא הִזְמִינָה אֲנַחְנוּ", "הִיא הִזְמִין אוֹתָנוּ", "הִיא הִזְמִינָה אוֹתָם"] },
+      { english: "we asked you (f.)", hint: "לִשְׁאֹל", hebrew: "שָׁאַלְנוּ אוֹתָךְ", wrong: ["שָׁאַלְנוּ אַתְּ", "שָׁאַלְנוּ אוֹתְךָ", "שָׁאַלְתִּי אוֹתָךְ"] },
     ],
   },
   {
@@ -355,6 +387,10 @@ const LEVELS = [
       { english: "we will meet them (f.)", hint: "לִפְגֹּשׁ", hebrew: "נִפְגֹּשׁ אוֹתָן", wrong: ["נִפְגֹּשׁ אוֹתָם", "נִפְגֹּשׁ אֶת הֵן", "אֶפְגֹּשׁ אוֹתָן"] },
       { english: "you (f.) will read the letter", hint: "לִקְרֹא", hebrew: "אַתְּ תִּקְרְאִי אֶת הַמִּכְתָּב", wrong: ["אַתְּ תִּקְרְאִי הַמִּכְתָּב", "אַתָּה תִּקְרָא אֶת הַמִּכְתָּב", "אַתְּ קָרָאת אֶת הַמִּכְתָּב"] },
       { english: "you all (m.) will hear him", hint: "לִשְׁמֹעַ", hebrew: "אַתֶּם תִּשְׁמְעוּ אוֹתוֹ", wrong: ["אַתֶּם תִּשְׁמְעוּ אוֹתָהּ", "אַתֶּם שְׁמַעְתֶּם אוֹתוֹ", "אַתֶּם תִּשְׁמְעוּ אֶת הוּא"] },
+      // More object pronouns (review of the object-pronoun level), now in the future:
+      { english: "I will see you (m.) tomorrow", hint: "לִרְאוֹת", hebrew: "אֶרְאֶה אוֹתְךָ מָחָר", wrong: ["אֶרְאֶה אַתָּה מָחָר", "אֶרְאֶה אוֹתָךְ מָחָר", "נִרְאֶה אוֹתְךָ מָחָר"] },
+      { english: "she will invite us", hint: "לְהַזְמִין", hebrew: "הִיא תַּזְמִין אוֹתָנוּ", wrong: ["הִיא תַּזְמִין אֲנַחְנוּ", "הִיא הִזְמִינָה אוֹתָנוּ", "הִיא תַּזְמִין אוֹתָם"] },
+      { english: "they (m.) will ask me", hint: "לִשְׁאֹל", hebrew: "הֵם יִשְׁאֲלוּ אוֹתִי", wrong: ["הֵם יִשְׁאֲלוּ אֲנִי", "הֵם שָׁאֲלוּ אוֹתִי", "הֵם יִשְׁאֲלוּ אוֹתוֹ"] },
     ],
   },
   {
@@ -376,11 +412,13 @@ const LEVELS = [
 
 // ---------- Level names: A and B ----------
 // Every level has an A part (its new words) and, from level 2 on, a B part
-// (review: its words mixed with earlier ones). So the order is 1, 2A, 2B, 3A, 3B ... 15B.
+// (review: its words mixed with earlier ones). So the order is 1, 2A, 2B, 3A, 3B ... 16B.
+// The numbers come from each level's place in the LEVELS list, so you can add a level
+// in the middle and everything after it moves up by one by itself.
 // Level 1 is just "1", because it has no B part.
 // In Hebrew they're written with Hebrew letters: 3א, 3ב.
 //
-// ---------- Review levels (2B, 3B ... 15B) ----------
+// ---------- Review levels (2B, 3B ... 16B) ----------
 // These are built automatically, so nobody has to write them by hand.
 // Level 12B = the words of level 12 + the same number of random words from levels 1–11.
 // (There's no 1B, because there's nothing before level 1 to review.)
@@ -403,14 +441,16 @@ LEVELS.forEach((level, index) => {
   }
 });
 
-// DECKS = every level in order: 1, 2A, 2B, 3A, 3B ... 15A, 15B.
+// DECKS = every level in order: 1, 2A, 2B, 3A, 3B ... 16A, 16B.
 const DECKS = [];
 LEVELS.forEach((level, index) => {
   DECKS.push(level);
   if (index === 0) return;
   const upTo = index + 1;
   DECKS.push({
-    id: "review-" + upTo,
+    // Named after its level's id ("level-11" → "review-11"), not its number, so the ids
+    // never change when a level is added in the middle. (Saved Auto levels use these ids.)
+    id: level.id.replace("level-", "review-"),
     number: upTo + "B",
     numberHe: upTo + "ב",
     english: `Review: levels 1–${upTo}`,
