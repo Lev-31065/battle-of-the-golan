@@ -1,28 +1,24 @@
 # Next session
 
 ## Where we stopped (2026-11-08)
-- Confirmed on phones: the delete-account popup and the 🏠 Home button in the lobby both work (the popups had been hidden behind the screens).
-- Built and tested in headless Edge (28 checks pass), but not yet on phones:
-  - Hebrew-first everywhere
-  - Teacher decks ("My decks")
-  - 3 topic decks
-  - Rejoin fixes
-  - Level 1 renamed to "1"
-- Daniel may not have uploaded everything yet. To be safe, upload all of these: `index.html`, `style.css`, `rules.js`, `words.js`, `game.js`, `draw.js`, `server.js`, `account.js`, `decks.js` (new), `privacy.html`.
+- Did the whole 5-step restructure in one session. Steps 1–4 are tested and Daniel is happy ("It works great", "I love the dropdown list").
+  1. Teacher dashboard (replaces "My decks"); a class game is hosted from there.
+  2. Game-mode screen after "Create a room" (Capture the Flag + 2 "coming soon").
+  3. Normal rooms: each player picks their own level (Auto + levels only). Class games: the teacher picks for everyone.
+  4. Deck editor as a table with ➕ wrong answers, Excel paste, and 📋 copy & edit of premade decks.
+- **Step 5 (auto-translate Hebrew → English with MyMemory) is built but NOT tested.** Daniel will test on 2026-11-09.
+- Upload for Step 5 (if not done yet): `index.html`, `style.css`, `decks.js`, `rules.js`, `privacy.html`.
 
 ## Next steps
-1. Upload, then test on phones:
-   - **Teacher decks:** log in → 📚 My decks → make a deck (`כֶּלֶב = dog`, at least 4 lines). Host a room, pick it under "My decks". A second phone should get the deck's name and its words.
-   - **Topic decks:** play each one. Daniel should check the nikud (`TOPIC_DECKS` in `words.js`).
-   - **Rejoin:** switch apps for about 15 s and come back, close and reopen, and join a different room after being hit. There should be no red, shaking screen, and you should come back at your base.
-   - **Hebrew-first look:** check every screen on a real phone.
-2. Maybe install Git so Claude can upload. Settings: VS Code as the editor, branch name `main`, everything else default. Then set a name and GitHub's noreply email.
-3. Ideas if wanted:
-   - A possessives topic deck (שֶׁלִּי, שֶׁלָּהּ…).
-   - Teachers adding their own wrong answers to a line: `אוֹתָהּ = her | אוֹתוֹ | הִיא`.
-   - Sharing decks between teachers.
+1. Test auto-translate on a computer: dashboard → New deck → type כֶּלֶב → Enter: "dog" should appear in purple. Paste a column of Hebrew words from Excel: each row should get English. Read the new MyMemory line on the privacy page.
+2. Check the nikud in the premade decks (`TOPIC_DECKS` in `words.js`) and the 27 pronoun sentences (levels 4, 7, 8, 10–14).
+3. Design the 2 other game modes (the "coming soon" buttons). Ask Daniel what they should be.
 
 ## Open questions for Daniel
-- Install Git now?
-- Should the quiz's "How do you say this in Hebrew?" stay as it is? (The English word asked in the quiz stays English, since its Hebrew is the answer.)
-- Domain plus Resend for nicer login emails: when?
+- What are the other 2 game modes?
+- When a teacher leaves a class game, should they land on the dashboard instead of the home screen?
+- Should "My decks" also show in normal rooms for a logged-in teacher? (Right now: class games only.)
+- Should "📋 Copy & edit" also work on the regular levels, not just premade decks?
+- Is MyMemory good enough, or switch to Google Translate later (needs a billing card)?
+- When to add payments for the teacher dashboard (Stripe or similar)?
+- Install Git so Claude can upload? Domain + Resend for nicer login emails: when?

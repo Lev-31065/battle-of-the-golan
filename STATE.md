@@ -5,7 +5,7 @@
 - **Scoring rule (`checkBase` in `server.js`):** both flags inside a team's circle = a point for that team, whether the flags are on the stand, on the ground, or carried by a teammate. A flag in an enemy's hands doesn't count. Your own flag dropped inside your base goes straight home. Tested on phones.
 - **After a game:** the winner screen shows for `WINNER_SCREEN_TIME` (6 s), then everyone goes back to the teams screen automatically. Tested on phones.
 - **Leaving:** 🚪 button in the game and 🏠 Home in the lobby, with an "Are you sure?" popup. Tested on phones. (The popups use z-index 40; the screens are 30.)
-- **Rejoining:** joining mid-game works. The room code shows on the left edge during play. A joiner's last room code is pre-filled for 3 hours. The same nickname goes back on the same team (`server.pastTeams`).
+- **Rejoining:** joining mid-game works. The room code shows on the left edge during play. A joiner's last room code is pre-filled for 3 hours. The same nickname goes back on the same team (`server.pastTeams`). The 2026-11-08 rejoin fixes (timer reset on clock jumps, auto re-join, replacing a silent same-name player) were tested by Daniel; no problems reported.
 - **Questions:** the popup closes instantly after a right answer. A flag-grab question closes by itself if the flag returns home or someone else grabs it.
 - **Voice (`speech.js`):** reads the English when a question opens, the Hebrew after a wrong answer, and a recap after a right answer. 🗣️ turns it on/off.
 - **Flashcards (`progress.js`):** spaced repetition. Settings in `REVIEW_STEPS` in `rules.js`.
@@ -15,37 +15,47 @@
 - **Levels:** 1, 2A, 2B … 15A, 15B (Hebrew 3א/3ב). A = the level's words; B = review. A "Level 3B / Room KZTP" tag shows during play.
 - **Auto level:** per player. Daniel says it's "pretty great". Retuned on 2026-11-07.
 - **Masculine/feminine choice (first screen):** "I" and "we" sentences use the player's choice. Tested on phones.
+- **Hebrew first everywhere:** Hebrew on top and bigger, English underneath and smaller.
+- **Restructure (2026-11-08), all tested by Daniel:**
+  - **Game-mode screen:** "Create a room" → pick a game. Capture the Flag + 2 "🔒 Coming soon" buttons. `server.mode` = "ctf".
+  - **Two kinds of rooms:** normal (from Play Game): each phone picks its own level from a list of Auto + levels only. Class game (from the teacher dashboard): the teacher picks for everyone; students' picker is grayed out. Enforced by the referee (`server.classGame`).
+  - **Teacher dashboard** (replaces "My decks", logged-in only, free for now): wide computer layout, "🏫 Host a class game", and 3 columns to pick the class deck: My decks (✏️ edit), Premade decks (📋 copy & edit), Levels (incl. Auto).
+  - **Premade decks** (`TOPIC_DECKS`: pronouns, object pronouns, prefixes): class games only.
+  - **Custom dropdown** in the lobby, right under the room code (phones' built-in lists covered the whole screen). Daniel loves it.
+  - **Deck editor as a table:** Hebrew | English | wrong answers (➕ tags, up to 5) | 🗑. Enter moves like a spreadsheet. Pasting from Excel fills many rows (extra columns = wrong answers). Copying a premade deck keeps feminine versions (♀ tag).
 
-## Built, not yet tested on phones (2026-11-08)
-- **Hebrew first everywhere:** Hebrew on top and bigger, English underneath and smaller. This covers the HTML, `setBilingual`, the word card, the floating canvas text and the privacy page. The lobby's level list is the only exception.
-- **Teacher decks (`decks.js`):** "📚 My decks" (logged in) to make, edit and delete decks in Supabase's `decks` table. Hebrew-first editor written for ulpan teachers: lines are `עִבְרִית = English`, typed right-to-left; tabs and English-first also work. A deck needs 4–200 words. Decks show in the lobby under "My decks". The host's referee sends the deck to every phone (`deck` event; a phone without it asks with `needDeck`).
-- **Topic decks (`TOPIC_DECKS` in `words.js`):** subject pronouns, object pronouns (אוֹתִי … אוֹתָן, "they like her = הֵם אוֹהֲבִים אוֹתָהּ") and all the prefixes, shown under "🎯 Topics" in the lobby. Auto never uses them. Daniel needs to check the nikud.
-- **27 pronoun sentences from 2026-11-07** (levels 4, 7, 8, 10–14): the nikud still needs Daniel's check.
-- **Rejoin fixes:**
-  - Timers reset when the clock jumps by more than 2 s. This fixes the red, shaking screen after joining another room.
-  - A phone the referee dropped asks to join again by itself.
-  - A silent player with the same nickname gets replaced on rejoin. It counts like a knockout: the flag drops and the hammer is lost.
+## Built, not yet tested (2026-11-08)
+- **Auto-translate (Step 5):** leaving a Hebrew box fills an EMPTY English box via MyMemory (free, no key). Purple = auto-filled, check it. Pasted Hebrew-only rows get translated too. 93 headless checks pass, including a real MyMemory call.
+- **Privacy page line about MyMemory:** Daniel should read it.
+- **Nikud still needs Daniel's check:** the premade decks (`TOPIC_DECKS`) and the 27 pronoun sentences from 2026-11-07 (levels 4, 7, 8, 10–14).
 - **Not yet confirmed:** the iPhone 2× zoom fix, and full screen on Android.
 
 ## Key decisions
 - **PeerJS with the host as referee.** Free, no game server. If the host leaves, the room closes.
 - **GitHub Pages via web upload.** Git isn't installed yet; Daniel is considering it, so Claude could upload.
 - **Supabase for logins and data.** The URL and publishable key in `account.js` are public by design. Never add the secret/service_role key.
+- **Teacher features will be paid later.** For now the dashboard is free for anyone logged in. Later, lock the dashboard door (and the `decks` table) behind a paid account; nothing else should need to change.
+- **Class game = room hosted from the dashboard.** That's how the game knows the host is a teacher.
+- **Normal rooms show only Auto + levels.** Premade decks and own decks are teacher tools.
 - **Teacher decks are private in Supabase**, so the host's phone sends the words to the other players. Joiners never read the database.
 - **Hebrew first, to get players reading Hebrew.** The quiz still shows the English word, because its Hebrew is the answer.
 - **Sign-in link instead of a typed code** (Supabase's email text can't be edited without custom SMTP). Later: Resend plus our own domain.
-- **Auto is per player, not per room.** The lobby choice is saved as `golan-deck-v2`.
+- **Auto is per player, not per room.** Saved choices: `golan-my-level` (my level in normal rooms), `golan-deck-v2` (the teacher's class-game pick).
+- **MyMemory for auto-translate**, sending the Hebrew as typed (stripping nikud gave worse results: "שלחן" → "desktop"). Switch to Google Translate (needs billing + a server piece) if it isn't good enough.
 - **"We" wrong answers never include the other gender. "I" wrong answers do.**
 - **Interface Hebrew uses dictionary nikud spelling**, the same as `words.js`.
 
 ## Gotchas
 - School Wi-Fi may block connections; mobile data is the fallback.
-- The host's copy of the game decides the rules and words, and each phone needs the new `words.js` for the topic decks. Upload, then refresh every phone.
+- The host's copy of the game decides the rules and words, and each phone needs the new files. Upload, then refresh every phone. (A phone with an old `words.js` drops a teacher's wrong answers.)
 - Changing a sentence's English or Hebrew resets it in everyone's flashcard memory (the key is `english|hebrew`).
 - Supabase's free email sender allows only a few emails per hour.
+- MyMemory's free limit is about 5,000 letters a day per computer. Single words translate well; sentences are hit-and-miss. Single English words are lowercased (so "Jerusalem" would need fixing).
 - Sign-in links open in the phone's default browser.
 - Popups that can open over a screen need a z-index above 30.
+- iPhones ignore `hidden` on `<option>`/`<optgroup>`, so the deck list adds and removes whole groups instead.
 - Headless Edge testing:
-  - For a test page, copy `index.html` with an extra `<script>` at the end, run it with `--dump-dom`, and capture the output directly. `Start-Process` redirection came back empty.
+  - For a test page, copy `index.html` with a `<base href="file:///…/battle-of-the-golan/">` and an extra `<script>` at the end, run it with `--dump-dom`, and capture the output directly. `Start-Process` redirection came back empty.
+  - Git Bash garbles Hebrew in command lines (curl showed "???"). Use PowerShell for anything with Hebrew text.
   - Use `--enable-logging=stderr` to see real errors.
   - Use `-Infinity` (not 0) for "never happened" timestamps.

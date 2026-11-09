@@ -105,6 +105,15 @@ const DECK_LIMITS = {
   maxNameLength: 80,    // longest deck name (the database allows up to 80)
 };
 
+// ---------- Auto-translate in the deck editor (decks.js) ----------
+// MyMemory is a free translation service: no account, no key. Its free limit is about
+// 5,000 letters a day per computer, plenty for typing decks.
+const TRANSLATE = {
+  url: "https://api.mymemory.translated.net/get",
+  timeoutMs: 8000,      // give up on one word after 8 seconds
+  maxPerPaste: 60,      // after pasting a big list, translate at most this many empty English boxes
+};
+
 // ---------- Helpers ----------
 
 function distance(a, b) {

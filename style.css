@@ -711,3 +711,5 @@ button, select, input { touch-action: manipulation; }
 @supports (field-sizing: content) {
   .wrong-chip .wrong-input { width: auto; field-sizing: content; min-width: 60px; max-width: 240px; }
 }
+/* English that was filled in by auto-translate (until the teacher changes it) */
+.word-en.auto-translated { background: #f5f3ff; border-color: #c4b5fd; color: #5b21b6; }

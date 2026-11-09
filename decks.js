@@ -385,6 +385,7 @@ wordRows.addEventListener("paste", (event) => {
   // Too many rows for a deck? Remove the extras from the end.
   while (wordRows.children.length > DECK_LIMITS.maxWords) wordRows.lastChild.remove();
   renumberRows();
+  autoTranslateEmptyRows(); // pasted Hebrew without English? Fill it in.
 });
 
 // Enter moves along, like a spreadsheet: Hebrew → English → next row's Hebrew
@@ -406,7 +407,99 @@ wordRows.addEventListener("keydown", (event) => {
   }
 });
 
-wordRows.addEventListener("input", updateDeckCount);
+wordRows.addEventListener("input", (event) => {
+  // Typing in an English box makes it yours: it's no longer an auto-translation.
+  if (event.target.classList.contains("word-en")) markAutoTranslated(event.target, false);
+  updateDeckCount();
+});
+
+// ---------- Auto-translate (Hebrew → English) ----------
+// When you leave a Hebrew box, an EMPTY English box next to it fills itself in,
+// using MyMemory (settings in TRANSLATE, rules.js). It never replaces English you typed.
+// Auto-filled English is light purple until you change it, as a reminder to check it.
+
+const translations = new Map(); // Hebrew → English, so the same word isn't asked twice
+let translateResting = false;   // true after the free daily limit runs out (until the page reloads)
+
+// Ask MyMemory. Returns the English, or null if it didn't work (no internet, limit reached…).
+// (We send the Hebrew exactly as typed: removing the nikud gave worse answers,
+// because "שֻׁלְחָן" without nikud is "שלחן", which came back as "desktop".)
+async function translateHebrew(hebrew) {
+  const plain = hebrew.trim();
+  if (translations.has(plain)) return translations.get(plain);
+  if (translateResting) return null;
+  const url = `${TRANSLATE.url}?q=${encodeURIComponent(plain)}&langpair=he|en`;
+  const stopper = new AbortController();
+  const timer = setTimeout(() => stopper.abort(), TRANSLATE.timeoutMs);
+  try {
+    const response = await fetch(url, { signal: stopper.signal });
+    const data = await response.json();
+    let english = data && data.responseData && data.responseData.translatedText;
+    if (data.quotaFinished || data.responseStatus === 429 || /MYMEMORY WARNING/i.test(english || "")) {
+      translateResting = true;
+      setDeckMessage("Auto-translate has reached today's free limit. Type the English yourself for now.",
+        "הַתִּרְגּוּם הָאוֹטוֹמָטִי הִגִּיעַ לַמִּכְסָה הַיּוֹמִית. בֵּינְתַיִם כּוֹתְבִים אֶת הָאַנְגְּלִית לְבַד.", true);
+      return null;
+    }
+    if (Number(data.responseStatus) !== 200 || typeof english !== "string") return null;
+    english = tidyTranslation(english);
+    if (!english || HEBREW_LETTERS.test(english)) return null; // it gave back Hebrew: no translation found
+    translations.set(plain, english);
+    return english;
+  } catch {
+    return null; // no internet, or too slow: the teacher can type it
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// "Dog." → "dog" (single words in lowercase, like the built-in decks; no period at the end).
+function tidyTranslation(text) {
+  let english = text.trim().replace(/[.。]+$/, "").slice(0, DECK_LIMITS.maxTextLength);
+  if (!english.includes(" ") && english !== "I" && english !== english.toUpperCase()) {
+    english = english.charAt(0).toLowerCase() + english.slice(1);
+  }
+  return english;
+}
+
+function markAutoTranslated(box, auto) {
+  box.classList.toggle("auto-translated", auto);
+  box.title = auto ? "Translated automatically: check it · תֻּרְגַּם אוֹטוֹמָטִית: כְּדַאי לִבְדֹּק" : "";
+}
+
+// Fill in one row's English, if it's empty (or was filled in automatically before).
+async function autoTranslateRow(row) {
+  const hebrewBox = row.querySelector(".word-he");
+  const englishBox = row.querySelector(".word-en");
+  const hebrew = hebrewBox.value.trim();
+  const englishIsMine = () => englishBox.value.trim() && !englishBox.classList.contains("auto-translated");
+  if (!HEBREW_LETTERS.test(hebrew) || englishIsMine() || row.translatedFor === hebrew) return;
+  row.translatedFor = hebrew;
+  englishBox.placeholder = "translating… מְתַרְגְּמִים";
+  const english = await translateHebrew(hebrew);
+  englishBox.placeholder = "e.g. dog";
+  // Changed while we waited? (A different Hebrew word, or the teacher typed the English.)
+  if (hebrewBox.value.trim() !== hebrew || englishIsMine()) return;
+  if (!english) { row.translatedFor = null; return; } // didn't work: try again next time
+  englishBox.value = english;
+  markAutoTranslated(englishBox, true);
+  updateDeckCount();
+}
+
+// Leaving a Hebrew box (after changing it) translates that row.
+wordRows.addEventListener("change", (event) => {
+  if (event.target.classList.contains("word-he")) autoTranslateRow(event.target.closest(".word-row"));
+});
+
+// After a paste: translate the rows that have Hebrew but no English, one at a time.
+async function autoTranslateEmptyRows() {
+  const rows = [...wordRows.children].filter((row) =>
+    row.querySelector(".word-he").value.trim() && !row.querySelector(".word-en").value.trim());
+  for (const row of rows.slice(0, TRANSLATE.maxPerPaste)) {
+    if (!row.isConnected || translateResting) break; // (row deleted, or the editor was closed)
+    await autoTranslateRow(row);
+  }
+}
 
 document.getElementById("add-word-button").addEventListener("click", () => {
   if (wordRows.children.length >= DECK_LIMITS.maxWords) return;
