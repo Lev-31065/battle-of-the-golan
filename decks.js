@@ -133,11 +133,23 @@ function renderDeckList() {
     decksList.appendChild(line);
   }
 
-  // Column 2: the premade decks (one idea each).
+  // Column 2: the premade decks: theme decks, then root decks, each under a small heading.
   const premadeList = document.getElementById("premade-list");
   premadeList.innerHTML = "";
+  const premadeHeadings = {
+    theme: ["Themes", "נוֹשְׂאִים"],
+    root: ["Verb roots: what comes after the verb", "שָׁרָשִׁים: מָה בָּא אַחֲרֵי הַפֹּעַל"],
+  };
+  let lastKind = null;
   // Each has a 📋 button: "copy & edit" makes it one of MY decks, which I can change.
   for (const deck of TOPIC_DECKS) {
+    if (deck.kind !== lastKind && premadeHeadings[deck.kind]) {
+      const heading = document.createElement("p");
+      heading.className = "premade-subheading";
+      setBilingual(heading, ...premadeHeadings[deck.kind]);
+      premadeList.appendChild(heading);
+    }
+    lastKind = deck.kind;
     const n = deck.words.length;
     const line = document.createElement("div");
     line.className = "deck-line";
@@ -167,7 +179,7 @@ function renderDeckList() {
     setBilingual(pickEl, "Words: 🤖 Auto (each student plays their own level)", "מִלִּים: אוֹטוֹמָטִי (כָּל תַּלְמִיד בָּרָמָה שֶׁלּוֹ)");
   } else {
     const deck = findDeck(picked);
-    const hebrewName = deck.custom ? `📚 ${deck.english}` : deck.topic ? `🎯 ${deck.hebrew}` : `${deck.numberHe} · ${deck.hebrew}`;
+    const hebrewName = deck.custom ? `📚 ${deck.english}` : deck.topic ? `${deck.numberHe} ${deck.hebrew}` : `${deck.numberHe} · ${deck.hebrew}`;
     setBilingual(pickEl, `Words: ${deckLabel(deck)}`, `מִלִּים: ${hebrewName}`);
   }
 

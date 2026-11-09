@@ -601,6 +601,9 @@ button, select, input { touch-action: manipulation; }
 .deck-row-name { display: flex; flex-direction: column; min-width: 0; }
 .deck-row-name .he, .deck-row-name .en { overflow: hidden; text-overflow: ellipsis; }
 /* My own decks: the row, plus a small ✏️ button next to it */
+/* "Themes" / "Verb roots" labels inside the Premade decks column */
+.premade-subheading { margin: 10px 0 2px; font-size: 13px; opacity: 0.75; }
+.premade-subheading .he { font-size: 14px; }
 .deck-line { display: flex; gap: 6px; }
 .deck-line .deck-row { flex: 1; min-width: 0; }
 .deck-edit { flex-shrink: 0; width: 44px; border: 2px solid #d1d5db; border-radius: 12px; background: white; font-size: 18px; cursor: pointer; }

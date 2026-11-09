@@ -468,91 +468,288 @@ function mixReviewWords(deck) {
   return [...deck.newLevel.words, ...earlier.slice(0, deck.newLevel.words.length)];
 }
 
-// ---------- Topic decks ----------
-// Ready-made decks that each practice ONE idea. They're not part of the level ladder
-// (Auto never picks them); the teacher picks one in a class game, under "Premade decks".
+// ---------- Premade decks (TOPIC_DECKS) ----------
+// Ready-made decks for teachers. They're not part of the level ladder (Auto never
+// picks them); the teacher picks one in a class game, under "Premade decks".
 // Same format as the levels above (wrong answers, hint, f: for the feminine "I"/"we").
+// Two kinds:
+//   kind: "theme" → words and sentences for one place or situation (school, restaurant, trip).
+//   kind: "root"  → one or two verb roots: the infinitive, the present tense, nouns made
+//                   from the root, and sentences showing which word or prefix comes AFTER
+//                   the verb. The same verb can take different ones with different meanings
+//                   (מְדַבֵּר עִם = talks WITH, מְדַבֵּר עַל = talks ABOUT), so the wrong answers
+//                   swap them around.
+// icon = the emoji shown before the deck's name.
 const TOPIC_DECKS = [
+  // ===== Theme decks =====
   {
-    id: "topic-pronouns", english: "Pronouns: I, you, he, she…", hebrew: "כִּנּוּיֵי גּוּף: אֲנִי, אַתָּה, הוּא…",
+    id: "theme-school", kind: "theme", icon: "🏫", english: "School", hebrew: "בֵּית סֵפֶר",
     words: [
-      { english: "I", hebrew: "אֲנִי", wrong: ["אַתָּה", "הוּא", "אֲנַחְנוּ"] },
-      { english: "you (m.)", hebrew: "אַתָּה", wrong: ["אַתְּ", "אַתֶּם", "הוּא"] },
-      { english: "you (f.)", hebrew: "אַתְּ", wrong: ["אַתָּה", "אַתֶּן", "הִיא"] },
-      { english: "he", hebrew: "הוּא", wrong: ["הִיא", "הֵם", "אַתָּה"] },
-      { english: "she", hebrew: "הִיא", wrong: ["הוּא", "הֵן", "אַתְּ"] },
-      { english: "we", hebrew: "אֲנַחְנוּ", wrong: ["אֲנִי", "הֵם", "אַתֶּם"] },
-      { english: "you all (m.)", hebrew: "אַתֶּם", wrong: ["אַתֶּן", "הֵם", "אַתָּה"] },
-      { english: "you all (f.)", hebrew: "אַתֶּן", wrong: ["אַתֶּם", "הֵן", "אַתְּ"] },
-      { english: "they (m.)", hebrew: "הֵם", wrong: ["הֵן", "אַתֶּם", "הוּא"] },
-      { english: "they (f.)", hebrew: "הֵן", wrong: ["הֵם", "אַתֶּן", "הִיא"] },
-      { english: "he is a teacher", hebrew: "הוּא מוֹרֶה", wrong: ["הִיא מוֹרֶה", "הוּא מוֹרָה", "הֵם מוֹרִים"] },
-      { english: "she is a teacher", hebrew: "הִיא מוֹרָה", wrong: ["הוּא מוֹרָה", "הִיא מוֹרֶה", "הֵן מוֹרוֹת"] },
-      { english: "I am a student", hebrew: "אֲנִי תַּלְמִיד", wrong: ["אֲנִי תַּלְמִידָה", "אַתָּה תַּלְמִיד", "אֲנַחְנוּ תַּלְמִידִים"],
-        f: { hebrew: "אֲנִי תַּלְמִידָה", wrong: ["אֲנִי תַּלְמִיד", "אַתְּ תַּלְמִידָה", "אֲנַחְנוּ תַּלְמִידוֹת"] } },
-      { english: "you (f.) are here", hebrew: "אַתְּ כָּאן", wrong: ["אַתָּה כָּאן", "הִיא כָּאן", "אַתֶּן כָּאן"] },
-      { english: "we are at home", hebrew: "אֲנַחְנוּ בַּבַּיִת", wrong: ["הֵם בַּבַּיִת", "אֲנִי בַּבַּיִת", "אַתֶּם בַּבַּיִת"] },
-      { english: "you all (m.) are students", hebrew: "אַתֶּם תַּלְמִידִים", wrong: ["אַתֶּן תַּלְמִידוֹת", "הֵם תַּלְמִידִים", "אַתָּה תַּלְמִיד"] },
-      { english: "they (m.) are in the park", hebrew: "הֵם בַּפַּארְק", wrong: ["הֵן בַּפַּארְק", "אַתֶּם בַּפַּארְק", "הוּא בַּפַּארְק"] },
-      { english: "they (f.) are friends", hebrew: "הֵן חֲבֵרוֹת", wrong: ["הֵם חֲבֵרִים", "הֵן חֲבֵרִים", "אַתֶּן חֲבֵרוֹת"] },
+      { english: "school", hebrew: "בֵּית סֵפֶר", wrong: ["כִּתָּה", "סֵפֶר", "בַּיִת"] },
+      { english: "class, classroom", hebrew: "כִּתָּה", wrong: ["שִׁעוּר", "בֵּית סֵפֶר", "לוּחַ"] },
+      { english: "teacher (m.)", hebrew: "מוֹרֶה", wrong: ["מוֹרָה", "תַּלְמִיד", "מוֹרִים"] },
+      { english: "teacher (f.)", hebrew: "מוֹרָה", wrong: ["מוֹרֶה", "תַּלְמִידָה", "מוֹרוֹת"] },
+      { english: "student (m.)", hebrew: "תַּלְמִיד", wrong: ["תַּלְמִידָה", "מוֹרֶה", "תַּלְמִידִים"] },
+      { english: "student (f.)", hebrew: "תַּלְמִידָה", wrong: ["תַּלְמִיד", "מוֹרָה", "תַּלְמִידוֹת"] },
+      { english: "lesson", hebrew: "שִׁעוּר", wrong: ["מִבְחָן", "כִּתָּה", "הַפְסָקָה"] },
+      { english: "homework", hebrew: "שִׁעוּרֵי בַּיִת", wrong: ["שִׁעוּר", "בֵּית סֵפֶר", "מִבְחָן"] },
+      { english: "test", hebrew: "מִבְחָן", wrong: ["שִׁעוּר", "מַחְבֶּרֶת", "הַפְסָקָה"] },
+      { english: "recess, break", hebrew: "הַפְסָקָה", wrong: ["שִׁעוּר", "מִבְחָן", "כִּתָּה"] },
+      { english: "notebook", hebrew: "מַחְבֶּרֶת", wrong: ["סֵפֶר", "עִפָּרוֹן", "תִּיק"] },
+      { english: "pencil", hebrew: "עִפָּרוֹן", wrong: ["עֵט", "מַחְבֶּרֶת", "לוּחַ"] },
+      { english: "pen", hebrew: "עֵט", wrong: ["עִפָּרוֹן", "תִּיק", "סֵפֶר"] },
+      { english: "board (in class)", hebrew: "לוּחַ", wrong: ["שֻׁלְחָן", "כִּתָּה", "עֵט"] },
+      { english: "bag, schoolbag", hebrew: "תִּיק", wrong: ["סֵפֶר", "מַחְבֶּרֶת", "לוּחַ"] },
+      { english: "the students sit in the classroom", hint: "לָשֶׁבֶת", hebrew: "הַתַּלְמִידִים יוֹשְׁבִים בַּכִּתָּה", wrong: ["הַתַּלְמִידִים יוֹשְׁבִים לַכִּתָּה", "הַתַּלְמִידִים יוֹשְׁבִים מֵהַכִּתָּה", "הַתַּלְמִידִים יוֹשֵׁב בַּכִּתָּה"] },
+      { english: "the teacher (f.) writes on the board", hint: "לִכְתֹּב", hebrew: "הַמּוֹרָה כּוֹתֶבֶת עַל הַלּוּחַ", wrong: ["הַמּוֹרָה כּוֹתֶבֶת לַלּוּחַ", "הַמּוֹרָה כּוֹתֵב עַל הַלּוּחַ", "הַמּוֹרָה כּוֹתֶבֶת אֶת הַלּוּחַ"] },
+      { english: "she asks the teacher (m.) a question", hint: "לִשְׁאֹל", hebrew: "הִיא שׁוֹאֶלֶת אֶת הַמּוֹרֶה שְׁאֵלָה", wrong: ["הִיא שׁוֹאֶלֶת לַמּוֹרֶה שְׁאֵלָה", "הִיא שׁוֹאֶלֶת עִם הַמּוֹרֶה שְׁאֵלָה", "הוּא שׁוֹאֵל אֶת הַמּוֹרֶה שְׁאֵלָה"] },
+      { english: "he forgot the homework", hint: "לִשְׁכֹּחַ", hebrew: "הוּא שָׁכַח אֶת שִׁעוּרֵי הַבַּיִת", wrong: ["הוּא שָׁכַח שִׁעוּרֵי הַבַּיִת", "הִיא שָׁכְחָה אֶת שִׁעוּרֵי הַבַּיִת", "הוּא שׁוֹכֵחַ אֶת שִׁעוּרֵי הַבַּיִת"] },
+      { english: "the students go out to recess", hint: "לָצֵאת", hebrew: "הַתַּלְמִידִים יוֹצְאִים לַהַפְסָקָה", wrong: ["הַתַּלְמִידִים יוֹצְאִים מֵהַהַפְסָקָה", "הַתַּלְמִידִים יוֹצֵא לַהַפְסָקָה", "הַתַּלְמִידִים נִכְנָסִים לַהַפְסָקָה"] },
+      { english: "tomorrow there is a test", hebrew: "מָחָר יֵשׁ מִבְחָן", wrong: ["מָחָר אֵין מִבְחָן", "אֶתְמוֹל הָיָה מִבְחָן", "מָחָר יֵשׁ שִׁעוּר"] },
+      { english: "can I go to the bathroom?", hint: "לָלֶכֶת", hebrew: "אֶפְשָׁר לָלֶכֶת לַשֵּׁרוּתִים?", wrong: ["אֶפְשָׁר לָלֶכֶת בַּשֵּׁרוּתִים?", "אֶפְשָׁר הוֹלֵךְ לַשֵּׁרוּתִים?", "אֶפְשָׁר לָלֶכֶת מֵהַשֵּׁרוּתִים?"] },
     ],
   },
   {
-    // אֶת + a pronoun = one word: "they love HER" = הֵם אוֹהֲבִים אוֹתָהּ (not "הֵם אוֹהֲבִים הִיא").
-    id: "topic-object-pronouns", english: "Object pronouns: me, him, her… (אוֹתִי, אוֹתוֹ, אוֹתָהּ)", hebrew: "אֶת + כִּנּוּי: אוֹתִי, אוֹתוֹ, אוֹתָהּ…",
+    id: "theme-restaurant", kind: "theme", icon: "🍽️", english: "Restaurant", hebrew: "מִסְעָדָה",
     words: [
-      { english: "me", hint: "אֶת + אֲנִי", hebrew: "אוֹתִי", wrong: ["אוֹתוֹ", "אוֹתָנוּ", "אֲנִי"] },
-      { english: "you (m.)", hint: "אֶת + אַתָּה", hebrew: "אוֹתְךָ", wrong: ["אוֹתָךְ", "אַתָּה", "אֶתְכֶם"] },
-      { english: "you (f.)", hint: "אֶת + אַתְּ", hebrew: "אוֹתָךְ", wrong: ["אוֹתְךָ", "אַתְּ", "אֶתְכֶן"] },
-      { english: "him", hint: "אֶת + הוּא", hebrew: "אוֹתוֹ", wrong: ["אוֹתָהּ", "הוּא", "אוֹתָם"] },
-      { english: "her", hint: "אֶת + הִיא", hebrew: "אוֹתָהּ", wrong: ["אוֹתוֹ", "הִיא", "אוֹתָן"] },
-      { english: "us", hint: "אֶת + אֲנַחְנוּ", hebrew: "אוֹתָנוּ", wrong: ["אוֹתִי", "אֲנַחְנוּ", "אוֹתָם"] },
-      { english: "you all (m.)", hint: "אֶת + אַתֶּם", hebrew: "אֶתְכֶם", wrong: ["אֶתְכֶן", "אַתֶּם", "אוֹתָם"] },
-      { english: "you all (f.)", hint: "אֶת + אַתֶּן", hebrew: "אֶתְכֶן", wrong: ["אֶתְכֶם", "אַתֶּן", "אוֹתָן"] },
-      { english: "them (m.)", hint: "אֶת + הֵם", hebrew: "אוֹתָם", wrong: ["אוֹתָן", "הֵם", "אוֹתוֹ"] },
-      { english: "them (f.)", hint: "אֶת + הֵן", hebrew: "אוֹתָן", wrong: ["אוֹתָם", "הֵן", "אוֹתָהּ"] },
-      { english: "they (m.) like her", hint: "לֶאֱהֹב", hebrew: "הֵם אוֹהֲבִים אוֹתָהּ", wrong: ["הֵם אוֹהֲבִים הִיא", "הֵם אוֹהֲבִים אוֹתוֹ", "הֵם אוֹהֲבִים אֶת הִיא"] },
-      { english: "she loves him", hint: "לֶאֱהֹב", hebrew: "הִיא אוֹהֶבֶת אוֹתוֹ", wrong: ["הִיא אוֹהֶבֶת הוּא", "הִיא אוֹהֶבֶת אוֹתָהּ", "הִיא אוֹהֶבֶת אֶת הוּא"] },
-      { english: "he knows me", hint: "לְהַכִּיר", hebrew: "הוּא מַכִּיר אוֹתִי", wrong: ["הוּא מַכִּיר אֲנִי", "הוּא מַכִּיר אוֹתוֹ", "הוּא מַכִּירָה אוֹתִי"] },
-      { english: "I see you (m.)", hint: "לִרְאוֹת", hebrew: "אֲנִי רוֹאֶה אוֹתְךָ", wrong: ["אֲנִי רוֹאֶה אַתָּה", "אֲנִי רוֹאֶה אוֹתָךְ", "אֲנִי רוֹאָה אוֹתְךָ"],
-        f: { hebrew: "אֲנִי רוֹאָה אוֹתְךָ", wrong: ["אֲנִי רוֹאָה אַתָּה", "אֲנִי רוֹאָה אוֹתָךְ", "אֲנִי רוֹאֶה אוֹתְךָ"] } },
-      { english: "I love you (f.)", hint: "לֶאֱהֹב", hebrew: "אֲנִי אוֹהֵב אוֹתָךְ", wrong: ["אֲנִי אוֹהֵב אַתְּ", "אֲנִי אוֹהֵב אוֹתְךָ", "אֲנִי אוֹהֶבֶת אוֹתָךְ"],
-        f: { hebrew: "אֲנִי אוֹהֶבֶת אוֹתָךְ", wrong: ["אֲנִי אוֹהֶבֶת אַתְּ", "אֲנִי אוֹהֶבֶת אוֹתְךָ", "אֲנִי אוֹהֵב אוֹתָךְ"] } },
-      { english: "you (f.) understand me", hint: "לְהָבִין", hebrew: "אַתְּ מְבִינָה אוֹתִי", wrong: ["אַתְּ מְבִינָה אֲנִי", "אַתָּה מֵבִין אוֹתִי", "אַתְּ מְבִינָה אוֹתָךְ"] },
-      { english: "we invite you all (m.)", hint: "לְהַזְמִין", hebrew: "אֲנַחְנוּ מַזְמִינִים אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינִים אַתֶּם", "אֲנַחְנוּ מַזְמִינִים אוֹתָם", "אֲנַחְנוּ מַזְמִינִים אֶתְכֶן"],
-        f: { hebrew: "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶם", wrong: ["אֲנַחְנוּ מַזְמִינוֹת אַתֶּם", "אֲנַחְנוּ מַזְמִינוֹת אוֹתָם", "אֲנַחְנוּ מַזְמִינוֹת אֶתְכֶן"] } },
-      { english: "the teacher asks us", hint: "לִשְׁאֹל", hebrew: "הַמּוֹרֶה שׁוֹאֵל אוֹתָנוּ", wrong: ["הַמּוֹרֶה שׁוֹאֵל אֲנַחְנוּ", "הַמּוֹרֶה שׁוֹאֵל אוֹתָם", "הַמּוֹרֶה שׁוֹאֵל אוֹתִי"] },
-      { english: "Dana sees them (m.)", hint: "לִרְאוֹת", hebrew: "דָּנָה רוֹאָה אוֹתָם", wrong: ["דָּנָה רוֹאָה הֵם", "דָּנָה רוֹאָה אוֹתָן", "דָּנָה רוֹאָה אוֹתוֹ"] },
-      { english: "they (f.) know them (f.)", hint: "לְהַכִּיר", hebrew: "הֵן מַכִּירוֹת אוֹתָן", wrong: ["הֵן מַכִּירוֹת הֵן", "הֵן מַכִּירוֹת אוֹתָם", "הֵם מַכִּירִים אוֹתָן"] },
+      { english: "restaurant", hebrew: "מִסְעָדָה", wrong: ["מֶלְצַר", "תַּפְרִיט", "מִטְבָּח"] },
+      { english: "waiter", hebrew: "מֶלְצַר", wrong: ["מֶלְצָרִית", "מִסְעָדָה", "טַבָּח"] },
+      { english: "waitress", hebrew: "מֶלְצָרִית", wrong: ["מֶלְצַר", "מוֹרָה", "מֶלְצָרִים"] },
+      { english: "menu", hebrew: "תַּפְרִיט", wrong: ["חֶשְׁבּוֹן", "צַלַּחַת", "שֻׁלְחָן"] },
+      { english: "the check, the bill", hebrew: "חֶשְׁבּוֹן", wrong: ["תַּפְרִיט", "טִיפּ", "כֶּסֶף"] },
+      { english: "table", hebrew: "שֻׁלְחָן", wrong: ["כִּסֵּא", "צַלַּחַת", "תַּפְרִיט"] },
+      { english: "plate", hebrew: "צַלַּחַת", wrong: ["כּוֹס", "כַּף", "שֻׁלְחָן"] },
+      { english: "glass, cup", hebrew: "כּוֹס", wrong: ["כַּף", "צַלַּחַת", "בַּקְבּוּק"] },
+      { english: "fork", hebrew: "מַזְלֵג", wrong: ["סַכִּין", "כַּף", "צַלַּחַת"] },
+      { english: "knife", hebrew: "סַכִּין", wrong: ["מַזְלֵג", "כַּף", "כּוֹס"] },
+      { english: "spoon", hebrew: "כַּף", wrong: ["כּוֹס", "מַזְלֵג", "סַכִּין"] },
+      { english: "water", hebrew: "מַיִם", wrong: ["יַיִן", "מִיץ", "יָם"] },
+      { english: "dessert", hebrew: "קִנּוּחַ", wrong: ["סָלָט", "מָנָה", "חֶשְׁבּוֹן"] },
+      { english: "salad", hebrew: "סָלָט", wrong: ["קִנּוּחַ", "לֶחֶם", "מָרָק"] },
+      { english: "a table for four, please", hebrew: "שֻׁלְחָן לְאַרְבָּעָה, בְּבַקָּשָׁה", wrong: ["שֻׁלְחָן בְּאַרְבָּעָה, בְּבַקָּשָׁה", "שֻׁלְחָן מֵאַרְבָּעָה, בְּבַקָּשָׁה", "שֻׁלְחָן לִשְׁלוֹשָׁה, בְּבַקָּשָׁה"] },
+      { english: "can I get the menu?", hint: "לְקַבֵּל", hebrew: "אֶפְשָׁר לְקַבֵּל אֶת הַתַּפְרִיט?", wrong: ["אֶפְשָׁר לְקַבֵּל הַתַּפְרִיט?", "אֶפְשָׁר מְקַבֵּל אֶת הַתַּפְרִיט?", "אֶפְשָׁר לְקַבֵּל אֶת תַּפְרִיט?"] },
+      { english: "she orders a salad", hint: "לְהַזְמִין", hebrew: "הִיא מַזְמִינָה סָלָט", wrong: ["הִיא מַזְמִין סָלָט", "הִיא מַזְמִינָה אֶת סָלָט", "הִיא מַזְמִינָה לְסָלָט"] },
+      { english: "the waiter brings water to the table", hint: "לְהָבִיא", hebrew: "הַמֶּלְצַר מֵבִיא מַיִם לַשֻּׁלְחָן", wrong: ["הַמֶּלְצַר מֵבִיא מַיִם בַּשֻּׁלְחָן", "הַמֶּלְצַר מֵבִיא מַיִם מֵהַשֻּׁלְחָן", "הַמֶּלְצָרִית מֵבִיא מַיִם לַשֻּׁלְחָן"] },
+      { english: "they (m.) are waiting for the food", hint: "לְחַכּוֹת", hebrew: "הֵם מְחַכִּים לָאֹכֶל", wrong: ["הֵם מְחַכִּים אֶת הָאֹכֶל", "הֵם מְחַכִּים בָּאֹכֶל", "הֵם מְחַכֶּה לָאֹכֶל"] },
+      { english: "the food is very tasty", hebrew: "הָאֹכֶל טָעִים מְאוֹד", wrong: ["הָאֹכֶל טְעִימָה מְאוֹד", "הָאֹכֶל טְעִימִים מְאוֹד", "הָאֹכֶל רָעֵב מְאוֹד"] },
+      { english: "he eats with a fork", hint: "לֶאֱכֹל", hebrew: "הוּא אוֹכֵל בְּמַזְלֵג", wrong: ["הוּא אוֹכֵל לְמַזְלֵג", "הוּא אוֹכֵל אֶת הַמַּזְלֵג", "הִיא אוֹכֶלֶת בְּמַזְלֵג"] },
+      { english: "the check, please", hebrew: "הַחֶשְׁבּוֹן, בְּבַקָּשָׁה", wrong: ["הַתַּפְרִיט, בְּבַקָּשָׁה", "הַשֻּׁלְחָן, בְּבַקָּשָׁה", "הַחֶשְׁבּוֹן, תּוֹדָה"] },
     ],
   },
   {
-    // All the one-letter prefixes (אוֹתִיּוֹת הַשִּׁמּוּשׁ) mixed together, including two at once (וּבַ־, וּמִ־).
-    id: "topic-prefixes", english: "All the prefixes: הַ וְ בְּ לְ מִ שֶׁ כְּשֶׁ", hebrew: "אוֹתִיּוֹת הַשִּׁמּוּשׁ: הַ וְ בְּ לְ מִ שֶׁ כְּשֶׁ",
+    id: "theme-trip", kind: "theme", icon: "🎒", english: "Trip (tiyul)", hebrew: "טִיּוּל",
     words: [
-      { english: "and the girl", hebrew: "וְהַיַּלְדָּה", wrong: ["הַיַּלְדָּה", "וְיַלְדָּה", "וְהַיֶּלֶד"] },
-      { english: "in the sea", hebrew: "בַּיָּם", wrong: ["לַיָּם", "מֵהַיָּם", "הַיָּם"] },
-      { english: "to the sea", hebrew: "לַיָּם", wrong: ["בַּיָּם", "מֵהַיָּם", "לְיָם"] },
-      { english: "from the sea", hebrew: "מֵהַיָּם", wrong: ["לַיָּם", "בַּיָּם", "מִיָּם"] },
-      { english: "in a book", hebrew: "בְּסֵפֶר", wrong: ["בַּסֵּפֶר", "לְסֵפֶר", "מִסֵּפֶר"] },
-      { english: "with a pen", hebrew: "בְּעֵט", wrong: ["לְעֵט", "מֵעֵט", "עֵט"] },
-      { english: "from the store", hebrew: "מֵהַחֲנוּת", wrong: ["לַחֲנוּת", "בַּחֲנוּת", "מֵחֲנוּת"] },
-      { english: "for the children", hebrew: "לַיְלָדִים", wrong: ["בַּיְלָדִים", "מֵהַיְלָדִים", "הַיְלָדִים"] },
-      { english: "and in the house", hebrew: "וּבַבַּיִת", wrong: ["בַּבַּיִת", "וּבְבַיִת", "וְהַבַּיִת"] },
-      { english: "and to the city", hebrew: "וְלָעִיר", wrong: ["לָעִיר", "וּבָעִיר", "וְהָעִיר"] },
-      { english: "and from Jerusalem", hebrew: "וּמִירוּשָׁלַיִם", wrong: ["מִירוּשָׁלַיִם", "וְלִירוּשָׁלַיִם", "וּבִירוּשָׁלַיִם"] },
-      { english: "the boy that I saw", hebrew: "הַיֶּלֶד שֶׁרָאִיתִי", wrong: ["הַיֶּלֶד רָאִיתִי", "הַיֶּלֶד כְּשֶׁרָאִיתִי", "הַיֶּלֶד שֶׁרָאָה"] },
-      { english: "the book that is in the bag", hebrew: "הַסֵּפֶר שֶׁבַּתִּיק", wrong: ["הַסֵּפֶר בַּתִּיק", "הַסֵּפֶר שֶׁבְּתִיק", "הַסֵּפֶר שֶׁלַּתִּיק"] },
-      { english: "when we arrived", hebrew: "כְּשֶׁהִגַּעְנוּ", wrong: ["שֶׁהִגַּעְנוּ", "כְּשֶׁהִגִּיעוּ", "כְּהִגַּעְנוּ"] },
+      { english: "trip, hike", hebrew: "טִיּוּל", wrong: ["שְׁבִיל", "הַר", "מַדְרִיךְ"] },
+      { english: "backpack", hebrew: "תַּרְמִיל", wrong: ["תִּיק", "בַּקְבּוּק", "כּוֹבַע"] },
+      { english: "water bottle", hebrew: "בַּקְבּוּק מַיִם", wrong: ["כּוֹס מַיִם", "בַּקְבּוּק", "מַיִם"] },
+      { english: "hat", hebrew: "כּוֹבַע", wrong: ["תַּרְמִיל", "מַפָּה", "נַעַל"] },
+      { english: "map", hebrew: "מַפָּה", wrong: ["שְׁבִיל", "מַדְרִיךְ", "כּוֹבַע"] },
+      { english: "trail, path", hebrew: "שְׁבִיל", wrong: ["כְּבִישׁ", "נַחַל", "מַפָּה"] },
+      { english: "mountain", hebrew: "הַר", wrong: ["נַחַל", "מְעָרָה", "יָם"] },
+      { english: "stream", hebrew: "נַחַל", wrong: ["יָם", "הַר", "שְׁבִיל"] },
+      { english: "cave", hebrew: "מְעָרָה", wrong: ["הַר", "נַחַל", "מַפָּה"] },
+      { english: "view, landscape", hebrew: "נוֹף", wrong: ["הַר", "שֶׁמֶשׁ", "שְׁבִיל"] },
+      { english: "guide (m.)", hebrew: "מַדְרִיךְ", wrong: ["מַדְרִיכָה", "מוֹרֶה", "מַפָּה"] },
+      { english: "guide (f.)", hebrew: "מַדְרִיכָה", wrong: ["מַדְרִיךְ", "מוֹרָה", "מַדְרִיכִים"] },
+      { english: "sunscreen", hebrew: "קֶרֶם הֲגָנָה", wrong: ["כּוֹבַע", "שֶׁמֶשׁ", "קֶרֶם"] },
+      { english: "bus", hebrew: "אוֹטוֹבּוּס", wrong: ["מְכוֹנִית", "תַּחֲנָה", "רַכֶּבֶת"] },
+      { english: "the class is going out on a trip", hint: "לָצֵאת", hebrew: "הַכִּתָּה יוֹצֵאת לְטִיּוּל", wrong: ["הַכִּתָּה יוֹצֵאת מִטִּיּוּל", "הַכִּתָּה יוֹצֵא לְטִיּוּל", "הַכִּתָּה יוֹצֵאת אֶת טִיּוּל"] },
+      { english: "the bus leaves at eight", hint: "לָצֵאת", hebrew: "הָאוֹטוֹבּוּס יוֹצֵא בִּשְׁמוֹנֶה", wrong: ["הָאוֹטוֹבּוּס יוֹצֵא לִשְׁמוֹנֶה", "הָאוֹטוֹבּוּס יוֹצֵאת בִּשְׁמוֹנֶה", "הָאוֹטוֹבּוּס יוֹצֵא מִשְּׁמוֹנֶה"] },
+      { english: "you need to drink water", hint: "לִשְׁתּוֹת", hebrew: "צָרִיךְ לִשְׁתּוֹת מַיִם", wrong: ["צָרִיךְ שׁוֹתֶה מַיִם", "צָרִיךְ לֶאֱכֹל מַיִם", "צָרִיךְ לִשְׁתּוֹת לְמַיִם"] },
+      { english: "she puts the bottle in the backpack", hint: "לָשִׂים", hebrew: "הִיא שָׂמָה אֶת הַבַּקְבּוּק בַּתַּרְמִיל", wrong: ["הִיא שָׂמָה הַבַּקְבּוּק בַּתַּרְמִיל", "הִיא שָׂמָה אֶת הַבַּקְבּוּק מֵהַתַּרְמִיל", "הוּא שָׂמָה אֶת הַבַּקְבּוּק בַּתַּרְמִיל"] },
+      { english: "they (m.) climb the mountain", hint: "לְטַפֵּס", hebrew: "הֵם מְטַפְּסִים עַל הָהָר", wrong: ["הֵם מְטַפְּסִים אֶת הָהָר", "הֵם מְטַפֵּס עַל הָהָר", "הֵם מְטַפְּסִים מֵהָהָר"] },
+      { english: "the guide (f.) walks on the trail", hint: "לָלֶכֶת", hebrew: "הַמַּדְרִיכָה הוֹלֶכֶת בַּשְּׁבִיל", wrong: ["הַמַּדְרִיכָה הוֹלֵךְ בַּשְּׁבִיל", "הַמַּדְרִיךְ הוֹלֶכֶת בַּשְּׁבִיל", "הַמַּדְרִיכָה הוֹלֶכֶת אֶת הַשְּׁבִיל"] },
+      { english: "they (f.) walk in the stream", hint: "לָלֶכֶת", hebrew: "הֵן הוֹלְכוֹת בַּנַּחַל", wrong: ["הֵן הוֹלְכִים בַּנַּחַל", "הֵן הוֹלְכוֹת אֶת הַנַּחַל", "הֵם הוֹלְכוֹת בַּנַּחַל"] },
+      { english: "there's a beautiful view from here", hebrew: "יֵשׁ נוֹף יָפֶה מִכָּאן", wrong: ["יֵשׁ נוֹף יָפָה מִכָּאן", "יֵשׁ נוֹף יָפֶה בְּכָאן", "אֵין נוֹף יָפֶה מִכָּאן"] },
+    ],
+  },
+
+  // ===== Root decks =====
+  {
+    id: "root-ktv", kind: "root", icon: "🌱", english: "Root כ־ת־ב: write", hebrew: "שֹׁרֶשׁ כ־ת־ב: לִכְתֹּב",
+    words: [
+      { english: "to write", hebrew: "לִכְתֹּב", wrong: ["כּוֹתֵב", "מִכְתָּב", "לִקְרֹא"] },
+      { english: "he writes", hebrew: "הוּא כּוֹתֵב", wrong: ["הוּא כּוֹתֶבֶת", "הוּא כּוֹתְבִים", "הוּא כָּתַב"] },
+      { english: "she writes", hebrew: "הִיא כּוֹתֶבֶת", wrong: ["הִיא כּוֹתֵב", "הִיא כּוֹתְבוֹת", "הִיא כָּתְבָה"] },
+      { english: "they (m.) write", hebrew: "הֵם כּוֹתְבִים", wrong: ["הֵם כּוֹתְבוֹת", "הֵם כּוֹתֵב", "הֵם כָּתְבוּ"] },
+      { english: "they (f.) write", hebrew: "הֵן כּוֹתְבוֹת", wrong: ["הֵן כּוֹתְבִים", "הֵן כּוֹתֶבֶת", "הֵן כָּתְבוּ"] },
+      { english: "a letter", hebrew: "מִכְתָּב", wrong: ["כְּתֹבֶת", "כְּתִיבָה", "כַּתָּב"] },
+      { english: "an address", hebrew: "כְּתֹבֶת", wrong: ["מִכְתָּב", "כְּתִיבָה", "כַּתָּב"] },
+      { english: "writing", hebrew: "כְּתִיבָה", wrong: ["כְּתֹבֶת", "מִכְתָּב", "כּוֹתֵב"] },
+      { english: "a reporter (m.)", hebrew: "כַּתָּב", wrong: ["מִכְתָּב", "כְּתֹבֶת", "כַּתֶּבֶת"] },
+      // כּוֹתֵב + אֶת (what) / לְ (to whom) / עַל (about, or on a surface) / בְּ (with a tool)
+      { english: "she writes the address", hebrew: "הִיא כּוֹתֶבֶת אֶת הַכְּתֹבֶת", wrong: ["הִיא כּוֹתֶבֶת הַכְּתֹבֶת", "הִיא כּוֹתֶבֶת לַכְּתֹבֶת", "הִיא כּוֹתֶבֶת עַל הַכְּתֹבֶת"] },
+      { english: "he writes a letter to Dana", hebrew: "הוּא כּוֹתֵב מִכְתָּב לְדָנָה", wrong: ["הוּא כּוֹתֵב מִכְתָּב עַל דָּנָה", "הוּא כּוֹתֵב מִכְתָּב אֶת דָּנָה", "הוּא כּוֹתֵב מִכְתָּב בְּדָנָה"] },
+      { english: "he writes about Dana", hebrew: "הוּא כּוֹתֵב עַל דָּנָה", wrong: ["הוּא כּוֹתֵב לְדָנָה", "הוּא כּוֹתֵב אֶת דָּנָה", "הוּא כּוֹתֵב עִם דָּנָה"] },
+      { english: "she writes about the trip", hebrew: "הִיא כּוֹתֶבֶת עַל הַטִּיּוּל", wrong: ["הִיא כּוֹתֶבֶת לַטִּיּוּל", "הִיא כּוֹתֶבֶת אֶת הַטִּיּוּל", "הִיא כּוֹתֶבֶת מֵהַטִּיּוּל"] },
+      { english: "he writes on the board", hebrew: "הוּא כּוֹתֵב עַל הַלּוּחַ", wrong: ["הוּא כּוֹתֵב לַלּוּחַ", "הוּא כּוֹתֵב אֶת הַלּוּחַ", "הוּא כּוֹתֵב מֵהַלּוּחַ"] },
+      { english: "they (m.) write with a pen", hebrew: "הֵם כּוֹתְבִים בְּעֵט", wrong: ["הֵם כּוֹתְבִים לְעֵט", "הֵם כּוֹתְבִים עַל עֵט", "הֵם כּוֹתְבִים אֶת עֵט"] },
+    ],
+  },
+  {
+    id: "root-lmd", kind: "root", icon: "🌱", english: "Root ל־מ־ד: learn & teach", hebrew: "שֹׁרֶשׁ ל־מ־ד: לִלְמֹד, לְלַמֵּד",
+    words: [
+      { english: "to learn", hebrew: "לִלְמֹד", wrong: ["לְלַמֵּד", "לוֹמֵד", "תַּלְמִיד"] },
+      { english: "to teach", hebrew: "לְלַמֵּד", wrong: ["לִלְמֹד", "מְלַמֵּד", "מוֹרֶה"] },
+      { english: "he learns", hebrew: "הוּא לוֹמֵד", wrong: ["הוּא מְלַמֵּד", "הוּא לוֹמֶדֶת", "הוּא לָמַד"] },
+      { english: "she learns", hebrew: "הִיא לוֹמֶדֶת", wrong: ["הִיא מְלַמֶּדֶת", "הִיא לוֹמֵד", "הִיא לָמְדָה"] },
+      { english: "they (m.) learn", hebrew: "הֵם לוֹמְדִים", wrong: ["הֵם מְלַמְּדִים", "הֵם לוֹמְדוֹת", "הֵם לוֹמֵד"] },
+      { english: "she teaches", hebrew: "הִיא מְלַמֶּדֶת", wrong: ["הִיא לוֹמֶדֶת", "הִיא מְלַמֵּד", "הִיא לִמְּדָה"] },
+      { english: "they (f.) teach", hebrew: "הֵן מְלַמְּדוֹת", wrong: ["הֵן לוֹמְדוֹת", "הֵן מְלַמְּדִים", "הֵן מְלַמֶּדֶת"] },
+      { english: "a student (m.)", hebrew: "תַּלְמִיד", wrong: ["מְלַמֵּד", "לִמּוּדִים", "תַּלְמִידָה"] },
+      { english: "studies", hebrew: "לִמּוּדִים", wrong: ["תַּלְמִידִים", "לוֹמְדִים", "מְלַמְּדִים"] },
+      // לוֹמֵד + (a subject, no אֶת) / בְּ (where, or in which language) / עַל (about) / מִ (from whom) / an infinitive
+      { english: "he learns Hebrew", hebrew: "הוּא לוֹמֵד עִבְרִית", wrong: ["הוּא לוֹמֵד אֶת עִבְרִית", "הוּא לוֹמֵד בְּעִבְרִית", "הוּא מְלַמֵּד עִבְרִית"] },
+      { english: "he learns in Hebrew", hebrew: "הוּא לוֹמֵד בְּעִבְרִית", wrong: ["הוּא לוֹמֵד עִבְרִית", "הוּא לוֹמֵד לְעִבְרִית", "הוּא לוֹמֵד מֵעִבְרִית"] },
+      { english: "she learns about Israel", hebrew: "הִיא לוֹמֶדֶת עַל יִשְׂרָאֵל", wrong: ["הִיא לוֹמֶדֶת בְּיִשְׂרָאֵל", "הִיא לוֹמֶדֶת אֶת יִשְׂרָאֵל", "הִיא לוֹמֶדֶת לְיִשְׂרָאֵל"] },
+      { english: "she learns in Israel", hebrew: "הִיא לוֹמֶדֶת בְּיִשְׂרָאֵל", wrong: ["הִיא לוֹמֶדֶת עַל יִשְׂרָאֵל", "הִיא לוֹמֶדֶת לְיִשְׂרָאֵל", "הִיא לוֹמֶדֶת מִיִּשְׂרָאֵל"] },
+      { english: "she learns from the teacher (m.)", hebrew: "הִיא לוֹמֶדֶת מֵהַמּוֹרֶה", wrong: ["הִיא לוֹמֶדֶת לַמּוֹרֶה", "הִיא לוֹמֶדֶת אֶת הַמּוֹרֶה", "הִיא לוֹמֶדֶת עַל הַמּוֹרֶה"] },
+      { english: "the teacher (f.) teaches the class", hebrew: "הַמּוֹרָה מְלַמֶּדֶת אֶת הַכִּתָּה", wrong: ["הַמּוֹרָה לוֹמֶדֶת אֶת הַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת לַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת הַכִּתָּה"] },
+      { english: "he learns to swim", hebrew: "הוּא לוֹמֵד לִשְׂחוֹת", wrong: ["הוּא לוֹמֵד שׂוֹחֶה", "הוּא לוֹמֵד אֶת לִשְׂחוֹת", "הוּא מְלַמֵּד לִשְׂחוֹת"] },
+    ],
+  },
+  {
+    id: "root-dbr", kind: "root", icon: "🌱", english: "Root ד־ב־ר: speak", hebrew: "שֹׁרֶשׁ ד־ב־ר: לְדַבֵּר",
+    words: [
+      { english: "to speak, to talk", hebrew: "לְדַבֵּר", wrong: ["מְדַבֵּר", "דָּבָר", "לְסַפֵּר"] },
+      { english: "he speaks", hebrew: "הוּא מְדַבֵּר", wrong: ["הוּא מְדַבֶּרֶת", "הוּא מְדַבְּרִים", "הוּא דִּבֵּר"] },
+      { english: "she speaks", hebrew: "הִיא מְדַבֶּרֶת", wrong: ["הִיא מְדַבֵּר", "הִיא מְדַבְּרוֹת", "הִיא דִּבְּרָה"] },
+      { english: "they (m.) speak", hebrew: "הֵם מְדַבְּרִים", wrong: ["הֵם מְדַבְּרוֹת", "הֵם מְדַבֵּר", "הֵם דִּבְּרוּ"] },
+      { english: "they (f.) speak", hebrew: "הֵן מְדַבְּרוֹת", wrong: ["הֵן מְדַבְּרִים", "הֵן מְדַבֶּרֶת", "הֵן דִּבְּרוּ"] },
+      { english: "a thing", hebrew: "דָּבָר", wrong: ["דִּבּוּר", "דְּבָרִים", "דּוֹבֵר"] },
+      { english: "things", hebrew: "דְּבָרִים", wrong: ["דָּבָר", "מְדַבְּרִים", "דִּבּוּרִים"] },
+      { english: "speech, talking", hebrew: "דִּבּוּר", wrong: ["דָּבָר", "דּוֹבֵר", "מְדַבֵּר"] },
+      { english: "a spokesperson (m.)", hebrew: "דּוֹבֵר", wrong: ["דִּבּוּר", "דָּבָר", "דּוֹבֶרֶת"] },
+      // מְדַבֵּר + עִם (with someone) / עַל (about) / אֶל (to) / בְּ (on the phone, in a language) / a language
+      { english: "he talks with Dana", hebrew: "הוּא מְדַבֵּר עִם דָּנָה", wrong: ["הוּא מְדַבֵּר עַל דָּנָה", "הוּא מְדַבֵּר אֶת דָּנָה", "הוּא מְדַבֵּר בְּדָנָה"] },
+      { english: "he talks about Dana", hebrew: "הוּא מְדַבֵּר עַל דָּנָה", wrong: ["הוּא מְדַבֵּר עִם דָּנָה", "הוּא מְדַבֵּר אֶת דָּנָה", "הוּא מְדַבֵּר מִדָּנָה"] },
+      { english: "she talks to the class", hebrew: "הִיא מְדַבֶּרֶת אֶל הַכִּתָּה", wrong: ["הִיא מְדַבֶּרֶת אֶת הַכִּתָּה", "הִיא מְדַבֶּרֶת עַל הַכִּתָּה", "הִיא מְדַבֶּרֶת מֵהַכִּתָּה"] },
+      { english: "she speaks Hebrew", hebrew: "הִיא מְדַבֶּרֶת עִבְרִית", wrong: ["הִיא מְדַבֶּרֶת אֶת עִבְרִית", "הִיא מְדַבֶּרֶת עִם עִבְרִית", "הִיא מְדַבֶּרֶת לְעִבְרִית"] },
+      { english: "they (m.) talk on the phone", hebrew: "הֵם מְדַבְּרִים בַּטֶּלֶפוֹן", wrong: ["הֵם מְדַבְּרִים עַל הַטֶּלֶפוֹן", "הֵם מְדַבְּרִים לַטֶּלֶפוֹן", "הֵם מְדַבְּרִים אֶת הַטֶּלֶפוֹן"] },
+      { english: "they (m.) talk about the phone", hebrew: "הֵם מְדַבְּרִים עַל הַטֶּלֶפוֹן", wrong: ["הֵם מְדַבְּרִים בַּטֶּלֶפוֹן", "הֵם מְדַבְּרִים עִם הַטֶּלֶפוֹן", "הֵם מְדַבְּרִים אֶת הַטֶּלֶפוֹן"] },
+    ],
+  },
+  {
+    id: "root-avd", kind: "root", icon: "🌱", english: "Root ע־ב־ד: work", hebrew: "שֹׁרֶשׁ ע־ב־ד: לַעֲבֹד",
+    words: [
+      { english: "to work", hebrew: "לַעֲבֹד", wrong: ["עוֹבֵד", "עֲבוֹדָה", "לַעֲשׂוֹת"] },
+      { english: "he works", hebrew: "הוּא עוֹבֵד", wrong: ["הוּא עוֹבֶדֶת", "הוּא עוֹבְדִים", "הוּא עָבַד"] },
+      { english: "she works", hebrew: "הִיא עוֹבֶדֶת", wrong: ["הִיא עוֹבֵד", "הִיא עוֹבְדוֹת", "הִיא עָבְדָה"] },
+      { english: "they (m.) work", hebrew: "הֵם עוֹבְדִים", wrong: ["הֵם עוֹבְדוֹת", "הֵם עוֹבֵד", "הֵם עָבְדוּ"] },
+      { english: "they (f.) work", hebrew: "הֵן עוֹבְדוֹת", wrong: ["הֵן עוֹבְדִים", "הֵן עוֹבֶדֶת", "הֵן עָבְדוּ"] },
+      { english: "work, a job", hebrew: "עֲבוֹדָה", wrong: ["עוֹבֵד", "מַעְבָּדָה", "עֲבוֹדוֹת"] },
+      { english: "a worker (m.)", hebrew: "עוֹבֵד", wrong: ["עוֹבֶדֶת", "עֲבוֹדָה", "עוֹבְדִים"] },
+      { english: "a lab", hebrew: "מַעְבָּדָה", wrong: ["עֲבוֹדָה", "עוֹבֶדֶת", "מִשְׂרָד"] },
+      // עוֹבֵד + בְּ (where) / עַל (on a task) / עִם (with someone) / כְּ (as a ...) / עַל + a person = fooling them (slang)
+      { english: "he works at the bank", hebrew: "הוּא עוֹבֵד בַּבַּנְק", wrong: ["הוּא עוֹבֵד מֵהַבַּנְק", "הוּא עוֹבֵד עַל הַבַּנְק", "הוּא עוֹבֵד אֶת הַבַּנְק"] },
+      { english: "she works on the project", hebrew: "הִיא עוֹבֶדֶת עַל הַפְּרוֹיֶקְט", wrong: ["הִיא עוֹבֶדֶת לַפְּרוֹיֶקְט", "הִיא עוֹבֶדֶת אֶת הַפְּרוֹיֶקְט", "הִיא עוֹבֶדֶת מֵהַפְּרוֹיֶקְט"] },
+      { english: "they (m.) work with Dana", hebrew: "הֵם עוֹבְדִים עִם דָּנָה", wrong: ["הֵם עוֹבְדִים עַל דָּנָה", "הֵם עוֹבְדִים אֶת דָּנָה", "הֵם עוֹבְדִים בְּדָנָה"] },
+      { english: "he works as a teacher", hebrew: "הוּא עוֹבֵד כְּמוֹרֶה", wrong: ["הוּא עוֹבֵד לְמוֹרֶה", "הוּא עוֹבֵד בְּמוֹרֶה", "הוּא עוֹבֵד אֶת מוֹרֶה"] },
+      { english: "he's fooling us (slang)", hebrew: "הוּא עוֹבֵד עָלֵינוּ", wrong: ["הוּא עוֹבֵד אִתָּנוּ", "הוּא עוֹבֵד אוֹתָנוּ", "הוּא עוֹבֵד לָנוּ"] },
+    ],
+  },
+  {
+    id: "root-spr", kind: "root", icon: "🌱", english: "Root ס־פ־ר: tell, count, book", hebrew: "שֹׁרֶשׁ ס־פ־ר: לְסַפֵּר, לִסְפֹּר",
+    words: [
+      { english: "to tell", hebrew: "לְסַפֵּר", wrong: ["לִסְפֹּר", "מְסַפֵּר", "סִפּוּר"] },
+      { english: "to count", hebrew: "לִסְפֹּר", wrong: ["לְסַפֵּר", "סוֹפֵר", "מִסְפָּר"] },
+      { english: "he tells", hebrew: "הוּא מְסַפֵּר", wrong: ["הוּא סוֹפֵר", "הוּא מְסַפֶּרֶת", "הוּא סִפֵּר"] },
+      { english: "she tells", hebrew: "הִיא מְסַפֶּרֶת", wrong: ["הִיא סוֹפֶרֶת", "הִיא מְסַפֵּר", "הִיא סִפְּרָה"] },
+      { english: "they (m.) tell", hebrew: "הֵם מְסַפְּרִים", wrong: ["הֵם סוֹפְרִים", "הֵם מְסַפְּרוֹת", "הֵם מְסַפֵּר"] },
+      { english: "he counts", hebrew: "הוּא סוֹפֵר", wrong: ["הוּא מְסַפֵּר", "הוּא סוֹפֶרֶת", "הוּא סָפַר"] },
+      { english: "a book", hebrew: "סֵפֶר", wrong: ["סִפּוּר", "סִפְרִיָּה", "סְפָרִים"] },
+      { english: "a story", hebrew: "סִפּוּר", wrong: ["סֵפֶר", "מִסְפָּר", "סִפְרִיָּה"] },
+      { english: "a library", hebrew: "סִפְרִיָּה", wrong: ["סֵפֶר", "סִפּוּר", "סַפָּר"] },
+      { english: "a number", hebrew: "מִסְפָּר", wrong: ["סִפּוּר", "סֵפֶר", "מְסַפֵּר"] },
+      { english: "a barber", hebrew: "סַפָּר", wrong: ["סֵפֶר", "סוֹפֵר", "סִפְרִיָּה"] },
+      // מְסַפֵּר + לְ (to whom) / עַל (about) / אֶת (what). סוֹפֵר (counts) + אֶת.
+      { english: "she tells Dana a story", hebrew: "הִיא מְסַפֶּרֶת לְדָנָה סִפּוּר", wrong: ["הִיא מְסַפֶּרֶת אֶת דָּנָה סִפּוּר", "הִיא מְסַפֶּרֶת עַל דָּנָה סִפּוּר", "הִיא מְסַפֶּרֶת עִם דָּנָה סִפּוּר"] },
+      { english: "he tells about the trip", hebrew: "הוּא מְסַפֵּר עַל הַטִּיּוּל", wrong: ["הוּא מְסַפֵּר לַטִּיּוּל", "הוּא מְסַפֵּר אֶת הַטִּיּוּל", "הוּא סוֹפֵר עַל הַטִּיּוּל"] },
+      { english: "they (m.) tell the story", hebrew: "הֵם מְסַפְּרִים אֶת הַסִּפּוּר", wrong: ["הֵם מְסַפְּרִים הַסִּפּוּר", "הֵם מְסַפְּרִים לַסִּפּוּר", "הֵם סוֹפְרִים אֶת הַסִּפּוּר"] },
+      { english: "he counts the students", hebrew: "הוּא סוֹפֵר אֶת הַתַּלְמִידִים", wrong: ["הוּא מְסַפֵּר אֶת הַתַּלְמִידִים", "הוּא סוֹפֵר הַתַּלְמִידִים", "הוּא סוֹפֵר לַתַּלְמִידִים"] },
+      { english: "the books are in the library", hebrew: "הַסְּפָרִים בַּסִּפְרִיָּה", wrong: ["הַסְּפָרִים לַסִּפְרִיָּה", "הַסְּפָרִים מֵהַסִּפְרִיָּה", "הַסֵּפֶר בַּסִּפְרִיָּה"] },
+    ],
+  },
+  {
+    id: "root-akl-sht", kind: "root", icon: "🌱", english: "Roots א־כ־ל + ש־ת־ה: eat & drink", hebrew: "שָׁרָשִׁים א־כ־ל + ש־ת־ה: לֶאֱכֹל, לִשְׁתּוֹת",
+    words: [
+      { english: "to eat", hebrew: "לֶאֱכֹל", wrong: ["לִשְׁתּוֹת", "אוֹכֵל", "אֹכֶל"] },
+      { english: "to drink", hebrew: "לִשְׁתּוֹת", wrong: ["לֶאֱכֹל", "שׁוֹתֶה", "שְׁתִיָּה"] },
+      { english: "he eats", hebrew: "הוּא אוֹכֵל", wrong: ["הוּא אוֹכֶלֶת", "הוּא אוֹכְלִים", "הוּא אָכַל"] },
+      { english: "she eats", hebrew: "הִיא אוֹכֶלֶת", wrong: ["הִיא אוֹכֵל", "הִיא אוֹכְלוֹת", "הִיא אָכְלָה"] },
+      { english: "they (m.) eat", hebrew: "הֵם אוֹכְלִים", wrong: ["הֵם אוֹכְלוֹת", "הֵם אוֹכֵל", "הֵם אָכְלוּ"] },
+      { english: "she drinks", hebrew: "הִיא שׁוֹתָה", wrong: ["הִיא שׁוֹתֶה", "הִיא שׁוֹתוֹת", "הִיא שָׁתְתָה"] },
+      { english: "they (m.) drink", hebrew: "הֵם שׁוֹתִים", wrong: ["הֵם שׁוֹתוֹת", "הֵם שׁוֹתֶה", "הֵם שָׁתוּ"] },
+      { english: "food", hebrew: "אֹכֶל", wrong: ["אוֹכֵל", "מַאֲכָל", "שְׁתִיָּה"] },
+      { english: "a dish (a kind of food)", hebrew: "מַאֲכָל", wrong: ["אֹכֶל", "מַאֲכָלִים", "מִשְׁתֶּה"] },
+      { english: "dining room", hebrew: "חֲדַר אֹכֶל", wrong: ["חֲדַר שֵׁנָה", "חֲדַר אוֹכֵל", "אֹכֶל חֶדֶר"] },
+      { english: "a drink", hebrew: "שְׁתִיָּה", wrong: ["שׁוֹתֶה", "מִשְׁתֶּה", "אֹכֶל"] },
+      { english: "a feast", hebrew: "מִשְׁתֶּה", wrong: ["שְׁתִיָּה", "מַאֲכָל", "שׁוֹתִים"] },
+      // אוֹכֵל + אֶת (what) / בְּ (where) / עִם (with whom) / מִ (from). שׁוֹתֶה + מִ (from) / לְ (to = a toast)
+      { english: "she eats the apple", hebrew: "הִיא אוֹכֶלֶת אֶת הַתַּפּוּחַ", wrong: ["הִיא אוֹכֶלֶת הַתַּפּוּחַ", "הִיא אוֹכֶלֶת לַתַּפּוּחַ", "הִיא אוֹכֶלֶת מֵהַתַּפּוּחַ"] },
+      { english: "he eats at a restaurant", hebrew: "הוּא אוֹכֵל בְּמִסְעָדָה", wrong: ["הוּא אוֹכֵל לְמִסְעָדָה", "הוּא אוֹכֵל מִמִּסְעָדָה", "הוּא אוֹכֵל אֶת מִסְעָדָה"] },
+      { english: "they (m.) eat with their friends", hebrew: "הֵם אוֹכְלִים עִם הַחֲבֵרִים", wrong: ["הֵם אוֹכְלִים אֶת הַחֲבֵרִים", "הֵם אוֹכְלִים לַחֲבֵרִים", "הֵם אוֹכְלִים מֵהַחֲבֵרִים"] },
+      { english: "he eats from the plate", hebrew: "הוּא אוֹכֵל מֵהַצַּלַּחַת", wrong: ["הוּא אוֹכֵל לַצַּלַּחַת", "הוּא אוֹכֵל אֶת הַצַּלַּחַת", "הוּא אוֹכֵל עַל הַצַּלַּחַת"] },
+      { english: "she drinks from the bottle", hebrew: "הִיא שׁוֹתָה מֵהַבַּקְבּוּק", wrong: ["הִיא שׁוֹתָה לַבַּקְבּוּק", "הִיא שׁוֹתָה אֶת הַבַּקְבּוּק", "הִיא שׁוֹתָה עַל הַבַּקְבּוּק"] },
+      { english: "they (m.) drink to life (cheers!)", hebrew: "הֵם שׁוֹתִים לְחַיִּים", wrong: ["הֵם שׁוֹתִים בְּחַיִּים", "הֵם שׁוֹתִים מֵחַיִּים", "הֵם שׁוֹתִים אֶת חַיִּים"] },
+    ],
+  },
+  {
+    id: "root-hlk-bo", kind: "root", icon: "🌱", english: "Roots ה־ל־ך + ב־ו־א: go & come", hebrew: "שָׁרָשִׁים ה־ל־ך + ב־ו־א: לָלֶכֶת, לָבוֹא",
+    words: [
+      { english: "to go, to walk", hebrew: "לָלֶכֶת", wrong: ["לָבוֹא", "הוֹלֵךְ", "הֲלִיכָה"] },
+      { english: "to come", hebrew: "לָבוֹא", wrong: ["לָלֶכֶת", "בָּא", "לָצֵאת"] },
+      { english: "he goes", hebrew: "הוּא הוֹלֵךְ", wrong: ["הוּא הוֹלֶכֶת", "הוּא בָּא", "הוּא הָלַךְ"] },
+      { english: "she goes", hebrew: "הִיא הוֹלֶכֶת", wrong: ["הִיא הוֹלֵךְ", "הִיא בָּאָה", "הִיא הָלְכָה"] },
+      { english: "they (m.) go", hebrew: "הֵם הוֹלְכִים", wrong: ["הֵם הוֹלְכוֹת", "הֵם בָּאִים", "הֵם הוֹלֵךְ"] },
+      { english: "he comes", hebrew: "הוּא בָּא", wrong: ["הוּא בָּאָה", "הוּא הוֹלֵךְ", "הוּא בָּאִים"] },
+      { english: "she comes", hebrew: "הִיא בָּאָה", wrong: ["הִיא בָּא", "הִיא הוֹלֶכֶת", "הִיא בָּאוֹת"] },
+      { english: "they (f.) come", hebrew: "הֵן בָּאוֹת", wrong: ["הֵן בָּאִים", "הֵן הוֹלְכוֹת", "הֵן בָּאָה"] },
+      { english: "walking", hebrew: "הֲלִיכָה", wrong: ["הוֹלֵךְ", "לָלֶכֶת", "הֲלִיכוֹת"] },
+      { english: "a pedestrian", hebrew: "הוֹלֵךְ רֶגֶל", wrong: ["הוֹלֵךְ לְרֶגֶל", "רֶגֶל הוֹלֵךְ", "הֲלִיכָה"] },
+      { english: "next year", hebrew: "הַשָּׁנָה הַבָּאָה", wrong: ["הַשָּׁנָה הַבָּא", "הַשָּׁנָה שֶׁעָבְרָה", "שָׁנָה בָּאָה"] },
+      { english: "welcome (to a man)", hebrew: "בָּרוּךְ הַבָּא", wrong: ["בָּרוּךְ הַהוֹלֵךְ", "בָּרוּךְ בָּא", "בְּרוּכִים הַבָּא"] },
+      // הוֹלֵךְ + לְ (to a place) / בְּ (walks in a place) / עִם (with someone). בָּא + מִ (from) / לְ (to) / בְּ (by bus, car...)
+      { english: "he goes to school", hebrew: "הוּא הוֹלֵךְ לְבֵית הַסֵּפֶר", wrong: ["הוּא הוֹלֵךְ בְּבֵית הַסֵּפֶר", "הוּא הוֹלֵךְ מִבֵּית הַסֵּפֶר", "הוּא הוֹלֵךְ אֶת בֵּית הַסֵּפֶר"] },
+      { english: "she walks in the park", hebrew: "הִיא הוֹלֶכֶת בַּפַּארְק", wrong: ["הִיא הוֹלֶכֶת לַפַּארְק", "הִיא הוֹלֶכֶת מֵהַפַּארְק", "הִיא הוֹלֶכֶת אֶת הַפַּארְק"] },
+      { english: "she goes to the park", hebrew: "הִיא הוֹלֶכֶת לַפַּארְק", wrong: ["הִיא הוֹלֶכֶת בַּפַּארְק", "הִיא בָּאָה לַפַּארְק", "הִיא הוֹלֶכֶת אֶת הַפַּארְק"] },
+      { english: "they (m.) go with Dana", hebrew: "הֵם הוֹלְכִים עִם דָּנָה", wrong: ["הֵם הוֹלְכִים לְדָנָה", "הֵם הוֹלְכִים אֶת דָּנָה", "הֵם הוֹלְכִים בְּדָנָה"] },
+      { english: "he comes from Jerusalem", hebrew: "הוּא בָּא מִירוּשָׁלַיִם", wrong: ["הוּא בָּא לִירוּשָׁלַיִם", "הוּא בָּא בִּירוּשָׁלַיִם", "הוּא הוֹלֵךְ מִירוּשָׁלַיִם"] },
+      { english: "she comes to the party", hebrew: "הִיא בָּאָה לַמְּסִבָּה", wrong: ["הִיא בָּאָה מֵהַמְּסִבָּה", "הִיא בָּאָה בַּמְּסִבָּה", "הִיא בָּא לַמְּסִבָּה"] },
+      { english: "they (f.) come by bus", hebrew: "הֵן בָּאוֹת בְּאוֹטוֹבּוּס", wrong: ["הֵן בָּאוֹת לְאוֹטוֹבּוּס", "הֵן בָּאוֹת מֵאוֹטוֹבּוּס", "הֵן בָּאִים בְּאוֹטוֹבּוּס"] },
+    ],
+  },
+  {
+    id: "root-hkh-azr", kind: "root", icon: "🌱", english: "Roots ח־כ־ה + ע־ז־ר: wait & help", hebrew: "שָׁרָשִׁים ח־כ־ה + ע־ז־ר: לְחַכּוֹת, לַעֲזֹר",
+    words: [
+      { english: "to wait", hebrew: "לְחַכּוֹת", wrong: ["מְחַכֶּה", "לַעֲזֹר", "לָלֶכֶת"] },
+      { english: "to help", hebrew: "לַעֲזֹר", wrong: ["עוֹזֵר", "לְחַכּוֹת", "עֶזְרָה"] },
+      { english: "he waits", hebrew: "הוּא מְחַכֶּה", wrong: ["הוּא מְחַכָּה", "הוּא מְחַכִּים", "הוּא חִכָּה"] },
+      { english: "she waits", hebrew: "הִיא מְחַכָּה", wrong: ["הִיא מְחַכֶּה", "הִיא מְחַכּוֹת", "הִיא חִכְּתָה"] },
+      { english: "they (m.) wait", hebrew: "הֵם מְחַכִּים", wrong: ["הֵם מְחַכּוֹת", "הֵם מְחַכֶּה", "הֵם חִכּוּ"] },
+      { english: "he helps", hebrew: "הוּא עוֹזֵר", wrong: ["הוּא עוֹזֶרֶת", "הוּא עוֹזְרִים", "הוּא עָזַר"] },
+      { english: "she helps", hebrew: "הִיא עוֹזֶרֶת", wrong: ["הִיא עוֹזֵר", "הִיא עוֹזְרוֹת", "הִיא עָזְרָה"] },
+      { english: "they (m.) help", hebrew: "הֵם עוֹזְרִים", wrong: ["הֵם עוֹזְרוֹת", "הֵם עוֹזֵר", "הֵם עָזְרוּ"] },
+      { english: "help (the noun)", hebrew: "עֶזְרָה", wrong: ["עוֹזֵר", "לַעֲזֹר", "עוֹזֶרֶת"] },
+      { english: "an assistant (m.)", hebrew: "עוֹזֵר", wrong: ["עֶזְרָה", "עוֹזֶרֶת", "עוֹזְרִים"] },
+      { english: "first aid", hebrew: "עֶזְרָה רִאשׁוֹנָה", wrong: ["עֶזְרָה רִאשׁוֹן", "עוֹזֵר רִאשׁוֹן", "רִאשׁוֹנָה עֶזְרָה"] },
+      // Both take לְ for the person, NOT אֶת: מְחַכֶּה לְ, עוֹזֵר לְ. So "help me" = עוֹזֵר לִי (not אוֹתִי).
+      { english: "he waits for the bus", hebrew: "הוּא מְחַכֶּה לָאוֹטוֹבּוּס", wrong: ["הוּא מְחַכֶּה אֶת הָאוֹטוֹבּוּס", "הוּא מְחַכֶּה בָּאוֹטוֹבּוּס", "הוּא מְחַכֶּה עַל הָאוֹטוֹבּוּס"] },
+      { english: "she waits at the bus stop", hebrew: "הִיא מְחַכָּה בַּתַּחֲנָה", wrong: ["הִיא מְחַכָּה לַתַּחֲנָה", "הִיא מְחַכָּה אֶת הַתַּחֲנָה", "הִיא מְחַכָּה מֵהַתַּחֲנָה"] },
+      { english: "they (m.) wait for Dana", hebrew: "הֵם מְחַכִּים לְדָנָה", wrong: ["הֵם מְחַכִּים אֶת דָּנָה", "הֵם מְחַכִּים עִם דָּנָה", "הֵם מְחַכִּים בְּדָנָה"] },
+      { english: "he waits for me", hebrew: "הוּא מְחַכֶּה לִי", wrong: ["הוּא מְחַכֶּה אוֹתִי", "הוּא מְחַכֶּה אֲנִי", "הוּא מְחַכֶּה לוֹ"] },
+      { english: "he helps Dana", hebrew: "הוּא עוֹזֵר לְדָנָה", wrong: ["הוּא עוֹזֵר אֶת דָּנָה", "הוּא עוֹזֵר עַל דָּנָה", "הוּא עוֹזֵר בְּדָנָה"] },
+      { english: "they (m.) help me", hebrew: "הֵם עוֹזְרִים לִי", wrong: ["הֵם עוֹזְרִים אוֹתִי", "הֵם עוֹזְרִים אֲנִי", "הֵם עוֹזְרִים לוֹ"] },
+      { english: "she helps with the homework", hebrew: "הִיא עוֹזֶרֶת בְּשִׁעוּרֵי הַבַּיִת", wrong: ["הִיא עוֹזֶרֶת אֶת שִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת לְשִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת מִשִּׁעוּרֵי הַבַּיִת"] },
     ],
   },
 ];
 
-// Get the topic decks ready, like the levels: label them, and make the feminine copies.
+// Get the premade decks ready, like the levels: label them, and make the feminine copies.
 for (const topic of TOPIC_DECKS) {
   topic.topic = true;
-  topic.number = "🎯";
-  topic.numberHe = "🎯";
+  topic.number = topic.icon || "🎯";   // shown where a level would show "3A"
+  topic.numberHe = topic.icon || "🎯";
   for (const word of topic.words) {
     homeLevelOf.set(word, topic);
     if (word.f) {
@@ -686,6 +883,6 @@ function forMyGender(word) {
 // Teacher decks are just "📚 Animals".
 function deckLabel(deck) {
   if (deck.custom) return `📚 ${deck.english}`;
-  if (deck.topic) return `🎯 ${deck.english}`;
+  if (deck.topic) return `${deck.number} ${deck.english}`; // like "🏫 School" or "🌱 Root כ־ת־ב: write"
   return `${deck.number} · ${deck.english}`;
 }
