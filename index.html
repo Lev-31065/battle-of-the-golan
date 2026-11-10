@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-10e">
+  <link rel="stylesheet" href="style.css?v=2026-11-10f">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -78,6 +78,9 @@
     <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="he" lang="he" dir="rtl">חֲנוּת</span><span class="en">Shop</span></button>
     <button id="flag-button" class="action-button flag" type="button" hidden>🚩<span id="flag-button-label" class="button-label"></span></button>
     <button id="attack-button" class="action-button attack" type="button" hidden><b id="attack-icon" class="attack-icon">🔨</b><span class="he" lang="he" dir="rtl">לְהַכּוֹת</span><span class="en">Hit</span></button>
+    <!-- Shows instead of Hit while you hold something to throw. It works like a joystick:
+         drag from it to aim (the picture follows your thumb), let go to throw. -->
+    <button id="throw-button" class="action-button attack throw" type="button" hidden><b id="throw-icon" class="attack-icon">🪨</b><span class="he" lang="he" dir="rtl">לִזְרֹק</span><span class="en">Throw</span><span id="throw-count" class="ammo-count"></span></button>
   </div>
 
   <!-- The toolbar: one button per thing you've bought (and ✋ for empty hands).
@@ -280,6 +283,7 @@
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
         <p><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span></p>
         <p><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלוֹת בְּעִבְרִית כְּדֵי לִקְנוֹת <b>נֶשֶׁק</b>. לוֹחֲצִים עָלָיו בְּסַרְגֵּל הַכֵּלִים כְּדֵי לְהַחְזִיק אוֹתוֹ.</span><span class="en">🛒 Visit your <b>shopkeeper</b> and answer Hebrew questions to buy <b>weapons</b>. Tap one in your toolbar to hold it.</span></p>
+        <p><span class="he" lang="he" dir="rtl">כְּדֵי <b>לִזְרֹק</b>: גּוֹרְרִים מִכַּפְתּוֹר הַזְּרִיקָה כְּדֵי לְכַוֵּן, וְעוֹזְבִים. אֶבֶן מַקְפִּיאָה אֶת מִי שֶׁהִיא פּוֹגַעַת בּוֹ.</span><span class="en">🎯 To <b>throw</b>: drag from the Throw button to aim, then let go. A rock freezes whoever it hits.</span></p>
         <p><span class="he" lang="he" dir="rtl">אוֹכְלִים <b>פֵּרוֹת יַעַר</b> כְּדֵי לָרוּץ מַהֵר יוֹתֵר וּלְקַבֵּל בְּרִיאוּת.</span><span class="en">🍒 Eat <b>berries</b> to run faster and get health back.</span></p>
         <p><span class="he" lang="he" dir="rtl">עוֹנִים עַל שְׁאֵלָה כְּדֵי <b>לִתְפֹּס אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב</b>, וּמַחֲזִירִים אוֹתוֹ לַבָּסִיס. הַקְּבוּצָה הָרִאשׁוֹנָה שֶׁמַּגִּיעָה לְ־<b>3</b> מְנַצַּחַת!</span><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span></p>
         <p><span class="he" lang="he" dir="rtl">הִפִּילוּ אֶתְכֶם? הַדֶּגֶל נוֹפֵל, וְחוֹזְרִים לַבָּסִיס בְּלִי כְּלוּם.</span><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span></p>
@@ -364,18 +368,18 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-10e"></script>
-  <script src="rules.js?v=2026-11-10e"></script>
-  <script src="sound.js?v=2026-11-10e"></script>
-  <script src="speech.js?v=2026-11-10e"></script>
-  <script src="words.js?v=2026-11-10e"></script>
-  <script src="progress.js?v=2026-11-10e"></script>
-  <script src="account.js?v=2026-11-10e"></script>
-  <script src="decks.js?v=2026-11-10e"></script>
-  <script src="quiz.js?v=2026-11-10e"></script>
-  <script src="draw.js?v=2026-11-10e"></script>
-  <script src="network.js?v=2026-11-10e"></script>
-  <script src="server.js?v=2026-11-10e"></script>
-  <script src="game.js?v=2026-11-10e"></script>
+  <script src="map.js?v=2026-11-10f"></script>
+  <script src="rules.js?v=2026-11-10f"></script>
+  <script src="sound.js?v=2026-11-10f"></script>
+  <script src="speech.js?v=2026-11-10f"></script>
+  <script src="words.js?v=2026-11-10f"></script>
+  <script src="progress.js?v=2026-11-10f"></script>
+  <script src="account.js?v=2026-11-10f"></script>
+  <script src="decks.js?v=2026-11-10f"></script>
+  <script src="quiz.js?v=2026-11-10f"></script>
+  <script src="draw.js?v=2026-11-10f"></script>
+  <script src="network.js?v=2026-11-10f"></script>
+  <script src="server.js?v=2026-11-10f"></script>
+  <script src="game.js?v=2026-11-10f"></script>
 </body>
 </html>

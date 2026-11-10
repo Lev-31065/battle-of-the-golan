@@ -73,6 +73,8 @@ const SOUNDS = {
   bump:    () => tone(90, 0.2, { type: "square", volume: 0.2 }),          // walking into a rock
   nudge:   () => tone(140, 0.08, { type: "sine", slideTo: 100, volume: 0.04 }), // bumping into a player (soft!)
   munch:   () => melody([520, 700], 0.05, { type: "triangle", volume: 0.07 }),  // eating berries
+  throw:   () => tone(350, 0.14, { type: "triangle", slideTo: 900, volume: 0.09 }), // a whoosh (rock, ninja star)
+  freeze:  () => melody([1500, 1150, 1800], 0.05, { type: "sine", volume: 0.1 }),  // icy tinkle: frozen by a rock
 };
 
 function playSound(name) {

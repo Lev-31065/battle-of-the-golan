@@ -23,6 +23,9 @@ const server = {
   customDeck: null, // if the host picked one of their own decks: { id, name, words } to send to every phone
   classGame: false, // true = a teacher's class game: only then can the host pick the words for everyone
   mode: "ctf",      // which game: "ctf" = Capture the Flag (two more games are coming)
+  shots: [],        // things flying through the air right now (thrown rocks, ninja stars)
+  nextShotId: 1,
+  freezeCount: 0,   // goes up with every freeze, so each freeze has its own number (see serverFreeze)
 };
 
 // The host picked the words. A teacher deck only lives on the host's phone, so we
@@ -72,6 +75,7 @@ function resetRound() {
   server.speedBox = makeSpeedBox();
   // When each berry was last eaten (-Infinity = never, so it's ripe).
   server.berryEatenAt = MAP.berries.map(() => -Infinity);
+  server.shots = [];
   server.winner = null;
 }
 
@@ -148,7 +152,10 @@ function serverAddPlayer(id, name) {
     alive: true,
     respawnAt: 0,
     items: [],          // what I've bought (ids from ITEMS in rules.js), lost when knocked out
+    ammo: {},           // how many of each THROWN item I have left, like { rock: 2, stars: 4 }
     held: null,         // which of my items I'm holding right now (null = empty hands)
+    frozen: false,      // hit by a rock: can't move until I answer a question right
+    freezeId: 0,        // which freeze that is (each freeze gets a new number)
     carrying: null,
     boostUntil: 0,
     berryBoosts: [],    // end times of my berry speed boosts (they add up)
@@ -224,6 +231,14 @@ function serverHandle(id, msg) {
     case "swing":
       serverSwing(p);
       break;
+    case "throw":
+      serverThrow(p, Number(msg.angle));
+      break;
+    case "unfreeze":
+      // The frozen player answered a question right. (The number makes sure it's an
+      // answer to THIS freeze, not an old message arriving late.)
+      if (p.frozen && msg.freezeId === p.freezeId) p.frozen = false;
+      break;
     case "drop":
       serverDropFlag(p);
       break;
@@ -232,10 +247,18 @@ function serverHandle(id, msg) {
       break;
     case "buy":
       // The phone already made the player answer the questions (the item's cost).
-      // You buy each item once, and you start holding it straight away.
-      if (ITEMS[msg.item] && p.alive && nearShop(p, 40) && !p.items.includes(msg.item)) {
-        p.items.push(msg.item);
-        p.held = msg.item;
+      // Hand weapons: you buy each one once. Thrown things: you can buy more any time
+      // (each buy adds `perBuy` of them). Either way, you start holding it straight away.
+      if (ITEMS[msg.item] && p.alive && nearShop(p, 40)) {
+        const item = ITEMS[msg.item];
+        if (item.kind === "throw") {
+          p.ammo[msg.item] = (p.ammo[msg.item] || 0) + item.perBuy;
+          if (!p.items.includes(msg.item)) p.items.push(msg.item);
+          p.held = msg.item;
+        } else if (!p.items.includes(msg.item)) {
+          p.items.push(msg.item);
+          p.held = msg.item;
+        }
       }
       break;
     case "hold":
@@ -250,7 +273,7 @@ function serverStartGame() {
   server.phase = "playing";
   for (const p of Object.values(server.players)) {
     Object.assign(p, spawnPoint(p.team), {
-      hp: MAX_HP, alive: true, items: [], held: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: 0, lastSwing: -10,
+      hp: MAX_HP, alive: true, items: [], ammo: {}, held: null, frozen: false, carrying: null, boostUntil: 0, berryBoosts: [], inLog: 0, lastSwing: -10,
       facing: p.team === "blue" ? 0 : Math.PI,
     });
     p.spawnCount += 1;
@@ -263,7 +286,7 @@ function serverStartGame() {
 // A swing with whatever hand weapon you're holding (stick, hammer…). Its numbers are in ITEMS.
 function serverSwing(p) {
   const weapon = ITEMS[p.held];
-  if (server.phase !== "playing" || !p.alive || !weapon || weapon.kind !== "melee" || p.carrying) return;
+  if (server.phase !== "playing" || !p.alive || !weapon || weapon.kind !== "melee" || p.carrying || p.frozen) return;
   if (server.time - p.lastSwing < weapon.cooldown * 0.8) return; // too soon (a little leeway for lag)
   p.lastSwing = server.time;
   server.events.push({ kind: "ring", x: p.x, y: p.y, radius: weapon.range, life: 0.35, sound: "swing" });
@@ -276,6 +299,110 @@ function serverSwing(p) {
   // And the speed box.
   const box = server.speedBox;
   if (box.alive && distance(box, p) < weapon.range + box.radius) serverHurt(box, weapon.damage, p);
+}
+
+// ---------- Throwing (rocks, ninja stars) ----------
+
+// A player threw what they're holding, toward `angle` (radians: 0 = right, π/2 = down).
+// The referee makes a "shot" that flies across the map; serverMoveShots moves it every frame.
+function serverThrow(p, angle) {
+  const id = p.held;
+  const item = ITEMS[id];
+  if (server.phase !== "playing" || !p.alive || !item || item.kind !== "throw" || p.carrying || p.frozen) return;
+  if (!Number.isFinite(angle) || !(p.ammo[id] > 0)) return;
+  if (server.time - p.lastSwing < item.cooldown * 0.8) return; // too soon (a little leeway for lag)
+  p.lastSwing = server.time;
+  p.facing = angle;
+
+  // Use one up. The last one? It's gone from your toolbar, and your hands are empty.
+  p.ammo[id] -= 1;
+  if (p.ammo[id] <= 0) {
+    delete p.ammo[id];
+    p.items = p.items.filter((other) => other !== id);
+    p.held = null;
+  }
+
+  // It starts at the edge of your body and flies in a straight line.
+  const dirX = Math.cos(angle);
+  const dirY = Math.sin(angle);
+  server.shots.push({
+    id: server.nextShotId++,
+    item: id,
+    team: p.team,
+    ownerId: p.id,
+    ownerName: p.name,
+    x: p.x + dirX * p.radius,
+    y: p.y + dirY * p.radius,
+    vx: dirX * item.speed,   // speed in each direction (for phones to draw it smoothly between snapshots)
+    vy: dirY * item.speed,
+    flown: 0,                // how far it has flown so far
+    hitIds: [],              // who it already hit (a ninja star hits each enemy only once)
+  });
+  server.events.push({ kind: "sound", x: p.x, y: p.y, life: 0, sound: "throw" });
+}
+
+// How close does the line from (x1, y1) to (x2, y2) come to point c?
+// (Checking the whole line, not just the end, means a fast shot can't skip over someone.)
+function distanceToLine(c, x1, y1, x2, y2) {
+  const lineX = x2 - x1;
+  const lineY = y2 - y1;
+  const lengthSquared = lineX * lineX + lineY * lineY;
+  let t = lengthSquared > 0 ? ((c.x - x1) * lineX + (c.y - y1) * lineY) / lengthSquared : 0;
+  t = Math.min(1, Math.max(0, t)); // stay between the two ends
+  return Math.hypot(c.x - (x1 + lineX * t), c.y - (y1 + lineY * t));
+}
+
+// Move everything that's flying, and check what it hits. Runs every frame.
+function serverMoveShots(dt) {
+  for (const shot of server.shots) {
+    const item = ITEMS[shot.item];
+    const step = Math.min(item.speed * dt, item.range - shot.flown); // never past its full range
+    const fromX = shot.x;
+    const fromY = shot.y;
+    const toX = fromX + (shot.vx / item.speed) * step;
+    const toY = fromY + (shot.vy / item.speed) * step;
+    // Whoever threw it (they might have left the game since; then just their name).
+    const owner = server.players[shot.ownerId] || { id: null, name: shot.ownerName };
+
+    // Did it hit an enemy on the way?
+    for (const enemy of Object.values(server.players)) {
+      if (enemy.team === shot.team || !enemy.alive || shot.hitIds.includes(enemy.id)) continue;
+      if (distanceToLine(enemy, fromX, fromY, toX, toY) > enemy.radius + item.size) continue;
+      shot.hitIds.push(enemy.id);
+      if (item.freezes) serverFreeze(enemy, owner);
+      if (item.damage > 0) serverHurt(enemy, item.damage, owner);
+      if (!item.goesThrough) {
+        shot.done = true; // a rock stops at the first person it hits
+        break;
+      }
+    }
+    // Things that do damage can smash the speed box too.
+    const box = server.speedBox;
+    if (!shot.done && item.damage > 0 && box.alive && !shot.hitIds.includes("box") &&
+        distanceToLine(box, fromX, fromY, toX, toY) <= box.radius + item.size) {
+      shot.hitIds.push("box");
+      serverHurt(box, item.damage, owner);
+      if (!item.goesThrough) shot.done = true;
+    }
+
+    shot.x = toX;
+    shot.y = toY;
+    shot.flown += step;
+    const offMap = shot.x < 0 || shot.y < 0 || shot.x > MAP.width || shot.y > MAP.height;
+    if (shot.flown >= item.range || offMap) shot.done = true;
+  }
+  server.shots = server.shots.filter((shot) => !shot.done);
+}
+
+// Hit by a rock: frozen until you answer a question right (your phone asks it, and
+// sends "unfreeze" with this freeze's number). Being frozen again while frozen changes nothing.
+function serverFreeze(target, attacker) {
+  if (target.frozen) return;
+  target.frozen = true;
+  server.freezeCount += 1;
+  target.freezeId = server.freezeCount;
+  floatText("Frozen!", target.x, target.y - 50, "#bae6fd", 1.2, "freeze", "קָפוּא!");
+  if (attacker.id) toast(`🧊 You froze ${target.name}!`, `הִקְפֵּאתֶם אֶת ${target.name}!`, attacker.id);
 }
 
 function serverHurt(target, amount, attacker) {
@@ -298,7 +425,9 @@ function serverHurt(target, amount, attacker) {
     target.respawnAt = server.time + RESPAWN_TIME;
     serverDropFlag(target);
     target.items = [];
+    target.ammo = {};
     target.held = null;
+    target.frozen = false;
     target.boostUntil = 0;
     target.berryBoosts = [];
     target.inLog = 0;
@@ -425,7 +554,7 @@ function serverUpdate(dt) {
   for (const p of Object.values(server.players)) {
     // Respawn knocked-out players at their base, with nothing.
     if (!p.alive && server.time >= p.respawnAt) {
-      Object.assign(p, spawnPoint(p.team), { alive: true, hp: MAX_HP, items: [], held: null });
+      Object.assign(p, spawnPoint(p.team), { alive: true, hp: MAX_HP, items: [], ammo: {}, held: null, frozen: false });
       p.spawnCount += 1;
     }
     // A carried flag travels with its carrier.
@@ -440,6 +569,8 @@ function serverUpdate(dt) {
     checkBase(team);
     if (server.phase !== "playing") return; // someone just won
   }
+
+  serverMoveShots(dt); // thrown rocks and ninja stars fly (and maybe hit someone)
 
   const box = server.speedBox;
   if (!box.alive && server.time >= box.respawnAt) Object.assign(box, makeSpeedBox());
@@ -469,7 +600,10 @@ function serverSnapshot() {
     speedBox: { ...server.speedBox },
     berries: MAP.berries.map((berry, i) => berryRipe(i)), // which berries are ripe (true/false each)
 
-    players: Object.values(server.players).map((p) => ({ ...p })),
+    // Things flying through the air (just what phones need to draw them).
+    shots: server.shots.map((s) => ({ id: s.id, item: s.item, x: s.x, y: s.y, vx: s.vx, vy: s.vy, flown: s.flown })),
+
+    players: Object.values(server.players).map((p) => ({ ...p, ammo: { ...p.ammo } })),
     events: server.events,
   };
   server.events = [];

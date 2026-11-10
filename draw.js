@@ -646,7 +646,11 @@ function drawPlayer(ctx, p, time, isMe) {
   const held = ITEMS[p.held];
   const swingTime = held && held.kind === "melee" ? Math.min(SWING_TIME, held.cooldown * 0.9) : SWING_TIME;
   const swingProgress = (time - p.lastSwing) / swingTime; // 0 → 1 during a swing
-  if (swingProgress >= 0 && swingProgress < 1) handAngleR += swingProgress * Math.PI * 2;
+  if (swingProgress >= 0 && swingProgress < 1) {
+    // Throwing: the hand snaps forward and back. Hand weapons: a full spin.
+    if (held && held.kind === "throw") handAngleR -= Math.sin(swingProgress * Math.PI) * 0.9;
+    else handAngleR += swingProgress * Math.PI * 2;
+  }
   if (p.held === "hammer") drawHammer(ctx, p.x, y, handAngleR, p.radius);
   if (p.held === "stick") drawStick(ctx, p.x, y, handAngleR, p.radius);
 
@@ -660,6 +664,10 @@ function drawPlayer(ctx, p, time, isMe) {
     ctx.arc(p.x + Math.cos(angle) * p.radius, y + Math.sin(angle) * p.radius, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+  }
+  // Something to throw sits in the right hand (a little smaller than when it flies).
+  if (held && held.kind === "throw") {
+    drawShot(ctx, p.held, p.x + Math.cos(handAngleR) * (p.radius + 6), y + Math.sin(handAngleR) * (p.radius + 6), 0, 0.75);
   }
 
   // Body: shaded like a ball, lit from the top-left (light → team color → dark).
@@ -697,6 +705,9 @@ function drawPlayer(ctx, p, time, isMe) {
     ctx.arc(ex + Math.cos(p.facing) * 2, ey + Math.sin(p.facing) * 2, 2.8, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // Frozen by a rock: a see-through block of ice around the whole player.
+  if (p.frozen) drawIce(ctx, p.x, y, p.radius + 9, time);
 
   // Name tag and health bar above the head
   drawLabel(ctx, p.name, p.x, y - p.radius - 22, isMe ? "#fde047" : "#fff");
@@ -745,6 +756,110 @@ function drawStick(ctx, x, y, angle, bodyRadius) {
   ctx.lineTo(bodyRadius + 31, -11);
   ctx.stroke();
   ctx.restore();
+}
+
+// ---------- Thrown things (rocks, ninja stars) ----------
+
+// One thrown thing at (x, y). `spin` turns it (in radians); `size` makes it bigger or smaller (1 = normal).
+function drawShot(ctx, itemId, x, y, spin, size = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size, size);
+  ctx.rotate(spin);
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+  if (itemId === "rock") {
+    // A lumpy gray stone, lighter on the top-left.
+    const stone = ctx.createRadialGradient(-3, -4, 1, 0, 0, 11);
+    stone.addColorStop(0, "#d1d5db");
+    stone.addColorStop(1, "#6b7280");
+    ctx.fillStyle = stone;
+    ctx.beginPath();
+    ctx.moveTo(-10, -2);
+    ctx.quadraticCurveTo(-9, -10, 0, -10);
+    ctx.quadraticCurveTo(10, -9, 10, 0);
+    ctx.quadraticCurveTo(9, 9, 0, 9);
+    ctx.quadraticCurveTo(-10, 9, -10, -2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (itemId === "stars") {
+    // A silver ninja star: 4 sharp points with a hole in the middle.
+    ctx.fillStyle = "#cbd5e1";
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const reach = i % 2 === 0 ? 14 : 5; // points stick out, the corners between them tuck in
+      ctx.lineTo(Math.cos(angle) * reach, Math.sin(angle) * reach);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#475569";
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Everything flying through the air right now. The referee sends where each one was
+// (20 times a second); in between, we slide it forward along its path so it moves smoothly.
+function drawShots(ctx, shots, time) {
+  for (const s of shots) {
+    const item = ITEMS[s.item];
+    if (!item) continue;
+    const ahead = Math.min(Math.max(0, time - s.seenAt) * item.speed, item.range - s.flown);
+    const x = s.x + (s.vx / item.speed) * ahead;
+    const y = s.y + (s.vy / item.speed) * ahead;
+    // A small shadow underneath, so it looks like it's flying above the ground.
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(x + 4, y + 14, 9, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Ninja stars spin fast; rocks tumble slowly.
+    drawShot(ctx, s.item, x, y, time * (s.item === "stars" ? 20 : 6));
+  }
+}
+
+// While aiming with the Throw button: a dashed line showing where it will fly.
+function drawAimLine(ctx, p, angle, range) {
+  const endX = p.x + Math.cos(angle) * (p.radius + range);
+  const endY = p.y + Math.sin(angle) * (p.radius + range);
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 4;
+  ctx.setLineDash([14, 10]);
+  ctx.beginPath();
+  ctx.moveTo(p.x + Math.cos(angle) * p.radius, p.y + Math.sin(angle) * p.radius);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(endX, endY, 10, 0, Math.PI * 2); // a little circle where it lands
+  ctx.stroke();
+  ctx.restore();
+}
+
+// A block of ice around a frozen player, with a slowly moving shine.
+function drawIce(ctx, x, y, r, time) {
+  ctx.fillStyle = "rgba(186, 230, 253, 0.55)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  // Six-sided, so it looks like a chunk of ice and not a bubble.
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + 0.3;
+    ctx.lineTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  const shine = Math.sin(time * 3) * 4;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+  ctx.beginPath();
+  ctx.moveTo(x - r * 0.5 + shine, y - r * 0.15);
+  ctx.lineTo(x - r * 0.15 + shine, y - r * 0.55);
+  ctx.stroke();
 }
 
 // White text with a dark outline so it's readable on any background.

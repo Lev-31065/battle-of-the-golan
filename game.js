@@ -35,6 +35,7 @@ let score = { blue: 0, red: 0 };
 let speedBox = null;
 let berries = null;   // which bushes have ripe berries (true/false for each bush), or null = all ripe
 const effects = [];   // shockwave rings and floating numbers
+let shots = [];       // thrown rocks and ninja stars flying right now (from the referee)
 
 let rockPassUntil = 0; // until this time, I can walk through rocks (after answering a rock question)
 let myLog = null;      // the log I'm hiding inside right now (null = not hiding)
@@ -54,8 +55,11 @@ function resetTimers() {
   hurtAt = -Infinity;
   rockPassUntil = 0;
   effects.length = 0;
+  shots = [];
   myLog = null;
   berryAskedAt.clear();
+  answeredFreezeId = 0;
+  cancelAim();
 }
 
 function myPlayer() {
@@ -141,7 +145,10 @@ window.addEventListener("keydown", (event) => {
   keysDown.add(key);
   if (key === " ") {
     event.preventDefault(); // stops Space from also "clicking" whatever button was last pressed
-    swingWeapon();
+    // Holding something to throw? Throw it the way you're facing. Otherwise swing.
+    const p = myPlayer();
+    if (heldThrowable(p)) throwNow(p.facing);
+    else swingWeapon();
   }
   // Number keys pick a toolbar slot (1 = empty hands). Not while answering: there, 1–4 pick an answer.
   const slot = parseInt(key, 10);
@@ -888,6 +895,8 @@ function applySnapshot(snap) {
   score = snap.score;
   speedBox = snap.speedBox;
   berries = snap.berries || null;
+  // Flying things: remember WHEN we heard about them, so drawing can slide them forward until the next snapshot.
+  shots = (snap.shots || []).map((s) => ({ ...s, seenAt: gameTime }));
   client.winner = snap.winner;
 
   // Things that just happened: messages, damage numbers, shockwaves.
@@ -915,6 +924,7 @@ function isNearMe(event) {
 function changePhase(phase) {
   client.phase = phase;
   resetStick();
+  cancelAim();
   closeDeckDropdown(); // (in case the word list was open when the battle started)
   if (phase === "lobby") {
     winnerEl.hidden = true; // (coming back after a game ended)
@@ -925,6 +935,7 @@ function changePhase(phase) {
     rockPassUntil = 0;
     shopPaid = {};   // a new game: half-paid items start from zero
     myHeld = null;
+    answeredFreezeId = 0;
     if (window.innerHeight > window.innerWidth) {
       setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טִיפ: מְסוֹבְבִים אֶת הַטֶּלֶפוֹן לָרֹחַב כְּדֵי לִרְאוֹת יוֹתֵר מֵהַמַּפָּה!"), 3000);
     }
@@ -959,7 +970,8 @@ function fillShop(p) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "shop-item";
-    const owned = (p.items || []).includes(id);
+    // Hand weapons: once you own one, its button is grayed out. Thrown things can always be bought again.
+    const owned = item.kind !== "throw" && (p.items || []).includes(id);
     button.disabled = owned;
 
     const icon = document.createElement("span");
@@ -1001,7 +1013,7 @@ document.getElementById("shop-close").addEventListener("click", () => { shopEl.h
 function startBuying(id) {
   const p = myPlayer();
   const item = ITEMS[id];
-  if (!p || !item || (p.items || []).includes(id)) return;
+  if (!p || !item || (item.kind !== "throw" && (p.items || []).includes(id))) return;
   shopEl.hidden = true;
   const questionNumber = (shopPaid[id] || 0) + 1;
   openQuiz({
@@ -1016,7 +1028,11 @@ function startBuying(id) {
       delete shopPaid[id];
       sendToServer({ type: "buy", item: id });
       holdItem(id); // hold it straight away (the referee does the same)
-      showToast(`${item.icon} You got the ${item.name}! It's in your toolbar.`, `יֵשׁ ${item.nameHe}! הוּא בְּסַרְגֵּל הַכֵּלִים.`);
+      if (item.kind === "throw") {
+        showToast(`${item.icon} +${item.perBuy} ${item.name}! Drag from the Throw button to aim.`, `${item.nameHe} +${item.perBuy}! גּוֹרְרִים מִכַּפְתּוֹר הַזְּרִיקָה כְּדֵי לְכַוֵּן.`);
+      } else {
+        showToast(`${item.icon} You got the ${item.name}! It's in your toolbar.`, `יֵשׁ ${item.nameHe}! הוּא בְּסַרְגֵּל הַכֵּלִים.`);
+      }
     },
   });
 }
@@ -1044,7 +1060,8 @@ function updateToolbar(p) {
   toolbarEl.hidden = !show;
   if (!show) return;
   const slots = [null, ...Object.keys(ITEMS).filter((id) => p.items.includes(id))]; // null = ✋ empty hands
-  const key = slots.join(",");
+  const ammo = p.ammo || {};
+  const key = slots.map((id) => id + ":" + (ammo[id] || "")).join(","); // (counts too, so the badges update)
   if (toolbarEl.dataset.key !== key) {
     toolbarEl.dataset.key = key;
     toolbarEl.textContent = "";
@@ -1055,6 +1072,13 @@ function updateToolbar(p) {
       button.dataset.item = id || "";
       button.textContent = id ? ITEMS[id].icon : "✋";
       button.title = (id ? ITEMS[id].name : "Empty hands") + ` (${i + 1})`;
+      // Thrown things: a little badge says how many are left.
+      if (ammo[id]) {
+        const count = document.createElement("small");
+        count.className = "tool-count";
+        count.textContent = ammo[id];
+        button.appendChild(count);
+      }
       onPress(button, () => holdItem(id));
       toolbarEl.appendChild(button);
     });
@@ -1086,6 +1110,125 @@ function swingWeapon() {
   if (gameTime - p.lastSwing < heldWeapon(p).cooldown) return; // still cooling down
   p.lastSwing = gameTime; // start the swing animation right away
   sendToServer({ type: "swing" });
+}
+
+// ---------- Throwing (rocks, ninja stars) ----------
+// While you hold something to throw, the Hit button becomes a Throw button that works
+// like a joystick: put your thumb on it, drag the way you want to throw (a dashed line
+// shows where it will fly), and let go. A quick tap throws the way you're facing.
+// The referee flies it and decides what it hits.
+
+const throwButton = document.getElementById("throw-button");
+const throwIcon = document.getElementById("throw-icon");
+const throwCount = document.getElementById("throw-count");
+const AIM_MAX_DRAG = 34; // how far (screen pixels) the picture on the button follows your thumb
+
+const aim = {
+  active: false,    // true while a thumb is on the Throw button
+  pointerId: null,  // which finger (so the joystick finger doesn't count)
+  startX: 0, startY: 0,
+  dx: 0, dy: 0,     // how far the thumb has dragged from where it started
+};
+
+// The thing to throw I'm holding (its settings from ITEMS), or null.
+function heldThrowable(p) {
+  const item = p && ITEMS[p.held];
+  return item && item.kind === "throw" && (p.ammo || {})[p.held] > 0 ? item : null;
+}
+
+function canThrow(p) {
+  return Boolean(heldThrowable(p)) && !isBusy() && !p.carrying;
+}
+
+// Which way the throw goes: where you dragged, or (a tiny drag) the way you're facing.
+function aimAngle(p) {
+  if (Math.hypot(aim.dx, aim.dy) < AIM_DEADZONE) return p.facing;
+  return Math.atan2(aim.dy, aim.dx);
+}
+
+throwButton.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  if (aim.active || !canThrow(myPlayer())) return;
+  throwButton.setPointerCapture(event.pointerId); // keep following this finger even off the button
+  Object.assign(aim, { active: true, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0 });
+  throwButton.classList.add("aiming");
+});
+
+throwButton.addEventListener("pointermove", (event) => {
+  if (!aim.active || event.pointerId !== aim.pointerId) return;
+  aim.dx = event.clientX - aim.startX;
+  aim.dy = event.clientY - aim.startY;
+  // The picture slides after your thumb, but only a little way.
+  const length = Math.hypot(aim.dx, aim.dy);
+  const shown = Math.min(length, AIM_MAX_DRAG) / (length || 1);
+  throwIcon.style.transform = `translate(${aim.dx * shown}px, ${aim.dy * shown}px)`;
+});
+
+throwButton.addEventListener("pointerup", (event) => {
+  if (!aim.active || event.pointerId !== aim.pointerId) return;
+  const p = myPlayer();
+  const angle = p ? aimAngle(p) : 0;
+  cancelAim();
+  throwNow(angle);
+});
+throwButton.addEventListener("pointercancel", cancelAim);
+
+// Stop aiming without throwing (also used when a popup opens or the game ends).
+function cancelAim() {
+  aim.active = false;
+  aim.pointerId = null;
+  aim.dx = 0;
+  aim.dy = 0;
+  throwIcon.style.transform = "";
+  throwButton.classList.remove("aiming");
+}
+
+function throwNow(angle) {
+  const p = myPlayer();
+  const item = heldThrowable(p);
+  if (!item || !canThrow(p)) return;
+  if (gameTime - p.lastSwing < item.cooldown) return; // still cooling down
+  p.lastSwing = gameTime; // start the throwing animation right away
+  p.facing = angle;       // turn to face the throw
+  sendMyPosition(p);      // so the referee throws it from exactly where I am
+  sendToServer({ type: "throw", angle });
+}
+
+// ---------- Frozen (hit by a rock) ----------
+// The referee says I'm frozen: a question pops up that can't be closed, and I can't move
+// until I get one right. Each freeze has its own number (freezeId), so a late snapshot
+// that still says "frozen" doesn't pop the question up again after I've answered.
+
+let freezeQuizId = 0;    // which freeze the open question is for (0 = no freeze question open)
+let answeredFreezeId = 0; // the last freeze I answered (waiting for the referee to hear it)
+
+function checkFrozen(p) {
+  const stillFrozen = p.frozen && p.freezeId !== answeredFreezeId;
+  if (stillFrozen && !(quiz.open && freezeQuizId === p.freezeId)) {
+    // Close whatever was open (shop, another question) and ask the freeze question.
+    shopEl.hidden = true;
+    flagQuizTeam = null;
+    if (quiz.open) closeQuiz();
+    resetStick();
+    cancelAim();
+    const id = p.freezeId;
+    freezeQuizId = id;
+    openQuiz({
+      title: "🧊 A rock hit you! You're frozen. Answer to break free",
+      titleHe: "אֶבֶן פָּגְעָה בָּכֶם! אַתֶּם קְפוּאִים. עוֹנִים נָכוֹן כְּדֵי לְהִשְׁתַּחְרֵר",
+      closable: false,
+      onCorrect: () => {
+        answeredFreezeId = id;
+        freezeQuizId = 0;
+        p.frozen = false; // (move again straight away; the referee hears about it in a moment)
+        sendToServer({ type: "unfreeze", freezeId: id });
+      },
+    });
+  } else if (!p.frozen && freezeQuizId) {
+    // Not frozen any more some other way (like being knocked out): close the question.
+    freezeQuizId = 0;
+    if (quiz.open) closeQuiz();
+  }
 }
 
 // ---------- Flags ----------
@@ -1396,9 +1539,12 @@ function update(dt) {
     stopBounce();
     myLog = null;
     p.inLog = 0;
+    freezeQuizId = 0; // (a knockout also ends a freeze)
+    cancelAim();
     return;
   }
 
+  checkFrozen(p);   // hit by a rock? Answer a question before you can move again.
   checkFlagQuiz(p);
 
   if (isBusy()) {
@@ -1445,6 +1591,8 @@ function update(dt) {
     clampToMap(p);
     p.moving = amount > 0.1;
     if (p.moving) p.facing = Math.atan2(dy, dx);
+    // Aiming a throw? Turn toward where you're aiming (even while walking another way).
+    if (aim.active && Math.hypot(aim.dx, aim.dy) >= AIM_DEADZONE) p.facing = aimAngle(p);
   }
 
   p.inLog = myLogNumber();
@@ -1517,7 +1665,11 @@ function render() {
     }
   }
   drawBushes(ctx, berries);
+  if (client.phase === "playing") drawShots(ctx, shots, gameTime); // flying over the bushes
   drawEffects(ctx, effects, gameTime);
+  // Aiming a throw: show where it will fly.
+  const aimingWith = aim.active && heldThrowable(me);
+  if (aimingWith && client.phase === "playing") drawAimLine(ctx, me, aimAngle(me), aimingWith.range);
 
   // Hiding in a log: everything gets dark, darkest at the edges of the screen.
   if (client.phase === "playing" && myLog) drawLogDarkness(ctx, view.dpr);
@@ -1569,7 +1721,7 @@ function updateHud(p) {
   sideTags.hidden = !playing;
   joystickBase.hidden = !playing; // the joystick shows whenever you're in a game
   if (!playing) {
-    for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
+    for (const b of [shopButton, flagButton, attackButton, throwButton]) b.hidden = true;
     toolbarEl.hidden = true;
     koMessage.hidden = true;
     return;
@@ -1614,6 +1766,17 @@ function updateHud(p) {
   if (weapon) {
     if (attackIcon.textContent !== weapon.icon) attackIcon.textContent = weapon.icon;
     attackButton.classList.toggle("cooling", gameTime - p.lastSwing < weapon.cooldown);
+  }
+  // The Throw button (instead of Hit) while holding something to throw.
+  const throwable = heldThrowable(p);
+  throwButton.hidden = !canThrow(p);
+  if (throwButton.hidden) {
+    if (aim.active) cancelAim(); // (ran out, got busy, or grabbed a flag mid-aim)
+  } else {
+    if (throwIcon.textContent !== throwable.icon) throwIcon.textContent = throwable.icon;
+    const left = String(p.ammo[p.held]);
+    if (throwCount.textContent !== left) throwCount.textContent = left;
+    throwButton.classList.toggle("cooling", gameTime - p.lastSwing < throwable.cooldown);
   }
   flagButton.hidden = isBusy() || !(p.carrying || grabbableFlag(p));
   if (p.carrying) setBilingual(flagButtonLabel, "Drop", "לִזְרֹק");

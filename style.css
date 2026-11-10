@@ -203,6 +203,25 @@ button, select, input { touch-action: manipulation; }
 .action-button.flag { background: #2563eb; }
 .action-button * { pointer-events: none; }  /* taps on the little label count as taps on the button */
 .action-button .attack-icon { font-size: 36px; line-height: 1; }  /* the held weapon's picture on the Hit button */
+/* The Throw button: orange, and the picture slides after your thumb while you aim. */
+.action-button.throw { position: relative; background: #ea580c; }
+.action-button.throw.aiming { opacity: 1; border-color: #fde047; }
+.action-button.throw .attack-icon { display: block; }
+/* How many you have left (a small badge on the corner) */
+.ammo-count, .tool-count {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  min-width: 22px;
+  padding: 2px 5px;
+  border-radius: 11px;
+  background: #111827;
+  color: #fff;
+  font: 800 12px "Rubik", sans-serif;
+  line-height: 1.3;
+  text-align: center;
+}
+.action-button .ammo-count { margin-top: 0; font-size: 13px; }
 
 /* ---------- Toolbar: what you're holding (just above the action buttons) ----------
    Low enough to stay clear of the row of round buttons under the minimap, even on short sideways phones. */
@@ -229,6 +248,8 @@ button, select, input { touch-action: manipulation; }
   cursor: pointer;
   touch-action: none;
 }
+.tool-slot { position: relative; }  /* (so the count badge can sit on its corner) */
+.tool-count { right: -7px; top: -7px; min-width: 18px; padding: 1px 4px; font-size: 11px; }
 .tool-slot.held { border-color: #fde047; background: rgba(253, 224, 71, 0.45); }  /* the one you're holding */
 .shop-items { display: flex; flex-direction: column; gap: 10px; }
 

@@ -22,11 +22,26 @@ const BUMP = {
 // Everything you can buy. The shop and the toolbar list them in THIS order.
 //   cost      = how many questions you must answer RIGHT to buy it (wrong answers don't count)
 //   kind      = "melee": a hand weapon. Tap Hit to hurt every enemy within `range` of you.
+//               "throw": thrown with the Throw button (drag from it to aim, let go to throw).
 //   damage    = health taken off per hit (players have MAX_HP = 100)
-//   range     = how far the hit zone reaches from your center
-//   cooldown  = seconds you must wait between swings
-// Bought items stay in your toolbar until you're knocked out.
+//   range     = melee: how far the hit zone reaches from your center. Throw: how far it flies.
+//   cooldown  = seconds you must wait between swings (or throws)
+// Only for "throw" items:
+//   perBuy    = how many you get each time you buy it (they get used up; buy more any time)
+//   speed     = how fast it flies (world units per second; players walk at PLAYER_SPEED = 172)
+//   size      = how big it is when checking what it hits
+//   freezes   = true: whoever it hits FREEZES (can't move) until they answer a question right
+//   goesThrough = true: it keeps flying and hits EVERY enemy in its path. false: it stops at the first one.
+// Hand weapons stay in your toolbar until you're knocked out. Thrown things run out (and are lost if you're knocked out).
 const ITEMS = {
+  // The cheapest thing in the shop. No damage, but it freezes whoever it hits.
+  rock: {
+    kind: "throw", cost: 1, perBuy: 1, damage: 0, range: 450, speed: 750, size: 10, cooldown: 0.5,
+    freezes: true, goesThrough: false,
+    icon: "🪨", name: "Rock", nameHe: "אֶבֶן",
+    about: "Throw it: whoever it hits freezes until they answer a question",
+    aboutHe: "זוֹרְקִים אוֹתָהּ: מִי שֶׁנִּפְגָּע קוֹפֵא עַד שֶׁהוּא עוֹנֶה עַל שְׁאֵלָה",
+  },
   stick: {
     kind: "melee", cost: 2, damage: 8, range: 70, cooldown: 0.25,
     icon: "🏑", name: "Stick", nameHe: "מַקֵּל",
@@ -38,7 +53,18 @@ const ITEMS = {
     icon: "🔨", name: "Hammer", nameHe: "פַּטִּישׁ",
     about: "Strong: hits every enemy close to you", aboutHe: "חָזָק: פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב",
   },
+  // Same damage as the hammer, but thrown. Flies its full range, through everyone in its path.
+  stars: {
+    kind: "throw", cost: 5, perBuy: 4, damage: 34, range: 550, speed: 950, size: 12, cooldown: 0.35,
+    freezes: false, goesThrough: true,
+    icon: "⭐", name: "Ninja stars", nameHe: "כּוֹכְבֵי נִינְגָּ׳ה",
+    about: "You get 4. Each one hits every enemy in its path",
+    aboutHe: "מְקַבְּלִים 4. כָּל אֶחָד פּוֹגֵעַ בְּכָל אוֹיֵב בַּדֶּרֶךְ",
+  },
 };
+
+// The Throw button: dragging less than this (screen pixels) = throw the way you're facing.
+const AIM_DEADZONE = 15;
 
 // ---------- Speed boost box ----------
 const SPEED_BOOST = {
@@ -160,7 +186,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-10e";
+const GAME_VERSION = "2026-11-10f";
 
 // ---------- Helpers ----------
 
