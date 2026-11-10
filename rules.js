@@ -36,7 +36,7 @@ const BUMP = {
 const ITEMS = {
   // The cheapest thing in the shop. No damage, but it freezes whoever it hits.
   rock: {
-    kind: "throw", cost: 1, perBuy: 1, damage: 0, range: 450, speed: 750, size: 10, cooldown: 0.5,
+    kind: "throw", cost: 1, perBuy: 1, damage: 0, range: 450, speed: 380, size: 10, cooldown: 0.5,
     freezes: true, goesThrough: false,
     icon: "🪨", name: "Rock", nameHe: "אֶבֶן",
     about: "Throw it: whoever it hits freezes until they answer a question",
@@ -55,7 +55,7 @@ const ITEMS = {
   },
   // Same damage as the hammer, but thrown. Flies its full range, through everyone in its path.
   stars: {
-    kind: "throw", cost: 5, perBuy: 4, damage: 34, range: 550, speed: 950, size: 12, cooldown: 0.35,
+    kind: "throw", cost: 5, perBuy: 4, damage: 34, range: 550, speed: 470, size: 12, cooldown: 0.35,
     freezes: false, goesThrough: true,
     icon: "⭐", name: "Ninja stars", nameHe: "כּוֹכְבֵי נִינְגָּ׳ה",
     about: "You get 4. Each one hits every enemy in its path",
@@ -186,7 +186,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-10f";
+const GAME_VERSION = "2026-11-10g";
 
 // ---------- Helpers ----------
 
