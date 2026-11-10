@@ -149,8 +149,10 @@ function keyboardDirection() {
 }
 
 // ---------- Touch joystick ----------
-// Put your thumb anywhere on the left half of the screen. That spot becomes the
-// center of the joystick, and dragging away from it moves the player that way.
+// The joystick is always shown while playing, resting faded in the bottom-left corner
+// (its resting spot is set in style.css). Put your thumb anywhere on the left half of
+// the screen: the joystick jumps there, and dragging away from it moves the player.
+// Let go and it slides back to its corner.
 
 const joystickZone = document.getElementById("joystick-zone");
 const joystickBase = document.getElementById("joystick-base");
@@ -170,7 +172,7 @@ joystickZone.addEventListener("pointerdown", (event) => {
   joystickBase.style.left = stickStartX + "px";
   joystickBase.style.top = stickStartY + "px";
   joystickKnob.style.transform = "translate(0px, 0px)";
-  joystickBase.hidden = false;
+  joystickBase.classList.add("active"); // bright while your thumb is on it
 });
 
 joystickZone.addEventListener("pointermove", (event) => {
@@ -192,7 +194,11 @@ function resetStick() {
   stickPointerId = null;
   stick.x = 0;
   stick.y = 0;
-  joystickBase.hidden = true;
+  // Back to the resting corner: removing the inline left/top lets style.css's spot apply again.
+  joystickBase.style.left = "";
+  joystickBase.style.top = "";
+  joystickKnob.style.transform = "translate(0px, 0px)";
+  joystickBase.classList.remove("active");
 }
 function releaseStick(event) {
   if (event.pointerId === stickPointerId) resetStick();
@@ -1058,6 +1064,66 @@ function bumpRock() {
   });
 }
 
+// ---------- Bumping into other players ----------
+// Each phone only moves its own player, so each phone checks: "am I overlapping
+// someone?" If so, it pushes MY player all the way out, and gives me a little
+// bounce away from them. Both phones do this, so the two players bounce apart.
+// While you're answering a question or shopping, your phone skips this, so the
+// other player's phone does all the pushing: nobody can shove you while you answer.
+// Settings are in BUMP (rules.js).
+
+const bump = {
+  vx: 0, vy: 0,          // my bounce speed right now (fades to 0)
+  touching: new Set(),   // who I was touching last frame (so each new touch bounces once)
+  lastSound: -Infinity,  // when the bump sound last played
+};
+
+function bumpIntoPlayers(p) {
+  const nowTouching = new Set();
+  const minDistance = PLAYER_RADIUS * 2; // two bodies side by side
+  for (const other of Object.values(players)) {
+    if (other.id === p.id || !other.alive) continue;
+    if (!BUMP.teammates && other.team === p.team) continue;
+    const dist = Math.hypot(p.x - other.x, p.y - other.y);
+    if (dist >= minDistance) continue;
+    nowTouching.add(other.id);
+
+    // Which way is "away from them"? (If we're exactly on top of each other,
+    // the player ids decide, so the two phones push in opposite directions.)
+    const awayX = dist > 0 ? (p.x - other.x) / dist : (p.id < other.id ? 1 : -1);
+    const awayY = dist > 0 ? (p.y - other.y) / dist : 0;
+    // Step out so we're just touching, not overlapping.
+    p.x = other.x + awayX * minDistance;
+    p.y = other.y + awayY * minDistance;
+
+    // A NEW touch (not one that started last frame) = a bounce.
+    if (!bump.touching.has(other.id)) {
+      bump.vx = awayX * BUMP.bounceSpeed;
+      bump.vy = awayY * BUMP.bounceSpeed;
+      if (gameTime - bump.lastSound > 0.4) {
+        bump.lastSound = gameTime;
+        playSound("bump");
+      }
+    }
+  }
+  bump.touching = nowTouching;
+}
+
+// Move by my bounce speed, then let it fade a little.
+function applyBounce(p, dt) {
+  p.x += bump.vx * dt;
+  p.y += bump.vy * dt;
+  const fade = Math.exp(-BUMP.slowdown * dt);
+  bump.vx *= fade;
+  bump.vy *= fade;
+}
+
+function stopBounce() {
+  bump.vx = 0;
+  bump.vy = 0;
+  bump.touching.clear();
+}
+
 // ---------- Winner screen ----------
 
 const winnerEl = document.getElementById("winner");
@@ -1132,6 +1198,7 @@ function update(dt) {
     if (quiz.open) closeQuiz();
     shopEl.hidden = true;
     p.moving = false;
+    stopBounce();
     return;
   }
 
@@ -1139,6 +1206,7 @@ function update(dt) {
 
   if (isBusy()) {
     p.moving = false;
+    stopBounce(); // answering or shopping: you stand still and can't be shoved
   } else {
     const keys = keyboardDirection();
     let dx = stick.x + keys.x;
@@ -1161,6 +1229,8 @@ function update(dt) {
     const oldY = p.y;
     p.x += dx * speed * dt;
     p.y += dy * speed * dt;
+    applyBounce(p, dt);   // still sliding from a bump?
+    bumpIntoPlayers(p);   // players are solid
     checkRocks(p, oldX, oldY);
     clampToMap(p);
     p.moving = amount > 0.1;
@@ -1273,6 +1343,7 @@ function updateHud(p) {
   leaveButton.hidden = !playing;
   fullscreenButton.hidden = !playing || !canFullscreen;
   sideTags.hidden = !playing;
+  joystickBase.hidden = !playing; // the joystick shows whenever you're in a game
   if (!playing) {
     for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
     koMessage.hidden = true;

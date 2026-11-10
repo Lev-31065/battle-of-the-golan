@@ -42,8 +42,8 @@ const MAP = {
   // Bushes slow you down, and you're partly hidden inside them.
   // [x, y, radius]
   bushes: [
-    [430, 420, 50], [380, 820, 50], [880, 300, 50], [820, 700, 50],
-    [1120, 900, 50], [1160, 480, 50], [1570, 420, 50], [1620, 820, 50],
+    [430, 420, 65], [380, 820, 65], [880, 300, 65], [820, 700, 65],
+    [1120, 900, 65], [1160, 480, 65], [1570, 420, 65], [1620, 820, 65],
   ],
 
   // Trees are decorations. You can walk right past them.

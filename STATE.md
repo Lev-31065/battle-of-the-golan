@@ -36,7 +36,7 @@
 
 ## Key decisions
 - **PeerJS with the host as referee.** Free, no game server. If the host leaves, the room closes.
-- **GitHub Pages via web upload.** Git isn't installed yet; Daniel is considering it, so Claude could upload.
+- **GitHub Pages, uploaded by Claude with git (since 2026-11-10).** See Deploy in `AGENTS.md`.
 - **Supabase for logins and data.** The URL and publishable key in `account.js` are public by design. Never add the secret/service_role key.
 - **Teacher features will be paid later.** For now the dashboard is free for anyone logged in. Later, lock the dashboard door (and the `decks` table) behind a paid account; nothing else should need to change.
 - **Class game = room hosted from the dashboard.** That's how the game knows the host is a teacher.

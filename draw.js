@@ -20,51 +20,93 @@ const COLORS = {
   redLight: "#fca5a5",
 };
 
+// ---------- Pictures painted once and reused ----------
+// Painting thousands of grass blades 60 times a second would be slow on old phones.
+// So everything that never changes (grass, paths, river water, base floors) is
+// painted ONCE onto a hidden canvas the first time the map is drawn, and each frame
+// we just stamp that finished picture onto the screen. Trees, rocks and bushes work
+// the same way: each is painted once as a small picture (a "sprite") and stamped
+// wherever it's needed.
+
+const GROUND_RES = 1.5; // hidden-canvas dots per world unit (more = sharper, but uses more memory)
+const SPRITE_RES = 2;   // the same for trees, rocks and bushes
+let groundLayer = null; // the hidden canvas with the ground on it (made on first use)
+const sprites = {};     // finished sprites, by name
+
+// A random-number maker that gives the SAME numbers every time (from the same seed),
+// so the grass and flowers land in the same places on every phone.
+function seededRandom(seed) {
+  return function random() {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+}
+
+// Make a hidden canvas `w` × `h` world units big and paint on it with `paint(g)`.
+function makeCanvas(w, h, res, paint) {
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(w * res);
+  c.height = Math.ceil(h * res);
+  const g = c.getContext("2d");
+  g.scale(res, res); // so `paint` can use world units
+  paint(g);
+  return c;
+}
+
+// A sprite is a square picture `size` units wide. `paint` draws it centered on (0, 0).
+function makeSprite(size, paint) {
+  const canvas = makeCanvas(size, size, SPRITE_RES, (g) => {
+    g.translate(size / 2, size / 2);
+    paint(g);
+  });
+  return { canvas, size };
+}
+
+// Stamp a sprite centered on (x, y).
+function drawSprite(ctx, sprite, x, y) {
+  ctx.drawImage(sprite.canvas, x - sprite.size / 2, y - sprite.size / 2, sprite.size, sprite.size);
+}
+
+// Fill a circle (a small helper, since we draw a LOT of circles).
+function dot(g, x, y, r) {
+  g.beginPath();
+  g.arc(x, y, r, 0, Math.PI * 2);
+  g.fill();
+}
+
 // ---------- The map ----------
 
 function drawMap(ctx, time) {
-  // 1. Grass covering the whole map.
-  ctx.fillStyle = COLORS.grass;
-  ctx.fillRect(0, 0, MAP.width, MAP.height);
+  // 1. The ground: grass, paths, flowers, base floors and rivers (painted once).
+  if (!groundLayer) groundLayer = buildGroundLayer();
+  ctx.drawImage(groundLayer, 0, 0, MAP.width, MAP.height);
 
-  // 2. Grass patches for texture.
-  for (const patch of MAP.grassPatches) {
-    ctx.fillStyle = patch.light ? COLORS.grassLight : COLORS.grassDark;
-    ctx.beginPath();
-    ctx.ellipse(patch.x, patch.y, patch.r, patch.r * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // 2. Base names (drawn each frame so the Rubik font is ready by then).
+  drawBaseLabel(ctx, MAP.bases.blue, "blue");
+  drawBaseLabel(ctx, MAP.bases.red, "red");
 
-  // 3. Bases (drawn before rivers and decorations so they sit "on the ground").
-  drawBase(ctx, MAP.bases.blue, "blue");
-  drawBase(ctx, MAP.bases.red, "red");
-
-  // 4. Rivers: a sandy bank, then the water, then moving sparkles on top.
+  // 3. Moving sparkles on the rivers: a dashed light line that slides along,
+  //    so the water looks like it's flowing.
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.setLineDash([20, 70]);
+  ctx.lineDashOffset = -time * 40;
+  ctx.strokeStyle = "rgba(220, 240, 255, 0.75)";
+  ctx.lineWidth = 5;
   for (const river of MAP.rivers) {
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    traceLine(ctx, river.points);
-    ctx.strokeStyle = COLORS.riverBank;
-    ctx.lineWidth = river.width + 18;
-    ctx.stroke();
-    ctx.strokeStyle = COLORS.water;
-    ctx.lineWidth = river.width;
-    ctx.stroke();
-    // Dashed light line that slides along — it makes the water look like it's flowing.
-    ctx.setLineDash([24, 60]);
-    ctx.lineDashOffset = -time * 40;
-    ctx.strokeStyle = COLORS.waterShine;
-    ctx.lineWidth = 6;
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (const side of [-18, 18]) {
+      traceLine(ctx, river.points.map(([x, y]) => [x + side, y]));
+      ctx.stroke();
+    }
   }
+  ctx.setLineDash([]);
 
-  // 5. Bridges over the rivers.
+  // 4. Bridges over the rivers.
   for (const bridge of MAP.bridges) drawBridge(ctx, bridge);
 
-  // 6. Rocks and trees.
-  for (const [x, y] of MAP.rocks) drawRock(ctx, x, y);
-  for (const [x, y] of MAP.trees) drawTree(ctx, x, y);
+  // 5. Rocks and trees.
+  for (const [x, y] of MAP.rocks) drawSprite(ctx, rockSprite(), x, y);
+  for (const [x, y] of MAP.trees) drawSprite(ctx, treeSprite(), x, y);
 }
 
 // Draws a path through a list of points (used for rivers).
@@ -74,18 +116,187 @@ function traceLine(ctx, points) {
   for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
 }
 
-function drawBase(ctx, base, team) {
+// Like traceLine, but with rounded bends (used for the dirt paths).
+function traceCurve(ctx, points) {
   ctx.beginPath();
-  ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
-  ctx.fillStyle = team === "blue" ? "rgba(59,130,246,0.18)" : "rgba(239,68,68,0.18)";
-  ctx.fill();
-  ctx.setLineDash([18, 12]);
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = COLORS[team];
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length - 1; i++) {
+    const midX = (points[i][0] + points[i + 1][0]) / 2;
+    const midY = (points[i][1] + points[i + 1][1]) / 2;
+    ctx.quadraticCurveTo(points[i][0], points[i][1], midX, midY);
+  }
+  const last = points[points.length - 1];
+  ctx.lineTo(last[0], last[1]);
+}
 
-  // Label under the base.
+// Dirt paths: from each base to its two bridges, and from the bridges to the
+// ⚡ box in the middle. Just for looks (and to help find the way); they don't change speed.
+const DIRT_PATHS = [
+  [[220, 600], [390, 420], [560, 250]],
+  [[220, 600], [400, 730], [580, 820]],
+  [[720, 250], [860, 420], [1000, 600]],
+  [[740, 820], [880, 690], [1000, 600]],
+  [[1000, 600], [1140, 430], [1280, 300]],
+  [[1000, 600], [1130, 770], [1270, 900]],
+  [[1440, 300], [1610, 440], [1780, 600]],
+  [[1430, 900], [1600, 770], [1780, 600]],
+];
+
+function buildGroundLayer() {
+  return makeCanvas(MAP.width, MAP.height, GROUND_RES, (g) => {
+    const random = seededRandom(7);
+
+    // Grass covering the whole map.
+    g.fillStyle = COLORS.grass;
+    g.fillRect(0, 0, MAP.width, MAP.height);
+
+    // Soft lighter and darker patches (they fade out at the edges).
+    for (const patch of MAP.grassPatches) {
+      const color = patch.light ? "150, 210, 120" : "98, 156, 78";
+      const glow = g.createRadialGradient(patch.x, patch.y, 0, patch.x, patch.y, patch.r * 1.3);
+      glow.addColorStop(0, `rgba(${color}, 0.75)`);
+      glow.addColorStop(1, `rgba(${color}, 0)`);
+      g.fillStyle = glow;
+      dot(g, patch.x, patch.y, patch.r * 1.3);
+    }
+
+    // Dirt paths: a darker edge, a lighter middle, and some pebbles.
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    for (const [width, color] of [[50, "#b8955f"], [38, "#cfae74"], [16, "#d9bd86"]]) {
+      g.strokeStyle = color;
+      g.lineWidth = width;
+      for (const path of DIRT_PATHS) {
+        traceCurve(g, path);
+        g.stroke();
+      }
+    }
+    g.fillStyle = "rgba(120, 95, 60, 0.45)";
+    for (const path of DIRT_PATHS) {
+      for (let i = 0; i < path.length - 1; i++) {
+        for (let k = 0; k < 14; k++) {
+          const t = random();
+          const x = path[i][0] + (path[i + 1][0] - path[i][0]) * t + (random() - 0.5) * 30;
+          const y = path[i][1] + (path[i + 1][1] - path[i][1]) * t + (random() - 0.5) * 30;
+          dot(g, x, y, 1.5 + random() * 2);
+        }
+      }
+    }
+
+    // Grass tufts: thousands of little 3-blade clumps in three shades of green.
+    // (One shade at a time, so each shade is a single big drawing job.)
+    g.lineWidth = 1.6;
+    for (const color of ["#5b9446", "#6aa953", "#9ad47c"]) {
+      g.strokeStyle = color;
+      g.beginPath();
+      for (let i = 0; i < 1300; i++) {
+        const x = random() * MAP.width;
+        const y = random() * MAP.height;
+        const tall = 6 + random() * 5;
+        for (const side of [-1, 0, 1]) {
+          g.moveTo(x + side * 2.5, y);
+          g.lineTo(x + side * 4.5 + (random() - 0.5) * 2, y - tall + Math.abs(side) * 2);
+        }
+      }
+      g.stroke();
+    }
+
+    // Little flower patches: white, yellow and pink.
+    for (let i = 0; i < 90; i++) {
+      const cx = random() * MAP.width;
+      const cy = random() * MAP.height;
+      const color = ["#ffffff", "#fde047", "#f9a8d4"][Math.floor(random() * 3)];
+      for (let k = 0; k < 4 + random() * 4; k++) {
+        const x = cx + (random() - 0.5) * 40;
+        const y = cy + (random() - 0.5) * 26;
+        g.fillStyle = color;
+        dot(g, x, y, 2.6);
+        g.fillStyle = color === "#fde047" ? "#f59e0b" : "#fde047"; // the middle
+        dot(g, x, y, 1);
+      }
+    }
+
+    // Base floors (before the rivers, so they sit "on the ground").
+    drawBaseGround(g, MAP.bases.blue, "blue");
+    drawBaseGround(g, MAP.bases.red, "red");
+
+    // Rivers: a dark outer bank, a sandy bank, deep water at the edges, lighter in the middle.
+    for (const river of MAP.rivers) {
+      for (const [extra, color] of [[30, "#a88e57"], [20, COLORS.riverBank], [0, "#3a8fd0"], [-20, COLORS.water], [-50, "#6cbcee"]]) {
+        traceLine(g, river.points);
+        g.strokeStyle = color;
+        g.lineWidth = river.width + extra;
+        g.stroke();
+      }
+    }
+
+    // Reeds along the river banks (but not where a bridge lands).
+    g.lineWidth = 2;
+    for (const river of MAP.rivers) {
+      for (let i = 0; i < river.points.length - 1; i++) {
+        const [ax, ay] = river.points[i];
+        const [bx, by] = river.points[i + 1];
+        const length = Math.hypot(bx - ax, by - ay);
+        const nx = -(by - ay) / length; // "sideways" from the river's direction
+        const ny = (bx - ax) / length;
+        for (let d = 0; d < length; d += 26) {
+          if (random() < 0.45) continue;
+          const side = random() < 0.5 ? -1 : 1;
+          const x = ax + (bx - ax) * (d / length) + nx * side * (river.width / 2 + 6);
+          const y = ay + (by - ay) * (d / length) + ny * side * (river.width / 2 + 6);
+          const nearBridge = MAP.bridges.some((b) => Math.abs(x - b.x) < b.w / 2 + 20 && Math.abs(y - b.y) < b.h / 2 + 20);
+          if (nearBridge) continue;
+          drawReeds(g, x, y, random);
+        }
+      }
+    }
+  });
+}
+
+// A clump of reeds: thin green stalks, some with a brown cattail on top.
+function drawReeds(g, x, y, random) {
+  for (let k = 0; k < 4; k++) {
+    const topX = x + (random() - 0.5) * 12;
+    const topY = y - 10 - random() * 10;
+    g.strokeStyle = "#3f7a2b";
+    g.beginPath();
+    g.moveTo(x + (random() - 0.5) * 6, y + 2);
+    g.lineTo(topX, topY);
+    g.stroke();
+    if (random() < 0.4) {
+      g.fillStyle = "#7c4f24";
+      g.beginPath();
+      g.ellipse(topX, topY, 2, 4.5, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+}
+
+// A base's floor: the team-colored circle, a sandy ring around the flag, and the dashed edge.
+function drawBaseGround(g, base, team) {
+  g.fillStyle = team === "blue" ? "rgba(59,130,246,0.2)" : "rgba(239,68,68,0.2)";
+  dot(g, base.x, base.y, base.radius);
+  // Sandy circle around the flag stand, with a soft edge.
+  const sand = g.createRadialGradient(base.x, base.y, 30, base.x, base.y, 75);
+  sand.addColorStop(0, "rgba(222, 200, 145, 0.85)");
+  sand.addColorStop(1, "rgba(222, 200, 145, 0)");
+  g.fillStyle = sand;
+  dot(g, base.x, base.y, 75);
+  // Dashed edge in the team color, with a soft darker line under it.
+  g.beginPath();
+  g.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
+  g.lineWidth = 10;
+  g.strokeStyle = "rgba(0,0,0,0.12)";
+  g.stroke();
+  g.setLineDash([18, 12]);
+  g.lineWidth = 6;
+  g.strokeStyle = COLORS[team];
+  g.stroke();
+  g.setLineDash([]);
+}
+
+// The base's name, drawn under the base.
+function drawBaseLabel(ctx, base, team) {
   ctx.font = "800 26px Rubik, sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS[team];
@@ -96,57 +307,100 @@ function drawBase(ctx, base, team) {
 function drawBridge(ctx, b) {
   const left = b.x - b.w / 2;
   const top = b.y - b.h / 2;
-  // Wooden deck
-  ctx.fillStyle = COLORS.plank;
-  ctx.fillRect(left, top, b.w, b.h);
-  // Plank lines
+  // Shadow on the water
+  ctx.fillStyle = "rgba(0, 30, 60, 0.25)";
+  ctx.fillRect(left + 6, top + 10, b.w, b.h);
+  // Wooden deck: planks in two slightly different browns
+  let shade = 0;
+  for (let x = left; x < left + b.w; x += 14) {
+    ctx.fillStyle = shade++ % 2 ? "#a8723d" : COLORS.plank;
+    ctx.fillRect(x, top, Math.min(14, left + b.w - x), b.h);
+  }
+  // Gaps between the planks
   ctx.strokeStyle = COLORS.plankDark;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
   for (let x = left + 14; x < left + b.w; x += 14) {
-    ctx.beginPath();
     ctx.moveTo(x, top);
     ctx.lineTo(x, top + b.h);
-    ctx.stroke();
   }
-  // Railings on both sides
+  ctx.stroke();
+  // Railings on both sides, with posts
   ctx.fillStyle = COLORS.plankDark;
   ctx.fillRect(left, top - 4, b.w, 7);
   ctx.fillRect(left, top + b.h - 3, b.w, 7);
-}
-
-function drawTree(ctx, x, y) {
-  // Shadow
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(x + 8, y + 12, 44, 30, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Leaves: a few overlapping circles
-  ctx.fillStyle = "#3f8a3a";
-  for (const [ox, oy, r] of [[-16, 6, 28], [16, 6, 28], [0, -12, 30], [0, 10, 30]]) {
-    ctx.beginPath();
-    ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
-    ctx.fill();
+  ctx.fillStyle = "#5c3d1e";
+  for (let x = left; x <= left + b.w; x += b.w / 4) {
+    ctx.fillRect(x - 4, top - 7, 8, 12);
+    ctx.fillRect(x - 4, top + b.h - 6, 8, 12);
   }
-  // Highlight
-  ctx.fillStyle = "#5aa84f";
-  ctx.beginPath();
-  ctx.arc(x - 8, y - 14, 14, 0, Math.PI * 2);
-  ctx.fill();
 }
 
-function drawRock(ctx, x, y) {
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(x + 6, y + 8, 30, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#9ca3af";
-  ctx.beginPath();
-  ctx.ellipse(x, y, 30, 22, 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#c4c9d1";
-  ctx.beginPath();
-  ctx.ellipse(x - 8, y - 6, 12, 8, 0.3, 0, Math.PI * 2);
-  ctx.fill();
+// A tree seen from above: a shadow, then dark → light layers of leaf clumps.
+function treeSprite() {
+  return sprites.tree || (sprites.tree = makeSprite(150, (g) => {
+    g.fillStyle = "rgba(0,0,0,0.2)";
+    g.beginPath();
+    g.ellipse(10, 16, 56, 40, 0, 0, Math.PI * 2);
+    g.fill();
+    const clumps = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      clumps.push([Math.cos(angle) * 30, Math.sin(angle) * 26]);
+    }
+    g.fillStyle = "#24592a"; // dark outline
+    for (const [x, y] of clumps) dot(g, x, y, 28);
+    dot(g, 0, 0, 36);
+    g.fillStyle = "#357a34"; // leaves
+    for (const [x, y] of clumps) dot(g, x - 2, y - 3, 24);
+    dot(g, -2, -3, 33);
+    g.fillStyle = "#4b9a43"; // lighter leaves where the sun hits (top-left)
+    for (const [x, y, r] of [[-14, -14, 20], [10, -18, 15], [-24, 6, 14], [6, 2, 16]]) dot(g, x, y, r);
+    g.fillStyle = "#6dbb5c"; // little shiny spots
+    for (const [x, y, r] of [[-18, -20, 8], [6, -24, 6], [-28, 0, 5], [2, -4, 6]]) dot(g, x, y, r);
+  }));
+}
+
+// A grey rock with a shadow, a lighter top, a highlight, a crack and a bit of moss.
+function rockSprite() {
+  return sprites.rock || (sprites.rock = makeSprite(90, (g) => {
+    g.fillStyle = "rgba(0,0,0,0.22)";
+    g.beginPath();
+    g.ellipse(7, 10, 32, 19, 0, 0, Math.PI * 2);
+    g.fill();
+    const lumpy = (scale) => {
+      g.beginPath();
+      const corners = [[-31, 2], [-24, -16], [-4, -23], [18, -19], [32, -4], [27, 14], [6, 21], [-18, 18]];
+      corners.forEach(([x, y], i) => (i === 0 ? g.moveTo(x * scale, y * scale) : g.lineTo(x * scale, y * scale)));
+      g.closePath();
+    };
+    lumpy(1);
+    g.fillStyle = "#7d858f";
+    g.fill();
+    g.strokeStyle = "#4b5563";
+    g.lineWidth = 2.5;
+    g.lineJoin = "round";
+    g.stroke();
+    g.save();
+    g.translate(-4, -5);
+    lumpy(0.72);
+    g.fillStyle = "#a3abb5";
+    g.fill();
+    g.restore();
+    g.fillStyle = "#d3d8de";
+    g.beginPath();
+    g.ellipse(-11, -11, 9, 5, -0.3, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = "#5b636e"; // crack
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(8, -12);
+    g.lineTo(4, -2);
+    g.lineTo(10, 6);
+    g.stroke();
+    g.fillStyle = "rgba(90, 150, 70, 0.8)"; // moss
+    for (const [x, y, r] of [[-22, 10, 6], [-15, 14, 5], [-26, 4, 4]]) dot(g, x, y, r);
+  }));
 }
 
 // ---------- Things at each base ----------
@@ -406,33 +660,52 @@ function drawHealthBar(ctx, x, y, hp, maxHp) {
 // ---------- Bushes (drawn AFTER players, so you look like you're hiding inside) ----------
 
 function drawBushes(ctx) {
-  for (const [x, y, r] of MAP.bushes) {
-    ctx.globalAlpha = 0.7; // see-through, so you can still find yourself
-    ctx.fillStyle = "#2f7d32";
+  // The whole bush is one picture, made see-through all at once, so overlapping
+  // leaves don't make darker spots, and you can still find yourself inside.
+  ctx.globalAlpha = 0.75;
+  for (const [x, y, r] of MAP.bushes) drawSprite(ctx, bushSprite(r), x, y);
+  ctx.globalAlpha = 1;
+}
+
+// A round, leafy bush `r` units in radius: dark edge, leaves, light leaves, berries.
+function bushSprite(r) {
+  const name = "bush" + r;
+  return sprites[name] || (sprites[name] = makeSprite(r * 2.6, (g) => {
+    const random = seededRandom(r * 13);
+    const ring = [];
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2 + random() * 0.3;
+      ring.push([Math.cos(angle) * r * 0.62, Math.sin(angle) * r * 0.62, r * (0.42 + random() * 0.1)]);
+    }
+    g.fillStyle = "#1d5422"; // dark edge
+    for (const [x, y, size] of ring) dot(g, x, y, size + 3);
+    dot(g, 0, 0, r * 0.75);
+    g.fillStyle = "#2e7d32"; // leaves
+    for (const [x, y, size] of ring) dot(g, x - 2, y - 3, size);
+    dot(g, -2, -3, r * 0.7);
+    g.fillStyle = "#43a047"; // lighter leaves (top-left, where the sun hits)
     for (let i = 0; i < 7; i++) {
-      const angle = (i / 7) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(angle) * r * 0.55, y + Math.sin(angle) * r * 0.55, r * 0.5, 0, Math.PI * 2);
-      ctx.fill();
+      const angle = random() * Math.PI * 2;
+      const dist = random() * r * 0.55;
+      dot(g, Math.cos(angle) * dist - r * 0.1, Math.sin(angle) * dist - r * 0.12, r * (0.16 + random() * 0.1));
     }
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-    // Lighter leaves and a few berries on top
-    ctx.fillStyle = "#43a047";
-    for (const [ox, oy] of [[-0.3, -0.3], [0.3, -0.1], [-0.05, 0.3]]) {
-      ctx.beginPath();
-      ctx.arc(x + ox * r, y + oy * r, r * 0.28, 0, Math.PI * 2);
-      ctx.fill();
+    g.fillStyle = "#66bb6a"; // shiny leaf tips
+    for (let i = 0; i < 9; i++) {
+      const angle = random() * Math.PI * 2;
+      const dist = random() * r * 0.7;
+      dot(g, Math.cos(angle) * dist - r * 0.1, Math.sin(angle) * dist - r * 0.12, r * 0.06);
     }
-    ctx.fillStyle = "#e53935";
-    for (const [ox, oy] of [[-0.45, 0.1], [0.4, 0.35], [0.1, -0.5]]) {
-      ctx.beginPath();
-      ctx.arc(x + ox * r, y + oy * r, 4, 0, Math.PI * 2);
-      ctx.fill();
+    for (let i = 0; i < 6; i++) { // red berries with a little shine
+      const angle = random() * Math.PI * 2;
+      const dist = r * (0.3 + random() * 0.45);
+      const bx = Math.cos(angle) * dist;
+      const by = Math.sin(angle) * dist;
+      g.fillStyle = "#d32f2f";
+      dot(g, bx, by, 4.5);
+      g.fillStyle = "rgba(255,255,255,0.7)";
+      dot(g, bx - 1.5, by - 1.5, 1.5);
     }
-    ctx.globalAlpha = 1;
-  }
+  }));
 }
 
 // ---------- Speed boost box ----------

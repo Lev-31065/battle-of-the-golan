@@ -9,6 +9,15 @@ const PLAYER_RADIUS = 22;     // body size
 const MAX_HP = 100;           // full health
 const RESPAWN_TIME = 3;       // seconds before you come back after being knocked out
 
+// ---------- Bumping into other players ----------
+// Players are solid: you can't walk through each other. Running into someone
+// bounces you both back a little. Bounce distance is about bounceSpeed ÷ slowdown.
+const BUMP = {
+  bounceSpeed: 300, // how hard you bounce off (world units per second at the start)
+  slowdown: 9,      // how fast the bounce fades (bigger = shorter bounce)
+  teammates: true,  // false = you can walk through your own teammates
+};
+
 // ---------- Hammer ----------
 // 34 damage × 3 hits = 102, so 3 hits knock out anything with 100 health.
 const HAMMER = {

@@ -94,16 +94,25 @@ button, select, input { touch-action: manipulation; }
   height: 100%;
   z-index: 1;
 }
+/* The joystick is always shown while playing. When nobody's touching it, it rests
+   faded in the bottom-left corner (left/top below). When a thumb touches the left
+   half of the screen, game.js moves it under the thumb and adds "active". */
 .joystick-base {
   position: fixed;
+  left: 78px;                  /* resting spot: the circle's center is 78px from the left… */
+  top: calc(100% - 78px);      /* …and 78px from the bottom, level with the action buttons */
   width: 120px;
   height: 120px;
-  margin: -60px 0 0 -60px;     /* centers the circle on the spot you touched */
+  margin: -60px 0 0 -60px;     /* centers the circle on its spot */
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
   border: 3px solid rgba(255, 255, 255, 0.55);
+  opacity: 0.55;               /* faded while resting */
   pointer-events: none;
   z-index: 3;
+}
+.joystick-base.active {
+  opacity: 1;                  /* bright while your thumb is on it */
 }
 .joystick-knob {
   position: absolute;

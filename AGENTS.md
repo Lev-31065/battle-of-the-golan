@@ -14,11 +14,11 @@
 
 ## Run, test, deploy
 - **Run:** double-click `index.html`. To test multiplayer, open it in two browser windows and join one from the other.
-- **Test:** there's no test framework, and neither Node nor git is installed. To check changes, run headless Edge (`--headless=new`) with `--screenshot` or `--dump-dom`:
+- **Test:** there's no test framework, and Node isn't installed. To check changes, run headless Edge (`--headless=new`) with `--screenshot` or `--dump-dom`:
   - `requestAnimationFrame` doesn't tick under `--virtual-time-budget`, so test pages have to call `update()` themselves.
   - The headless window can't go narrower than 504px. Narrow screenshots look clipped even when the layout is fine.
   - For a real two-browser PeerJS test, run two headless Edge instances with `--remote-debugging-port` and have them POST results to a PowerShell `HttpListener`.
-- **Deploy:** upload changed files on GitHub's website (Add file → Upload files → Commit). Pages serves the `main` branch from the root folder.
+- **Deploy:** Git + GitHub CLI (`gh`, logged in as Lev-31065) are installed, so Claude can upload. The project folder itself is NOT a git repo: clone `Lev-31065/battle-of-the-golan` into the scratchpad, copy the changed files in, commit, push. Compare with `diff --strip-trailing-cr` first (line endings make every file look different). Pages serves `main` from the root folder and takes about a minute to update. (Daniel can still upload by hand: Add file → Upload files → Commit.)
 
 ## Folder structure
 - `index.html`: all screens (home, play, lobby, HUD, shop, quiz, winner)
