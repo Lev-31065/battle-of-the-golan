@@ -13,7 +13,7 @@ const MAP = {
   height: 1500,
 
   // How much the ground slows you down. 1 = full speed, 0.5 = half speed.
-  waterSlowdown: 0.4,   // rivers: 40% speed (and the current pushes you downstream)
+  waterSlowdown: 0.35,  // rivers: 35% speed (and the current pushes you downstream)
   riverFlow: 45,        // how fast the river carries you downstream (world units per second)
   bushSlowdown: 0.3,    // bushes: 30% speed
 
@@ -43,11 +43,13 @@ const MAP = {
 
   // Dirt paths (just for looks, and to help find the way; they don't change speed).
   // Each is a list of [x, y] points: from the base to its bridges, then to the middle.
+  // Lots of points that zig and zag = a swervy path (the corners get rounded when drawn).
+  // The four paths are shaped differently on purpose, so they don't look copied.
   paths: [
-    [[220, 750], [380, 520], [565, 300]],
-    [[220, 750], [380, 980], [565, 1200]],
-    [[735, 300], [1000, 480], [1300, 750]],
-    [[735, 1200], [1000, 1020], [1300, 750]],
+    [[220, 750], [330, 640], [290, 560], [380, 470], [470, 440], [440, 360], [565, 300]],
+    [[220, 750], [340, 850], [300, 940], [400, 1040], [470, 1080], [430, 1150], [565, 1200]],
+    [[735, 300], [800, 420], [930, 420], [1000, 500], [1100, 560], [1150, 680], [1300, 750]],
+    [[735, 1200], [830, 1110], [960, 1120], [1000, 1020], [1110, 960], [1150, 830], [1300, 750]],
   ],
 
   // Bushes slow you down, and you're partly hidden inside them. [x, y, radius, kind, berries]

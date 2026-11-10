@@ -692,7 +692,7 @@ function renderDeckPicker() {
   if (client.roomIsClass) {
     setBilingual(deckLabelEl, "📚 Words for this game", "הַמִּלִּים בַּמִּשְׂחָק");
     setOptionText(autoOption, "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית");
-    if (!client.isHost) { pickNote = " · The teacher picks the words"; pickNoteHe = " · הַמּוֹרֶה בּוֹחֵר אֶת הַמִּלִּים"; }
+    if (!client.isHost) { pickNote = " · The host picks the words"; pickNoteHe = " · הַמְּאָרֵחַ בּוֹחֵר אֶת הַמִּלִּים"; }
   } else {
     setBilingual(deckLabelEl, "📚 Your level (everyone picks their own)", "הָרָמָה שֶׁלִּי (כָּל אֶחָד בּוֹחֵר לְעַצְמוֹ)");
     setOptionText(autoOption, "🤖 Auto (my level) · אוֹטוֹמָטִי");
@@ -1299,7 +1299,7 @@ function update(dt) {
     }
 
     // Work out speed. Each thing multiplies it:
-    //   river ×0.4   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries +10% each
+    //   river ×0.35  bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries +10% each
     let speed = PLAYER_SPEED;
     if (p.inWater) speed *= MAP.waterSlowdown;
     else if (p.inBush) speed *= MAP.bushSlowdown;
