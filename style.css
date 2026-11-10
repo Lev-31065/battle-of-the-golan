@@ -126,18 +126,22 @@ button, select, input { touch-action: manipulation; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* ---------- Mute button and hurt flash ---------- */
+/* ---------- Corner buttons (sound, voice, leave, full screen) and hurt flash ----------
+   One row of small round buttons right under the minimap, a bit see-through.
+   (Not next to the minimap: the word card and the info chips use the top of the screen.) */
 .mute-button {
   position: fixed;
-  top: 106px;                  /* just below the minimap */
+  top: 104px;                  /* just below the minimap */
   right: 10px;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  font-size: 20px;
+  background: rgba(255, 255, 255, 0.5);   /* the last number = how solid: 0.5 = half see-through */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  font-size: 17px;
+  line-height: 34px;
   cursor: pointer;
   z-index: 4;
 }
@@ -201,7 +205,7 @@ button, select, input { touch-action: manipulation; }
 .action-button .attack-icon { font-size: 36px; line-height: 1; }  /* the held weapon's picture on the Hit button */
 
 /* ---------- Toolbar: what you're holding (just above the action buttons) ----------
-   Low enough to stay clear of the round buttons under the minimap, even on short sideways phones. */
+   Low enough to stay clear of the row of round buttons under the minimap, even on short sideways phones. */
 .toolbar {
   position: fixed;
   right: 18px;
@@ -442,11 +446,11 @@ button, select, input { touch-action: manipulation; }
 .word-card-english { font-size: 18px; font-weight: 600; color: #374151; }
 .word-card-hebrew { font-size: 28px; font-weight: 800; color: #1e3a8a; }
 
-/* The voice button sits just under the sound button */
-.voice-button { top: 152px; }
-/* A 2×2 group of round buttons under the minimap: these two sit to the left. */
-.fullscreen-button { right: 56px; }
-.leave-button { top: 152px; right: 56px; }
+/* The row, from right to left: sound, voice, leave, full screen.
+   Full screen is last, so phones without it (iPhones) don't get a gap. */
+.voice-button { right: 48px; }
+.leave-button { right: 86px; }
+.fullscreen-button { right: 124px; }
 
 /* "Leave the game?" popup */
 .leave-panel { text-align: center; }

@@ -40,14 +40,16 @@
     <div id="bush-chip" class="chip bush-chip" hidden><span class="he" lang="he" dir="rtl">בַּשִּׂיחַ — אִטִּי!</span><span class="en">🌿 In a bush — slow!</span></div>
   </div>
 
-  <!-- Sound on/off. Sits under the minimap in the top-right corner. -->
+  <!-- A row of small round buttons under the minimap (top-right), from right to left:
+       sound, voice, leave, full screen. -->
+  <!-- Sound on/off (the sound effects). -->
   <button id="mute-button" class="mute-button" type="button" aria-label="Sound on or off" hidden>🔊</button>
-  <!-- Voice on/off (the words read out loud). Sits under the sound button. -->
+  <!-- Voice on/off (the words read out loud). -->
   <button id="voice-button" class="mute-button voice-button" type="button" aria-label="Voice on or off" hidden>🗣️</button>
-  <!-- Full screen on/off (hides the browser's address bar). Left of the sound button.
+  <!-- Full screen on/off (hides the browser's address bar).
        Hidden on phones that can't do it, like iPhones. -->
   <button id="fullscreen-button" class="mute-button fullscreen-button" type="button" aria-label="Full screen on or off" hidden>⛶</button>
-  <!-- Leave the game (asks "Are you sure?" first). Left of the voice button. -->
+  <!-- Leave the game (asks "Are you sure?" first). -->
   <button id="leave-button" class="mute-button leave-button" type="button" aria-label="Leave the game" hidden>🚪</button>
 
   <!-- Small tags on the left edge: your level, and the room code (so someone who

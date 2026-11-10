@@ -8,17 +8,36 @@ let audioCtx = null;
 let muted = false;
 try { muted = localStorage.getItem("golan-muted") === "1"; } catch {}
 
-// Phones only allow sound after the player touches the screen, so we switch
-// the audio on at the first touch or key press.
+// iPhones: tell the phone this page plays real sound (like a music app), so the
+// sounds still play when the silent switch on the side of the phone is on.
+// (Newer iPhones only. Other phones don't have this and simply skip it.)
+try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+
+// Phones only allow sound after the player taps the screen, so we switch the audio
+// on at a tap. IMPORTANT: phones only count the END of a tap (finger lifted) or a
+// click, not the moment the finger lands. So we listen for all of them, every time:
+// the audio can also go to sleep again when you switch apps or lock the phone.
 function unlockAudio() {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) audioCtx = new AudioContextClass();
   }
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  // "suspended" = not allowed yet; "interrupted" = iPhones, after a phone call or switching apps.
+  if (audioCtx && audioCtx.state !== "running") {
+    audioCtx.resume();
+    // Play one silent, tiny sound. Some iPhones only really wake up the audio after that.
+    try {
+      const buffer = audioCtx.createBuffer(1, 1, 22050);
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
+    } catch {}
+  }
 }
-window.addEventListener("pointerdown", unlockAudio);
-window.addEventListener("keydown", unlockAudio);
+for (const eventName of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) {
+  window.addEventListener(eventName, unlockAudio, true); // true = hear it before any button does
+}
 
 // Play one tone.
 function tone(frequency, duration, { type = "sine", volume = 0.2, slideTo = null, delay = 0 } = {}) {

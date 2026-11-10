@@ -44,17 +44,21 @@ function pickVoice(lang) {
   return matching[0];
 }
 
-// iPhones only allow talking after the first touch, so we say "nothing" at the first touch to unlock it.
+// iPhones only allow talking after the first tap, so we say "nothing" at the first tap to unlock it.
+// Phones only count the END of a tap (finger lifted) or a click, not the moment the finger lands,
+// so we listen for those (the old version listened for the finger landing, which phones ignore).
 let speechUnlocked = false;
 function unlockSpeech() {
   if (speechUnlocked || !canSpeak) return;
   speechUnlocked = true;
+  loadVoices(); // some phones only fill in the voice list after a tap
   const silent = new SpeechSynthesisUtterance(" ");
   silent.volume = 0;
   speechSynthesis.speak(silent);
 }
-window.addEventListener("pointerdown", unlockSpeech);
-window.addEventListener("keydown", unlockSpeech);
+for (const eventName of ["pointerup", "touchend", "click", "keydown"]) {
+  window.addEventListener(eventName, unlockSpeech, true);
+}
 
 // ---------- The word card at the top of the screen ----------
 
