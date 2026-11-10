@@ -1,7 +1,16 @@
 # State
 
 ## Works now
-- **Core game:** capture the flag (first to 3), rivers at 15% speed, bushes at 30%, rocks that ask a question, hammer shop, speed box, minimap, sounds, room codes, invite links. Tested on real phones with 2+ players.
+- **Core game:** capture the flag (first to 3), rivers, bushes at 30%, rocks that ask a question, hammer shop, speed box, minimap, sounds, room codes, invite links. Tested on real phones with 2+ players.
+- **Capture-the-flag upgrades (2026-11-10), tested by Daniel ("everything is amazing"):**
+  - **Joystick always visible:** rests faded in the bottom-left corner; jumps under your thumb on the left half; goes back on release.
+  - **Solid players + bounce (`BUMP` in `rules.js`):** each phone pushes its OWN player out of others and adds a short bounce, with the soft `nudge` sound. Skipped while answering/shopping (so you can't be shoved off a flag).
+  - **Map look (`draw.js`):** ground (grass tufts, flowers, dirt paths, rivers with reeds, base floors) painted ONCE onto a hidden canvas (`GROUND_RES` 1.5); rocks/bushes/logs/berries are reusable sprites. ~0.1 ms per frame headless. 3D look: rocks with sides, crate with top+front, dome bushes with shadows, raised bridge rails, shaded ball players with stepping feet.
+  - **Map v2:** 2600×1500, mirrored halves (`mirrorLeftHalf()` in `map.js`), long middle, bridges far from the center. Trees became "leafy" bushes (all bushes slow you); several huge bushes.
+  - **River:** 40% speed + current pushes you downstream (`MAP.riverFlow` 45).
+  - **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide. Hidden players can still be hammered.
+  - **Speed box** respawns in 30 s (was 60).
+- **"🔁 Verb roots: past & future" (11 `conj-*` decks, 2026-11-09):** tested by Daniel.
 - **Scoring rule (`checkBase` in `server.js`):** both flags inside a team's circle = a point for that team, whether the flags are on the stand, on the ground, or carried by a teammate. A flag in an enemy's hands doesn't count. Your own flag dropped inside your base goes straight home. Tested on phones.
 - **After a game:** the winner screen shows for `WINNER_SCREEN_TIME` (6 s), then everyone goes back to the teams screen automatically. Tested on phones.
 - **Leaving:** 🚪 button in the game and 🏠 Home in the lobby, with an "Are you sure?" popup. Tested on phones. (The popups use z-index 40; the screens are 30.)
@@ -30,17 +39,10 @@
 
 ## Built + uploaded, not yet tested on phones (2026-11-10)
 - **Premade decks:** 🔁 לְלַמֵּד (teach) + 5 new roots (ק־ר־א, ש־א־ל, ש־מ־ע, ר־א־ה, נ־ת־ן), each a 🌱 root deck and a 🔁 conjugation deck. New 🔁 decks are built from 2-line tables by `conjWords()` in `words.js`. Nikud to check: שָׁמַעַתְּ, רָאֲתָה, נָתַתְּ, נָתַנּוּ, תִּתְּנִי, קְרָאתֶם, לִמַּדְתִּי.
-- **Joystick always visible:** rests faded in the bottom-left corner; jumps under your thumb on the left half; goes back on release.
-- **Solid players + bounce (`BUMP` in `rules.js`):** each phone pushes its OWN player out of others and adds a short bounce. Skipped while answering/shopping (so you can't be shoved off a flag).
-- **New map look (`draw.js`):** ground (grass tufts, flowers, dirt paths, rivers with reeds, base floors) painted once onto a hidden canvas (`GROUND_RES` 1.5); rocks/bushes/logs are reusable sprites. Headless: ~0.1 ms per frame. Daniel: "AMAZING" (first version, 2026-11-10).
-- **Map v2 (2026-11-10):** 2600×1500 (was 2000×1200), mirrored halves, middle twice as long, bridges farther from the center. Trees became "leafy" bushes (all bushes slow you); some bushes r 95–120. Headless layout check: nothing on paths, in rivers or in bases.
-- **River:** 40% speed (was 15%) + current pushes you downstream (`MAP.riverFlow` 45).
 - **Berries (`BERRY` in `rules.js`, v2 2026-11-10):** every berry has its own spot (`MAP.berries`, a spiral in each berry bush; 4 per bush, 12 in the two huge r170 bushes at the top of the middle). Touch a berry = eat it (referee decides: `serverEat`): +10% speed for 8 s each, boosts add up to +50% max (`p.berryBoosts` = end times). Each berry regrows after 80 s, no countdown. Snapshot `berries` = true/false per berry.
-- **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide inside (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide.
-- **Speed box** respawns in 30 s (was 60). **Bump sound** for players is the soft `nudge`. **3D look:** rocks with sides, crate with top+front, dome bushes with shadows, raised bridge rails, shaded ball-shaped players with stepping feet.
 
-## Built, not yet tested (2026-11-09)
-- **"🔁 Verb roots: past & future" premade section:** 11 `conj-*` decks (כתב, למד, עבד, אכל, שתה, דבר, ספר, הלך, בוא, עזר, חכה). Each: 8 past + 8 future forms (pronoun included in the answer) + 2 sentences. Wrong answers = other tense / other gender or I↔we / other person. Headless check: all 22 premade decks valid, 3 headings in the dashboard. Daniel still needs to test, and check the nikud of guttural/irregular forms (תַּעַבְדִי, אֹכַל, שָׁתְתָה, חִכְּתָה, בָּאת).
+## Older items still waiting for Daniel
+- **Nikud of the older 🔁 decks' guttural/irregular forms:** תַּעַבְדִי, אֹכַל, שָׁתְתָה, חִכְּתָה, בָּאת.
 - **Privacy page line about MyMemory:** Daniel should read it.
 - **Nikud still needs Daniel's check:** the 27 pronoun sentences from 2026-11-07 and the new object-pronoun level.
 - **Not yet confirmed:** the iPhone 2× zoom fix, and full screen on Android.
@@ -76,3 +78,7 @@
   - Add `--user-data-dir=<scratchpad>\edgeprofile` and pipe to `Out-String`. Without its own profile, headless Edge hands off to the Edge that's already open and prints nothing.
   - Level ids ≠ level numbers from 11 on (`level-object-pronouns` = 11A, `level-11` = 12A …). Ids never change, so saved Auto levels stay put. Add new levels with a name-style id.
   - Use `-Infinity` (not 0) for "never happened" timestamps.
+  - Gameplay tests: `serverReset` + `serverAddPlayer` + `serverStartGame`, then loop `update(dt)`, `serverUpdate(dt)`, `applySnapshot(serverSnapshot())`. Move messages are throttled to 50 ms of REAL time, so in a fast test loop the referee keeps an old position.
+  - Screenshots: call `update()` + `render()` yourself in a `setInterval`, or you only see the first frame.
+- After changing the map, re-run a layout check: nothing within (radius + 25) of a path, (radius + 60) of a river, or inside a base. Only edit the LEFT half in `map.js`; the right half is mirrored.
+- Players inside a log: `myLog` (this phone) / `p.inLog` (from the referee). `resetTimers()` clears `myLog`.
