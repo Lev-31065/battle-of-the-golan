@@ -1,0 +1,72 @@
+<!doctype html>
+<!--
+  voice-test.html — a tiny page to check whether this phone's browser can talk at all.
+  It has nothing to do with the game: no sound effects, no game code. Each button
+  speaks in the simplest possible way and shows what happened.
+  Open it at: https://lev-31065.github.io/battle-of-the-golan/voice-test.html
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice test</title>
+  <style>
+    body { margin: 0; padding: 16px; font-family: sans-serif; background: #f3f4f6; color: #111827; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    button { display: block; width: 100%; margin: 8px 0; padding: 14px; font-size: 17px; border: 0; border-radius: 12px; background: #2563eb; color: white; }
+    button.gray { background: #6b7280; }
+    #log { margin-top: 12px; padding: 10px; border-radius: 10px; background: white; font: 13px monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>🗣️ Voice test</h1>
+  <button id="b1">1. Say "hello" (simplest)</button>
+  <button id="b2">2. Say "hello" in American English</button>
+  <button id="b3">3. Say שָׁלוֹם in Hebrew</button>
+  <button id="b4">4. Turn on game sounds, then say "hello"</button>
+  <button id="b5" class="gray">Show the voice list</button>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById("log");
+    function log(text) { logEl.textContent = text + "\n" + logEl.textContent; }
+
+    log("Browser: " + navigator.userAgent);
+    log("Can speak: " + ("speechSynthesis" in window));
+
+    // Say something and write down every step: started, finished, or failed (and why).
+    function say(text, lang) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (lang) u.lang = lang;
+      u.onstart = () => log("✅ started: " + text);
+      u.onend = () => log("✅ finished: " + text);
+      u.onerror = (e) => log("❌ failed: " + text + " → " + e.error);
+      window.lastUtterance = u; // keep it alive (Chrome can throw it away otherwise)
+      speechSynthesis.speak(u);
+      log("…asked to say: " + text + (lang ? " (" + lang + ")" : ""));
+    }
+
+    document.getElementById("b1").onclick = () => say("hello");
+    document.getElementById("b2").onclick = () => say("hello", "en-US");
+    document.getElementById("b3").onclick = () => say("שָׁלוֹם", "he-IL");
+    document.getElementById("b4").onclick = () => {
+      // The same kind of sound the game makes, to see if it gets in the voice's way.
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.1;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+      log("🔔 game-style beep played (sound is " + ctx.state + ")");
+      setTimeout(() => say("hello"), 300);
+    };
+    document.getElementById("b5").onclick = () => {
+      const voices = speechSynthesis.getVoices();
+      const list = voices.map((v) => v.lang + " · " + v.name + (v.localService ? " · on phone" : " · online") + (v.default ? " · DEFAULT" : ""));
+      log("Voices (" + voices.length + "):\n" + list.slice(0, 40).join("\n"));
+    };
+  </script>
+</body>
+</html>
