@@ -70,25 +70,28 @@ function resetRound() {
   server.flags = { blue: makeFlag("blue"), red: makeFlag("red") };
   server.score = { blue: 0, red: 0 };
   server.speedBox = makeSpeedBox();
-  // When each bush's berries were last eaten (-Infinity = never, so they're ripe).
-  server.berryEatenAt = MAP.bushes.map(() => -Infinity);
+  // When each berry was last eaten (-Infinity = never, so it's ripe).
+  server.berryEatenAt = MAP.berries.map(() => -Infinity);
   server.winner = null;
 }
 
-// Does bush number `i` have ripe berries right now?
-function berriesRipe(i) {
-  const bush = MAP.bushes[i];
-  return Boolean(bush) && bush[3] === "berry" && server.time - server.berryEatenAt[i] >= BERRY.regrow;
+// Is berry number `i` ripe (there to eat) right now?
+function berryRipe(i) {
+  return Boolean(MAP.berries[i]) && server.time - server.berryEatenAt[i] >= BERRY.regrow;
 }
 
-// A player walked into a berry bush: they eat the berries and get a little speed boost.
+// A player touched a berry: they eat it and get a speed boost.
+// Each berry's boost has its own end time, so several berries add up (up to BERRY.maxAtOnce).
 function serverEat(p, i) {
-  if (server.phase !== "playing" || !p.alive || !berriesRipe(i)) return;
-  const [x, y, r] = MAP.bushes[i];
-  if (Math.hypot(p.x - x, p.y - y) > r + 40) return; // too far away (a little leeway for lag)
+  if (server.phase !== "playing" || !p.alive || !berryRipe(i)) return;
+  const berry = MAP.berries[i];
+  if (Math.hypot(p.x - berry.x, p.y - berry.y) > p.radius + BERRY.touch + 40) return; // too far (a little leeway for lag)
   server.berryEatenAt[i] = server.time;
-  p.berryUntil = server.time + BERRY.duration;
-  floatText("🍒 Yum!", p.x, p.y - 40, "#fca5a5", 0.9, "munch", "טָעִים!");
+  const boosts = (p.berryBoosts || []).filter((end) => end > server.time); // forget finished boosts
+  if (boosts.length >= BERRY.maxAtOnce) boosts.sort((a, b) => a - b).shift(); // full: the oldest one makes room
+  boosts.push(server.time + BERRY.duration);
+  p.berryBoosts = boosts;
+  floatText(`🍒 +${Math.round(boosts.length * BERRY.boostEach * 100)}%`, p.x, p.y - 40, "#fca5a5", 0.8, "munch");
 }
 
 // ---------- Events (sent to phones with the next snapshot) ----------
@@ -143,7 +146,7 @@ function serverAddPlayer(id, name) {
     weapon: null,
     carrying: null,
     boostUntil: 0,
-    berryUntil: 0,      // berry speed boost
+    berryBoosts: [],    // end times of my berry speed boosts (they add up)
     inLog: false,       // hiding inside a log (other phones don't draw you)
     lastSwing: -10,
     lastHit: -10,
@@ -210,7 +213,7 @@ function serverHandle(id, msg) {
       }
       break;
     case "eat":
-      serverEat(p, Number(msg.bush));
+      serverEat(p, Number(msg.berry));
       break;
     case "swing":
       serverSwing(p);
@@ -232,7 +235,7 @@ function serverStartGame() {
   server.phase = "playing";
   for (const p of Object.values(server.players)) {
     Object.assign(p, spawnPoint(p.team), {
-      hp: MAX_HP, alive: true, weapon: null, carrying: null, boostUntil: 0, berryUntil: 0, inLog: false, lastSwing: -10,
+      hp: MAX_HP, alive: true, weapon: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: false, lastSwing: -10,
       facing: p.team === "blue" ? 0 : Math.PI,
     });
     p.spawnCount += 1;
@@ -279,7 +282,7 @@ function serverHurt(target, amount, attacker) {
     serverDropFlag(target);
     target.weapon = null;
     target.boostUntil = 0;
-    target.berryUntil = 0;
+    target.berryBoosts = [];
     target.inLog = false;
     floatText("💥 KO!", target.x, target.y - 60, "#fff", 1.2, "ko", "נוֹקְאָאוּט!");
     toast(`💥 ${attacker.name} knocked out ${target.name}!`, `${attacker.name} הִפִּיל/הִפִּילָה אֶת ${target.name}!`);
@@ -446,7 +449,7 @@ function serverSnapshot() {
     score: { ...server.score },
     flags: { blue: { ...server.flags.blue }, red: { ...server.flags.red } },
     speedBox: { ...server.speedBox },
-    berries: MAP.bushes.map((bush, i) => berriesRipe(i)), // which bushes have ripe berries
+    berries: MAP.berries.map((berry, i) => berryRipe(i)), // which berries are ripe (true/false each)
 
     players: Object.values(server.players).map((p) => ({ ...p })),
     events: server.events,

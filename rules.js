@@ -34,11 +34,14 @@ const SPEED_BOOST = {
 };
 
 // ---------- Berries (in the "berry" bushes) ----------
-// Walk into a berry bush to eat its berries: a little speed boost. They grow back later.
+// Touch a berry to eat it: a speed boost. Boosts from several berries add up.
+// Each berry grows back by itself later. (Where the berries are: MAP.berries in map.js.)
 const BERRY = {
-  multiplier: 1.3,  // 1.3 = 30% faster
-  duration: 4,      // seconds the boost lasts
-  regrow: 80,       // seconds until the berries grow back
+  boostEach: 0.1,   // each berry = 10% faster…
+  duration: 8,      // …for 8 seconds
+  maxAtOnce: 5,     // at most 5 berry boosts at the same time (= 50% faster)
+  touch: 8,         // how close your body's edge must get to a berry to eat it
+  regrow: 80,       // seconds until an eaten berry grows back
 };
 
 // ---------- Hollow logs ----------

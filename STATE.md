@@ -35,7 +35,7 @@
 - **New map look (`draw.js`):** ground (grass tufts, flowers, dirt paths, rivers with reeds, base floors) painted once onto a hidden canvas (`GROUND_RES` 1.5); rocks/bushes/logs are reusable sprites. Headless: ~0.1 ms per frame. Daniel: "AMAZING" (first version, 2026-11-10).
 - **Map v2 (2026-11-10):** 2600×1500 (was 2000×1200), mirrored halves, middle twice as long, bridges farther from the center. Trees became "leafy" bushes (all bushes slow you); some bushes r 95–120. Headless layout check: nothing on paths, in rivers or in bases.
 - **River:** 40% speed (was 15%) + current pushes you downstream (`MAP.riverFlow` 45).
-- **Berries (`BERRY` in `rules.js`):** 4 per berry bush. Walk in = eat (referee decides: `serverEat`), ×1.3 speed for 4 s, regrow after 80 s, no countdown. Snapshot sends `berries` (true/false per bush).
+- **Berries (`BERRY` in `rules.js`, v2 2026-11-10):** every berry has its own spot (`MAP.berries`, a spiral in each berry bush; 4 per bush, 12 in the two huge r170 bushes at the top of the middle). Touch a berry = eat it (referee decides: `serverEat`): +10% speed for 8 s each, boosts add up to +50% max (`p.berryBoosts` = end times). Each berry regrows after 80 s, no countdown. Snapshot `berries` = true/false per berry.
 - **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide inside (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide.
 - **Speed box** respawns in 30 s (was 60). **Bump sound** for players is the soft `nudge`. **3D look:** rocks with sides, crate with top+front, dome bushes with shadows, raised bridge rails, shaded ball-shaped players with stepping feet.
 

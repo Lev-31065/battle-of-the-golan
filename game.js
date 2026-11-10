@@ -1184,17 +1184,23 @@ function checkLogs(p) {
 }
 
 // ---------- Berries ----------
-// Walk into a bush with ripe berries: ask the referee to let me eat them.
-// (The referee decides, so two players can't both eat the same berries.)
+// Touch a ripe berry: ask the referee to let me eat it.
+// (The referee decides, so two players can't both eat the same berry.)
 function checkBerries(p) {
   if (!berries) return;
-  MAP.bushes.forEach(([x, y, r], i) => {
-    if (!berries[i] || Math.hypot(p.x - x, p.y - y) > r) return;
+  MAP.berries.forEach((berry, i) => {
+    if (!berries[i] || Math.hypot(p.x - berry.x, p.y - berry.y) > PLAYER_RADIUS + BERRY.touch) return;
     if (gameTime - (berryAskedAt.get(i) ?? -Infinity) < 1) return; // asked a moment ago: wait for the answer
     berryAskedAt.set(i, gameTime);
-    sendMyPosition(p); // so the referee knows I'm really in the bush right now
-    sendToServer({ type: "eat", bush: i });
+    sendMyPosition(p); // so the referee knows I'm really touching it right now
+    sendToServer({ type: "eat", berry: i });
   });
+}
+
+// How much faster my berries make me: 1 = not at all, 1.3 = three berries (30% faster).
+function berryMultiplier(p) {
+  const active = (p.berryBoosts || []).filter((end) => end > gameTime).length;
+  return 1 + Math.min(active, BERRY.maxAtOnce) * BERRY.boostEach;
 }
 
 // ---------- Winner screen ----------
@@ -1293,13 +1299,13 @@ function update(dt) {
     }
 
     // Work out speed. Each thing multiplies it:
-    //   river ×0.4   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries ×1.3
+    //   river ×0.4   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries +10% each
     let speed = PLAYER_SPEED;
     if (p.inWater) speed *= MAP.waterSlowdown;
     else if (p.inBush) speed *= MAP.bushSlowdown;
     if (p.carrying) speed *= CARRY_SLOWDOWN;
     if (p.boostUntil > gameTime) speed *= SPEED_BOOST.multiplier;
-    if (p.berryUntil > gameTime) speed *= BERRY.multiplier;
+    speed *= berryMultiplier(p);
 
     const oldX = p.x;
     const oldY = p.y;

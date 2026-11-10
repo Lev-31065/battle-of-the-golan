@@ -747,11 +747,26 @@ function drawBushes(ctx, berries) {
   // The whole bush is one picture, made see-through all at once, so overlapping
   // leaves don't make darker spots, and you can still find yourself inside.
   ctx.globalAlpha = 0.78;
-  MAP.bushes.forEach(([x, y, r, kind], i) => {
-    const ripe = kind === "berry" && (!berries || berries[i]); // eaten berries disappear until they regrow
-    drawSprite(ctx, bushSprite(r, kind, ripe), x, y);
-  });
+  for (const [x, y, r, kind] of MAP.bushes) drawSprite(ctx, bushSprite(r, kind), x, y);
   ctx.globalAlpha = 1;
+  // Then each ripe berry, on top. (Eaten ones disappear until they grow back.)
+  MAP.berries.forEach((berry, i) => {
+    if (!berries || berries[i]) drawSprite(ctx, berrySprite(), berry.x, berry.y);
+  });
+}
+
+// One shiny red berry, with a darker edge underneath so it looks round.
+function berrySprite() {
+  return sprites.berry || (sprites.berry = makeSprite(18, (g) => {
+    g.fillStyle = "rgba(0,0,0,0.25)";
+    dot(g, 1.5, 2.5, 6);
+    g.fillStyle = "#7f1d1d";
+    dot(g, 0.8, 1.2, 6);
+    g.fillStyle = "#e53935";
+    dot(g, 0, 0, 5.5);
+    g.fillStyle = "rgba(255,255,255,0.8)";
+    dot(g, -1.9, -1.9, 1.8);
+  }));
 }
 
 // The two kinds of bushes have their own colors.
@@ -761,12 +776,12 @@ const BUSH_COLORS = {
 };
 
 // A round bush `r` units in radius, shaped like a dome: a shadow on the ground, a darker
-// lower edge, leaves, sunlit leaves on top, and (for berry bushes) a few red berries.
-function bushSprite(r, kind, withBerries) {
-  const name = `bush-${kind}-${r}-${withBerries}`;
+// lower edge, leaves, and sunlit leaves on top. (Berries are drawn separately, one by one.)
+function bushSprite(r, kind) {
+  const name = `bush-${kind}-${r}`;
   return sprites[name] || (sprites[name] = makeSprite(r * 2.7, (g) => {
     const colors = BUSH_COLORS[kind] || BUSH_COLORS.berry;
-    const random = seededRandom(r * 13 + (kind === "leafy" ? 7 : 0)); // same bush shape with or without berries
+    const random = seededRandom(r * 13 + (kind === "leafy" ? 7 : 0));
     const clumps = kind === "leafy" ? 8 : 10;
     const ring = [];
     for (let i = 0; i < clumps; i++) {
@@ -810,21 +825,6 @@ function bushSprite(r, kind, withBerries) {
     g.ellipse(r * 0.14, r * 0.28, r * 0.98, r * 0.75, 0, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    // Berries: just a few, each with a little shine
-    if (withBerries) {
-      for (let i = 0; i < 4; i++) {
-        const angle = (i / 4) * Math.PI * 2 + 0.6;
-        const dist = r * (0.3 + (i % 2) * 0.25);
-        const bx = Math.cos(angle) * dist;
-        const by = Math.sin(angle) * dist - r * 0.05;
-        g.fillStyle = "#7f1d1d"; // a dark edge underneath, so they look round
-        dot(g, bx + 1, by + 1.5, 5.5);
-        g.fillStyle = "#e53935";
-        dot(g, bx, by, 5);
-        g.fillStyle = "rgba(255,255,255,0.75)";
-        dot(g, bx - 1.7, by - 1.7, 1.7);
-      }
-    }
   }));
 }
 

@@ -50,15 +50,16 @@ const MAP = {
     [[735, 1200], [1000, 1020], [1300, 750]],
   ],
 
-  // Bushes slow you down, and you're partly hidden inside them. [x, y, radius, kind]
-  //   "berry" = has berries: walk in to eat them for a little speed boost (they grow back)
+  // Bushes slow you down, and you're partly hidden inside them. [x, y, radius, kind, berries]
+  //   "berry" = has berries: touch a berry to eat it for a speed boost (it grows back later)
   //   "leafy" = just leaves
+  //   berries = how many berries (leave it out for the usual number, berriesPerBush below)
   // Some are BIG on purpose. Keep them off the paths and out of the rivers.
   bushes: [
     [120, 250, 70, "leafy"], [400, 140, 60, "leafy"], [130, 480, 55, "berry"],
     [530, 750, 95, "berry"],
     [120, 1250, 70, "leafy"], [400, 1360, 60, "leafy"], [130, 1020, 55, "berry"],
-    [1060, 170, 120, "berry"], [1060, 1330, 120, "leafy"], [950, 750, 115, "leafy"],
+    [1060, 190, 170, "berry", 12], [1060, 1330, 120, "leafy"], [950, 750, 115, "leafy"],
     [860, 960, 55, "berry"], [870, 550, 55, "berry"],
   ],
   // Bushes right on the middle line (not mirrored, so they're only listed once).
@@ -79,6 +80,8 @@ const MAP = {
     { x: 1300, y: 940, length: 200, angle: 0 },
   ],
 
+  berriesPerBush: 4,    // berries on a normal berry bush
+
   // The speed boost box sits in the very middle, so both teams have a fair shot at it.
   speedBox: { x: 1300, y: 750 },
 
@@ -92,10 +95,24 @@ const MAP = {
   MAP.rivers.push(...MAP.rivers.map((r) => ({ width: r.width, points: r.points.map(([x, y]) => [flip(x), y]) })));
   MAP.bridges.push(...MAP.bridges.map((b) => ({ ...b, x: flip(b.x) })));
   MAP.paths.push(...MAP.paths.map((path) => path.map(([x, y]) => [flip(x), y])));
-  MAP.bushes.push(...MAP.bushes.map(([x, y, r, kind]) => [flip(x), y, r, kind]), ...MAP.middleBushes);
+  MAP.bushes.push(...MAP.bushes.map(([x, y, r, kind, berries]) => [flip(x), y, r, kind, berries]), ...MAP.middleBushes);
   MAP.rocks.push(...MAP.rocks.map(([x, y]) => [flip(x), y]));
   MAP.logs.push(...MAP.logs.map((log) => ({ ...log, x: flip(log.x), angle: -log.angle })), ...MAP.middleLogs);
 })();
+
+// Every single berry gets its own spot, worked out the same way on every phone.
+// They're spread out in a spiral from the middle of the bush to near its edge.
+// MAP.berries = [{ x, y, bush }]  (bush = which bush it grows on)
+MAP.berries = [];
+MAP.bushes.forEach(([bx, by, r, kind, count], bush) => {
+  if (kind !== "berry") return;
+  const n = count || MAP.berriesPerBush;
+  for (let k = 0; k < n; k++) {
+    const angle = k * 2.4 + 0.6;                       // 2.4 radians ≈ the "golden angle": spreads them evenly
+    const dist = r * (0.25 + 0.5 * Math.sqrt((k + 0.5) / n));
+    MAP.berries.push({ x: bx + Math.cos(angle) * dist, y: by + Math.sin(angle) * dist, bush });
+  }
+});
 
 // Each log's direction as an arrow of length 1 (handy for the math in game.js).
 for (const log of MAP.logs) {
