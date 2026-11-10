@@ -32,11 +32,15 @@ if (canSpeak) {
 
 // Find a voice for a language. "he" = Hebrew (some older Androids call it "iw"), "en" = English.
 function pickVoice(lang) {
+  if (voices.length === 0) loadVoices(); // the list may have arrived late
   const codes = lang === "he" ? ["he", "iw"] : ["en"];
-  const matching = voices.filter((v) => {
+  const all = voices.filter((v) => {
     const code = v.lang.toLowerCase().replace("_", "-");
     return codes.some((c) => code === c || code.startsWith(c + "-"));
   });
+  // Prefer voices that live ON the phone. Online voices can fail without a sound.
+  const onPhone = all.filter((v) => v.localService);
+  const matching = onPhone.length > 0 ? onPhone : all;
   if (lang === "en") {
     // Prefer the phone's usual English voice, then an American one.
     return matching.find((v) => v.default) || matching.find((v) => /en-us/i.test(v.lang)) || matching[0];
@@ -154,16 +158,49 @@ function sayLine(line, token, done) {
   speakText(line, finish);
 }
 
+// Chrome on Android can throw away a line that's still being said (then the "done"
+// signal never comes). Keeping the last few in this list stops that.
+const liveUtterances = [];
+
+// If the voice fails, show ONE small message saying why, so we can fix it.
+let voiceProblemShown = false;
+function reportVoiceProblem(why) {
+  if (voiceProblemShown || typeof showToast !== "function") return;
+  voiceProblemShown = true;
+  showToast(`🗣️ Voice problem: ${why} (voices: ${voices.length})`, "בְּעָיָה בַּקּוֹל");
+}
+
 // Ask the built-in voice to say something.
-function speakText(line, finish) {
+// useChosenVoice = false means "let the phone pick" (our second try if a voice fails).
+function speakText(line, finish, useChosenVoice = true) {
   const utterance = new SpeechSynthesisUtterance(line.text);
   utterance.lang = line.lang === "he" ? "he-IL" : "en-US";
-  const voice = pickVoice(line.lang);
+  const voice = useChosenVoice ? pickVoice(line.lang) : null;
   if (voice) utterance.voice = voice;
   utterance.rate = line.lang === "he" ? VOICE.hebrewRate : VOICE.englishRate;
+  let started = false;
+  const token = speechToken;
+  utterance.onstart = () => { started = true; };
   utterance.onend = finish;
-  utterance.onerror = finish;
+  utterance.onerror = (event) => {
+    const why = event.error || "error";
+    if (why === "interrupted" || why === "canceled") return finish(); // we stopped it ourselves: fine
+    // "not-allowed" = the browser wants a tap first. Unlock again at the next tap.
+    if (why === "not-allowed") speechUnlocked = false;
+    // The chosen voice didn't work? Try once more and let the phone pick its own voice.
+    else if (voice && !started && token === speechToken) return speakText(line, finish, false);
+    reportVoiceProblem(why);
+    finish();
+  };
+  liveUtterances.push(utterance);
+  if (liveUtterances.length > 5) liveUtterances.shift();
+  // Chrome sometimes gets stuck "paused" (after the phone sleeps or you switch apps). Unstick it.
+  if (speechSynthesis.paused) speechSynthesis.resume();
   speechSynthesis.speak(utterance);
+  // Nothing happened after 3 seconds? Say so (once).
+  setTimeout(() => {
+    if (!started && token === speechToken && voiceOn) reportVoiceProblem(speechSynthesis.speaking ? "stuck" : "didn't start");
+  }, 3000);
 }
 
 // Small helpers so other files don't have to build the lines by hand.
