@@ -139,6 +139,7 @@ function renderDeckList() {
   const premadeHeadings = {
     theme: ["Themes", "נוֹשְׂאִים"],
     root: ["Verb roots: what comes after the verb", "שָׁרָשִׁים: מָה בָּא אַחֲרֵי הַפֹּעַל"],
+    conj: ["Verb roots: past & future", "שָׁרָשִׁים: עָבָר וְעָתִיד"],
   };
   let lastKind = null;
   // Each has a 📋 button: "copy & edit" makes it one of MY decks, which I can change.

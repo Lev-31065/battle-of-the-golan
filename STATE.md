@@ -12,7 +12,11 @@
 - **Logins (`account.js` + Supabase):** email + password or a sign-in link, 13+ checkbox. Progress follows the account. Tested live.
 - **Delete my account:** red link on the home screen. It calls the `delete_my_account()` function in Supabase, which is set up in `setup.sql`. The account's progress and decks go with it (cascade). Tested on phones.
 - **Privacy page (`privacy.html`):** linked from the home screen and the sign-up form. Contact email: concoctors@gmail.com.
-- **Levels:** 1, 2A, 2B … 15A, 15B (Hebrew 3א/3ב). A = the level's words; B = review. A "Level 3B / Room KZTP" tag shows during play.
+- **Levels:** 1A, 2A, 2B … 16A, 16B (Hebrew 3א/3ב). A = the level's words; B = review. A "Level 3B / Room KZTP" tag shows during play.
+- **Object-pronoun level (11A, id `level-object-pronouns`, 2026-11-09):** אוֹתִי … אוֹתָן + present-tense sentences. Reviewed in 13A and 15A (not 16A, the hardest). Old 11–15 became 12–16. Tested by Daniel.
+- **Auto-translate:** tested by Daniel. "Not amazing, but gets most simple words right." Nikud seemed right so far.
+- **Lobby/editor tweaks (2026-11-09), tested:** "My decks" sits right under Auto in the class-game dropdown; the deck editor's "Add a word" button is on the right.
+- **Premade decks replaced (2026-11-09):** 3 themes (school, restaurant, trip) + 8 root decks (infinitive, present, nouns from the root, which word comes after the verb, e.g. מְדַבֵּר עִם / עַל). Tested by Daniel.
 - **Auto level:** per player. Daniel says it's "pretty great". Retuned on 2026-11-07.
 - **Masculine/feminine choice (first screen):** "I" and "we" sentences use the player's choice. Tested on phones.
 - **Hebrew first everywhere:** Hebrew on top and bigger, English underneath and smaller.
@@ -20,14 +24,14 @@
   - **Game-mode screen:** "Create a room" → pick a game. Capture the Flag + 2 "🔒 Coming soon" buttons. `server.mode` = "ctf".
   - **Two kinds of rooms:** normal (from Play Game): each phone picks its own level from a list of Auto + levels only. Class game (from the teacher dashboard): the teacher picks for everyone; students' picker is grayed out. Enforced by the referee (`server.classGame`).
   - **Teacher dashboard** (replaces "My decks", logged-in only, free for now): wide computer layout, "🏫 Host a class game", and 3 columns to pick the class deck: My decks (✏️ edit), Premade decks (📋 copy & edit), Levels (incl. Auto).
-  - **Premade decks** (`TOPIC_DECKS`: pronouns, object pronouns, prefixes): class games only.
+  - **Premade decks** (`TOPIC_DECKS`): class games only. Contents replaced on 2026-11-09 (see above).
   - **Custom dropdown** in the lobby, right under the room code (phones' built-in lists covered the whole screen). Daniel loves it.
   - **Deck editor as a table:** Hebrew | English | wrong answers (➕ tags, up to 5) | 🗑. Enter moves like a spreadsheet. Pasting from Excel fills many rows (extra columns = wrong answers). Copying a premade deck keeps feminine versions (♀ tag).
 
-## Built, not yet tested (2026-11-08)
-- **Auto-translate (Step 5):** leaving a Hebrew box fills an EMPTY English box via MyMemory (free, no key). Purple = auto-filled, check it. Pasted Hebrew-only rows get translated too. 93 headless checks pass, including a real MyMemory call.
+## Built, not yet tested (2026-11-09)
+- **"🔁 Verb roots: past & future" premade section:** 11 `conj-*` decks (כתב, למד, עבד, אכל, שתה, דבר, ספר, הלך, בוא, עזר, חכה). Each: 8 past + 8 future forms (pronoun included in the answer) + 2 sentences. Wrong answers = other tense / other gender or I↔we / other person. Headless check: all 22 premade decks valid, 3 headings in the dashboard. Daniel still needs to test, and check the nikud of guttural/irregular forms (תַּעַבְדִי, אֹכַל, שָׁתְתָה, חִכְּתָה, בָּאת).
 - **Privacy page line about MyMemory:** Daniel should read it.
-- **Nikud still needs Daniel's check:** the premade decks (`TOPIC_DECKS`) and the 27 pronoun sentences from 2026-11-07 (levels 4, 7, 8, 10–14).
+- **Nikud still needs Daniel's check:** the 27 pronoun sentences from 2026-11-07 and the new object-pronoun level.
 - **Not yet confirmed:** the iPhone 2× zoom fix, and full screen on Android.
 
 ## Key decisions
