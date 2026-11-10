@@ -23,7 +23,7 @@
 ## Folder structure
 - `index.html`: all screens (home, play, lobby, HUD, shop, quiz, winner)
 - `style.css`: looks
-- `map.js`: map layout (rivers, bridges, bushes, rocks, bases), plus `isInWater` and `isInBush`
+- `map.js`: map layout (rivers, bridges, dirt paths, bushes "berry"/"leafy", rocks, hollow logs, bases). Only the LEFT half is listed; `mirrorLeftHalf()` makes the right half, so the map is fair. Plus `isInWater`, `riverFlowAt`, `isInBush`, `logLocal`
 - `rules.js`: every tweakable setting, plus shared helpers
 - `sound.js`: sound effects and mute
 - `speech.js`: reads words out loud with the phone's built-in voice (or a recording, if a word has `audio`), plus the word card at the top

@@ -1,66 +1,107 @@
 // map.js — describes the battlefield: how big it is, where the rivers,
-// bridges, bushes, bases, trees and rocks are, and what kind of ground a spot is.
+// bridges, paths, bushes, bases, rocks and logs are, and what kind of ground a spot is.
 //
 // The map uses its own "world units" (not screen pixels).
 // x goes left → right, y goes top → bottom. The point (0, 0) is the top-left corner.
+//
+// The map is the SAME on both sides (a mirror image), so neither team has an advantage.
+// So below, most things are only listed for the LEFT (blue) half; mirrorLeftHalf()
+// at the bottom makes the right (red) half by flipping them over the middle line.
 
 const MAP = {
-  width: 2000,
-  height: 1200,
+  width: 2600,
+  height: 1500,
 
   // How much the ground slows you down. 1 = full speed, 0.5 = half speed.
-  waterSlowdown: 0.15,  // rivers: 15% speed — wading is really slow!
+  waterSlowdown: 0.4,   // rivers: 40% speed (and the current pushes you downstream)
+  riverFlow: 45,        // how fast the river carries you downstream (world units per second)
   bushSlowdown: 0.3,    // bushes: 30% speed
 
   // Each team's home base: a circle with the flag in the middle.
   // The shop position is filled in below (just above the flag).
   bases: {
-    blue: { x: 220, y: 600, radius: 200 },
-    red: { x: 1780, y: 600, radius: 200 },
+    blue: { x: 220, y: 750, radius: 200 },
+    red: { x: 2380, y: 750, radius: 200 },
   },
 
   // How far above the flag the shop stands.
   shopDistance: 150,
 
-  // Each river is a wiggly line through these [x, y] points.
-  // The water is `width` units wide, centered on that line.
+  // Each river is a wiggly line through these [x, y] points, flowing from the first
+  // point to the last (top → bottom). The water is `width` units wide.
   rivers: [
-    { width: 90, points: [[700, -60], [640, 250], [760, 520], [660, 820], [730, 1260]] },
-    { width: 90, points: [[1300, -60], [1360, 300], [1240, 600], [1350, 900], [1270, 1260]] },
+    { width: 90, points: [[720, -60], [650, 300], [770, 620], [670, 900], [650, 1200], [730, 1560]] },
   ],
 
   // Bridges are rectangles laid over the rivers. Walking on a bridge is full speed.
   // (x, y) is the center of the bridge; w is its length and h is its width.
   // There's deliberately NO bridge in the middle — the shortest path is through the water!
   bridges: [
-    { x: 640, y: 250, w: 170, h: 64 },
-    { x: 660, y: 820, w: 170, h: 64 },
-    { x: 1360, y: 300, w: 170, h: 64 },
-    { x: 1350, y: 900, w: 170, h: 64 },
+    { x: 650, y: 300, w: 170, h: 64 },
+    { x: 650, y: 1200, w: 170, h: 64 },
   ],
 
-  // Bushes slow you down, and you're partly hidden inside them.
-  // [x, y, radius]
+  // Dirt paths (just for looks, and to help find the way; they don't change speed).
+  // Each is a list of [x, y] points: from the base to its bridges, then to the middle.
+  paths: [
+    [[220, 750], [380, 520], [565, 300]],
+    [[220, 750], [380, 980], [565, 1200]],
+    [[735, 300], [1000, 480], [1300, 750]],
+    [[735, 1200], [1000, 1020], [1300, 750]],
+  ],
+
+  // Bushes slow you down, and you're partly hidden inside them. [x, y, radius, kind]
+  //   "berry" = has berries: walk in to eat them for a little speed boost (they grow back)
+  //   "leafy" = just leaves
+  // Some are BIG on purpose. Keep them off the paths and out of the rivers.
   bushes: [
-    [430, 420, 65], [380, 820, 65], [880, 300, 65], [820, 700, 65],
-    [1120, 900, 65], [1160, 480, 65], [1570, 420, 65], [1620, 820, 65],
+    [120, 250, 70, "leafy"], [400, 140, 60, "leafy"], [130, 480, 55, "berry"],
+    [530, 750, 95, "berry"],
+    [120, 1250, 70, "leafy"], [400, 1360, 60, "leafy"], [130, 1020, 55, "berry"],
+    [1060, 170, 120, "berry"], [1060, 1330, 120, "leafy"], [950, 750, 115, "leafy"],
+    [860, 960, 55, "berry"], [870, 550, 55, "berry"],
   ],
+  // Bushes right on the middle line (not mirrored, so they're only listed once).
+  middleBushes: [[1300, 330, 80, "leafy"], [1300, 1170, 80, "berry"]],
 
-  // Trees are decorations. You can walk right past them.
-  trees: [
-    [120, 150], [430, 200], [470, 1020], [110, 1060], [520, 600],
-    [1000, 150], [900, 420], [1100, 780], [980, 1050],
-    [1880, 150], [1570, 200], [1530, 1020], [1890, 1060], [1480, 600],
-  ],
   // Rocks are SOLID — bump into one and you must answer a Hebrew question to pass.
-  rocks: [[560, 420], [1440, 780], [860, 960], [1140, 240], [880, 520], [1120, 680]],
+  rocks: [[560, 520], [1150, 420], [1110, 1150], [300, 1150]],
+
+  // Hollow logs lying on the ground. Solid from the sides, but walk straight into an
+  // open END and you crawl inside: nobody can see you. Walk out either end.
+  // (x, y) = the middle, length = end to end, angle = which way it lies (0 = left-right).
+  logs: [
+    { x: 300, y: 330, length: 160, angle: 0.25 },
+    { x: 560, y: 1000, length: 160, angle: Math.PI / 2 },
+  ],
+  middleLogs: [
+    { x: 1300, y: 560, length: 200, angle: 0 },
+    { x: 1300, y: 940, length: 200, angle: 0 },
+  ],
 
   // The speed boost box sits in the very middle, so both teams have a fair shot at it.
-  speedBox: { x: 1000, y: 600 },
+  speedBox: { x: 1300, y: 750 },
 
   // Lighter/darker grass spots, filled in below so the grass isn't one flat color.
   grassPatches: [],
 };
+
+// Make the right (red) half: a mirror image of the left half.
+(function mirrorLeftHalf() {
+  const flip = (x) => MAP.width - x;
+  MAP.rivers.push(...MAP.rivers.map((r) => ({ width: r.width, points: r.points.map(([x, y]) => [flip(x), y]) })));
+  MAP.bridges.push(...MAP.bridges.map((b) => ({ ...b, x: flip(b.x) })));
+  MAP.paths.push(...MAP.paths.map((path) => path.map(([x, y]) => [flip(x), y])));
+  MAP.bushes.push(...MAP.bushes.map(([x, y, r, kind]) => [flip(x), y, r, kind]), ...MAP.middleBushes);
+  MAP.rocks.push(...MAP.rocks.map(([x, y]) => [flip(x), y]));
+  MAP.logs.push(...MAP.logs.map((log) => ({ ...log, x: flip(log.x), angle: -log.angle })), ...MAP.middleLogs);
+})();
+
+// Each log's direction as an arrow of length 1 (handy for the math in game.js).
+for (const log of MAP.logs) {
+  log.dirX = Math.cos(log.angle);
+  log.dirY = Math.sin(log.angle);
+}
 
 // Put each team's shop straight above its flag.
 for (const team of ["blue", "red"]) {
@@ -68,7 +109,7 @@ for (const team of ["blue", "red"]) {
   base.shop = { x: base.x, y: base.y - MAP.shopDistance };
 }
 
-// Make 70 random grass patches. We use a "seeded" random number maker so the
+// Make 120 random grass patches. We use a "seeded" random number maker so the
 // patches land in the same places every time the page loads.
 (function makeGrassPatches() {
   let seed = 42;
@@ -76,7 +117,7 @@ for (const team of ["blue", "red"]) {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   }
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 120; i++) {
     MAP.grassPatches.push({
       x: random() * MAP.width,
       y: random() * MAP.height,
@@ -108,14 +149,23 @@ function isInWater(x, y) {
       y > bridge.y - bridge.h / 2 && y < bridge.y + bridge.h / 2;
     if (onBridge) return false;
   }
+  return riverFlowAt(x, y) !== null;
+}
+
+// Which way is the river flowing at (x, y)? Gives an arrow of length 1 ({ x, y }),
+// or null if (x, y) isn't in a river.
+function riverFlowAt(x, y) {
   for (const river of MAP.rivers) {
     for (let i = 0; i < river.points.length - 1; i++) {
-      if (distanceToSegment(x, y, river.points[i], river.points[i + 1]) < river.width / 2) {
-        return true;
+      const a = river.points[i];
+      const b = river.points[i + 1];
+      if (distanceToSegment(x, y, a, b) < river.width / 2) {
+        const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        return { x: (b[0] - a[0]) / length, y: (b[1] - a[1]) / length };
       }
     }
   }
-  return false;
+  return null;
 }
 
 // Is the point (x, y) inside a bush?
@@ -124,4 +174,13 @@ function isInBush(x, y) {
     if (Math.hypot(x - bx, y - by) < radius) return true;
   }
   return false;
+}
+
+// Where is (x, y) compared to a log?
+//   along = how far along the log (0 = the middle, ± length/2 = the ends)
+//   side  = how far off to the side of the log's middle line
+function logLocal(log, x, y) {
+  const dx = x - log.x;
+  const dy = y - log.y;
+  return { along: dx * log.dirX + dy * log.dirY, side: -dx * log.dirY + dy * log.dirX };
 }

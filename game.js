@@ -33,9 +33,12 @@ const players = {};   // every player, by id
 let flags = null;
 let score = { blue: 0, red: 0 };
 let speedBox = null;
+let berries = null;   // which bushes have ripe berries (true/false for each bush), or null = all ripe
 const effects = [];   // shockwave rings and floating numbers
 
 let rockPassUntil = 0; // until this time, I can walk through rocks (after answering a rock question)
+let myLog = null;      // the log I'm hiding inside right now (null = not hiding)
+const berryAskedAt = new Map(); // bush number → when I last asked the referee to eat its berries
 let hurtAt = -Infinity; // when I last took damage (for the screen shake and red flash)
 
 // Forget every "until this time" timer. Needed when the game clock jumps (joining a
@@ -46,6 +49,8 @@ function resetTimers() {
   hurtAt = -Infinity;
   rockPassUntil = 0;
   effects.length = 0;
+  myLog = null;
+  berryAskedAt.clear();
 }
 
 function myPlayer() {
@@ -431,6 +436,7 @@ function backToHome(english, hebrew) {
   for (const id of Object.keys(players)) delete players[id];
   flags = null;
   speedBox = null;
+  berries = null;
   roomDeckId = null; // the next room will tell us its words
   resetTimers();
   closeQuiz();
@@ -867,6 +873,7 @@ function applySnapshot(snap) {
   flags = snap.flags;
   score = snap.score;
   speedBox = snap.speedBox;
+  berries = snap.berries || null;
   client.winner = snap.winner;
 
   // Things that just happened: messages, damage numbers, shockwaves.
@@ -1082,7 +1089,7 @@ function bumpIntoPlayers(p) {
   const nowTouching = new Set();
   const minDistance = PLAYER_RADIUS * 2; // two bodies side by side
   for (const other of Object.values(players)) {
-    if (other.id === p.id || !other.alive) continue;
+    if (other.id === p.id || !other.alive || other.inLog) continue; // (someone in a log isn't in the way)
     if (!BUMP.teammates && other.team === p.team) continue;
     const dist = Math.hypot(p.x - other.x, p.y - other.y);
     if (dist >= minDistance) continue;
@@ -1102,7 +1109,7 @@ function bumpIntoPlayers(p) {
       bump.vy = awayY * BUMP.bounceSpeed;
       if (gameTime - bump.lastSound > 0.4) {
         bump.lastSound = gameTime;
-        playSound("bump");
+        playSound("nudge"); // a soft bump (the loud "bump" is for rocks)
       }
     }
   }
@@ -1122,6 +1129,72 @@ function stopBounce() {
   bump.vx = 0;
   bump.vy = 0;
   bump.touching.clear();
+}
+
+// ---------- Hollow logs ----------
+// A log is solid from the sides. But walk straight into one of its open ENDS and you
+// crawl inside: you can only move along the log, your screen gets darker, and other
+// phones stop drawing you. Walk out of either end to leave.
+// (You can't crawl in while carrying a flag: then the log is solid all over.)
+
+function checkLogs(p) {
+  const halfWidth = LOG.width / 2;
+
+  // Already inside a log: stay on its middle line, and leave if you walk out an end.
+  if (myLog) {
+    const { along } = logLocal(myLog, p.x, p.y);
+    const half = myLog.length / 2;
+    if (Math.abs(along) > half + PLAYER_RADIUS) { // fully past an end (not just at the opening)
+      // Out! Step just past the end, so we're not touching the log any more.
+      const out = Math.sign(along) * (half + PLAYER_RADIUS + 2);
+      p.x = myLog.x + myLog.dirX * out;
+      p.y = myLog.y + myLog.dirY * out;
+      myLog = null;
+    } else {
+      p.x = myLog.x + myLog.dirX * along;
+      p.y = myLog.y + myLog.dirY * along;
+    }
+    return;
+  }
+
+  for (const log of MAP.logs) {
+    const { along, side } = logLocal(log, p.x, p.y);
+    const half = log.length / 2;
+    const endReach = half + PLAYER_RADIUS;   // touching an end
+    const sideReach = halfWidth + PLAYER_RADIUS; // touching a side
+    if (Math.abs(along) >= endReach || Math.abs(side) >= sideReach) continue; // not touching
+
+    // Walking into an open end, lined up with the hole? Crawl in!
+    const atAnEnd = Math.abs(along) > half;
+    if (atAnEnd && Math.abs(side) < halfWidth && !p.carrying) {
+      myLog = log;
+      p.x = log.x + log.dirX * along;
+      p.y = log.y + log.dirY * along;
+      return;
+    }
+
+    // Otherwise the log is solid: push out the shortest way (off the side, or off the end).
+    let newAlong = along;
+    let newSide = side;
+    if (sideReach - Math.abs(side) < endReach - Math.abs(along)) newSide = Math.sign(side || 1) * sideReach;
+    else newAlong = Math.sign(along || 1) * endReach;
+    p.x = log.x + log.dirX * newAlong - log.dirY * newSide;
+    p.y = log.y + log.dirY * newAlong + log.dirX * newSide;
+  }
+}
+
+// ---------- Berries ----------
+// Walk into a bush with ripe berries: ask the referee to let me eat them.
+// (The referee decides, so two players can't both eat the same berries.)
+function checkBerries(p) {
+  if (!berries) return;
+  MAP.bushes.forEach(([x, y, r], i) => {
+    if (!berries[i] || Math.hypot(p.x - x, p.y - y) > r) return;
+    if (gameTime - (berryAskedAt.get(i) ?? -Infinity) < 1) return; // asked a moment ago: wait for the answer
+    berryAskedAt.set(i, gameTime);
+    sendMyPosition(p); // so the referee knows I'm really in the bush right now
+    sendToServer({ type: "eat", bush: i });
+  });
 }
 
 // ---------- Winner screen ----------
@@ -1199,6 +1272,8 @@ function update(dt) {
     shopEl.hidden = true;
     p.moving = false;
     stopBounce();
+    myLog = null;
+    p.inLog = false;
     return;
   }
 
@@ -1218,36 +1293,54 @@ function update(dt) {
     }
 
     // Work out speed. Each thing multiplies it:
-    //   river ×0.15   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5
+    //   river ×0.4   bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries ×1.3
     let speed = PLAYER_SPEED;
     if (p.inWater) speed *= MAP.waterSlowdown;
     else if (p.inBush) speed *= MAP.bushSlowdown;
     if (p.carrying) speed *= CARRY_SLOWDOWN;
     if (p.boostUntil > gameTime) speed *= SPEED_BOOST.multiplier;
+    if (p.berryUntil > gameTime) speed *= BERRY.multiplier;
 
     const oldX = p.x;
     const oldY = p.y;
     p.x += dx * speed * dt;
     p.y += dy * speed * dt;
-    applyBounce(p, dt);   // still sliding from a bump?
-    bumpIntoPlayers(p);   // players are solid
+    // In a river? The current carries you downstream.
+    const flow = p.inWater && !myLog ? riverFlowAt(p.x, p.y) : null;
+    if (flow) {
+      p.x += flow.x * MAP.riverFlow * dt;
+      p.y += flow.y * MAP.riverFlow * dt;
+    }
+    if (myLog) {
+      stopBounce();       // inside a log: nobody can bump you
+    } else {
+      applyBounce(p, dt); // still sliding from a bump?
+      bumpIntoPlayers(p); // players are solid
+    }
+    checkLogs(p);         // logs are solid (or you crawl inside)
+    checkBerries(p);      // walked into ripe berries? Eat them!
     checkRocks(p, oldX, oldY);
     clampToMap(p);
     p.moving = amount > 0.1;
     if (p.moving) p.facing = Math.atan2(dy, dx);
   }
 
-  // Tell the referee where I am, 20 times a second.
-  if (now - lastMoveSent > 50) {
-    lastMoveSent = now;
-    sendToServer({ type: "move", x: p.x, y: p.y, facing: p.facing, moving: p.moving });
-  }
+  p.inLog = Boolean(myLog);
+
+  // Tell the referee where I am (and whether I'm hiding), 20 times a second.
+  if (now - lastMoveSent > 50) sendMyPosition(p);
+}
+
+function sendMyPosition(p) {
+  lastMoveSent = performance.now();
+  sendToServer({ type: "move", x: p.x, y: p.y, facing: p.facing, moving: p.moving, inLog: Boolean(myLog) });
 }
 
 // ---------- Drawing each frame ----------
 
 const waterChip = document.getElementById("water-chip");
 const bushChip = document.getElementById("bush-chip");
+const logChip = document.getElementById("log-chip");
 const weaponChip = document.getElementById("weapon-chip");
 const carryChip = document.getElementById("carry-chip");
 const boostChip = document.getElementById("boost-chip");
@@ -1291,12 +1384,19 @@ function render() {
     const everyone = Object.values(players).sort((a, b) => (a.id === client.myId) - (b.id === client.myId));
     for (const p of everyone) {
       if (!p.alive) continue;
+      const isMe = p.id === client.myId;
+      if (p.inLog && !isMe) continue; // hiding in a log: invisible to everyone else
       if (p.carrying) drawCarriedFlag(ctx, p, p.carrying, gameTime);
-      drawPlayer(ctx, p, gameTime, p.id === client.myId);
+      if (isMe && myLog) ctx.globalAlpha = 0.45; // me inside a log: faint, so I can still find myself
+      drawPlayer(ctx, p, gameTime, isMe);
+      ctx.globalAlpha = 1;
     }
   }
-  drawBushes(ctx);
+  drawBushes(ctx, berries);
   drawEffects(ctx, effects, gameTime);
+
+  // Hiding in a log: everything gets dark, darkest at the edges of the screen.
+  if (client.phase === "playing" && myLog) drawLogDarkness(ctx, view.dpr);
 
   // The minimap is drawn in screen pixels (not world units), in the top-right corner.
   if (client.phase === "playing" && me) {
@@ -1360,6 +1460,7 @@ function updateHud(p) {
   document.getElementById("score-red").textContent = score.red;
   waterChip.hidden = !p.inWater || !p.alive;
   bushChip.hidden = !p.inBush || !p.alive;
+  logChip.hidden = !myLog || !p.alive;
   if (p.weapon === "hammer") setBilingual(weaponChip, "🔨 Hammer", "פַּטִּישׁ");
   else setBilingual(weaponChip, "✋ No weapon", "בְּלִי נֶשֶׁק");
 

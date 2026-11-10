@@ -30,7 +30,22 @@ const HAMMER = {
 const SPEED_BOOST = {
   multiplier: 1.5,  // 1.5 = one and a half times normal speed
   duration: 8,      // seconds the boost lasts
-  respawn: 60,      // seconds before a new box appears
+  respawn: 30,      // seconds before a new box appears
+};
+
+// ---------- Berries (in the "berry" bushes) ----------
+// Walk into a berry bush to eat its berries: a little speed boost. They grow back later.
+const BERRY = {
+  multiplier: 1.3,  // 1.3 = 30% faster
+  duration: 4,      // seconds the boost lasts
+  regrow: 80,       // seconds until the berries grow back
+};
+
+// ---------- Hollow logs ----------
+// Solid from the sides. Walk into an open end to hide inside (nobody can see you).
+const LOG = {
+  width: 44,        // how thick a log is
+  darkness: 0.55,   // how dark your screen gets while hiding (0 = not at all, 1 = black)
 };
 
 // ---------- Flags ----------

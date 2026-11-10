@@ -51,7 +51,9 @@ const SOUNDS = {
   score:   () => melody([523, 659, 784, 1047], 0.1, { type: "triangle", volume: 0.22 }),
   win:     () => melody([523, 659, 784, 1047, 784, 1047], 0.13, { type: "triangle", volume: 0.22 }),
   boost:   () => tone(300, 0.45, { type: "sawtooth", slideTo: 1200, volume: 0.1 }),
-  bump:    () => tone(90, 0.2, { type: "square", volume: 0.2 }),
+  bump:    () => tone(90, 0.2, { type: "square", volume: 0.2 }),          // walking into a rock
+  nudge:   () => tone(140, 0.08, { type: "sine", slideTo: 100, volume: 0.04 }), // bumping into a player (soft!)
+  munch:   () => melody([520, 700], 0.05, { type: "triangle", volume: 0.07 }),  // eating berries
 };
 
 function playSound(name) {

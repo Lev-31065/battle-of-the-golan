@@ -28,6 +28,17 @@
   - **Custom dropdown** in the lobby, right under the room code (phones' built-in lists covered the whole screen). Daniel loves it.
   - **Deck editor as a table:** Hebrew | English | wrong answers (➕ tags, up to 5) | 🗑. Enter moves like a spreadsheet. Pasting from Excel fills many rows (extra columns = wrong answers). Copying a premade deck keeps feminine versions (♀ tag).
 
+## Built + uploaded, not yet tested on phones (2026-11-10)
+- **Premade decks:** 🔁 לְלַמֵּד (teach) + 5 new roots (ק־ר־א, ש־א־ל, ש־מ־ע, ר־א־ה, נ־ת־ן), each a 🌱 root deck and a 🔁 conjugation deck. New 🔁 decks are built from 2-line tables by `conjWords()` in `words.js`. Nikud to check: שָׁמַעַתְּ, רָאֲתָה, נָתַתְּ, נָתַנּוּ, תִּתְּנִי, קְרָאתֶם, לִמַּדְתִּי.
+- **Joystick always visible:** rests faded in the bottom-left corner; jumps under your thumb on the left half; goes back on release.
+- **Solid players + bounce (`BUMP` in `rules.js`):** each phone pushes its OWN player out of others and adds a short bounce. Skipped while answering/shopping (so you can't be shoved off a flag).
+- **New map look (`draw.js`):** ground (grass tufts, flowers, dirt paths, rivers with reeds, base floors) painted once onto a hidden canvas (`GROUND_RES` 1.5); rocks/bushes/logs are reusable sprites. Headless: ~0.1 ms per frame. Daniel: "AMAZING" (first version, 2026-11-10).
+- **Map v2 (2026-11-10):** 2600×1500 (was 2000×1200), mirrored halves, middle twice as long, bridges farther from the center. Trees became "leafy" bushes (all bushes slow you); some bushes r 95–120. Headless layout check: nothing on paths, in rivers or in bases.
+- **River:** 40% speed (was 15%) + current pushes you downstream (`MAP.riverFlow` 45).
+- **Berries (`BERRY` in `rules.js`):** 4 per berry bush. Walk in = eat (referee decides: `serverEat`), ×1.3 speed for 4 s, regrow after 80 s, no countdown. Snapshot sends `berries` (true/false per bush).
+- **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide inside (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide.
+- **Speed box** respawns in 30 s (was 60). **Bump sound** for players is the soft `nudge`. **3D look:** rocks with sides, crate with top+front, dome bushes with shadows, raised bridge rails, shaded ball-shaped players with stepping feet.
+
 ## Built, not yet tested (2026-11-09)
 - **"🔁 Verb roots: past & future" premade section:** 11 `conj-*` decks (כתב, למד, עבד, אכל, שתה, דבר, ספר, הלך, בוא, עזר, חכה). Each: 8 past + 8 future forms (pronoun included in the answer) + 2 sentences. Wrong answers = other tense / other gender or I↔we / other person. Headless check: all 22 premade decks valid, 3 headings in the dashboard. Daniel still needs to test, and check the nikud of guttural/irregular forms (תַּעַבְדִי, אֹכַל, שָׁתְתָה, חִכְּתָה, בָּאת).
 - **Privacy page line about MyMemory:** Daniel should read it.

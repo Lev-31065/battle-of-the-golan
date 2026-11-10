@@ -54,6 +54,7 @@ button, select, input { touch-action: manipulation; }
 }
 .water-chip { background: #dbeafe; color: #1e40af; }
 .bush-chip { background: #dcfce7; color: #166534; }
+.log-chip { background: #f3e8d6; color: #6b4423; }
 .carry-chip { background: #fef3c7; color: #92400e; }
 .boost-chip { background: #fde047; color: #713f12; }
 .score-chip { display: flex; gap: 6px; align-items: center; font-size: 16px; }
