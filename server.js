@@ -152,7 +152,7 @@ function serverAddPlayer(id, name) {
     carrying: null,
     boostUntil: 0,
     berryBoosts: [],    // end times of my berry speed boosts (they add up)
-    inLog: false,       // hiding inside a log (other phones don't draw you)
+    inLog: 0,           // which log I'm hiding in (1, 2, 3…), 0 = not hiding (other phones don't draw you)
     lastSwing: -10,
     lastHit: -10,
     spawnCount: 0,      // goes up each time the referee teleports you (start, respawn)
@@ -214,7 +214,8 @@ function serverHandle(id, msg) {
         clampToMap(p);
         p.facing = Number(msg.facing) || 0;
         p.moving = Boolean(msg.moving);
-        p.inLog = Boolean(msg.inLog) && !p.carrying; // flag carriers can't hide
+        // Which log they're hiding in (1, 2, 3…), or 0 = not hiding. Flag carriers can't hide.
+        p.inLog = p.carrying ? 0 : Math.max(0, Math.floor(Number(msg.inLog) || 0));
       }
       break;
     case "eat":
@@ -249,7 +250,7 @@ function serverStartGame() {
   server.phase = "playing";
   for (const p of Object.values(server.players)) {
     Object.assign(p, spawnPoint(p.team), {
-      hp: MAX_HP, alive: true, items: [], held: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: false, lastSwing: -10,
+      hp: MAX_HP, alive: true, items: [], held: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: 0, lastSwing: -10,
       facing: p.team === "blue" ? 0 : Math.PI,
     });
     p.spawnCount += 1;
@@ -300,7 +301,7 @@ function serverHurt(target, amount, attacker) {
     target.held = null;
     target.boostUntil = 0;
     target.berryBoosts = [];
-    target.inLog = false;
+    target.inLog = 0;
     floatText("💥 KO!", target.x, target.y - 60, "#fff", 1.2, "ko", "נוֹקְאָאוּט!");
     toast(`💥 ${attacker.name} knocked out ${target.name}!`, `${attacker.name} הִפִּיל/הִפִּילָה אֶת ${target.name}!`);
   }

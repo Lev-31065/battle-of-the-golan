@@ -156,7 +156,31 @@ const TRANSLATE = {
   maxPerPaste: 60,      // after pasting a big list, translate at most this many empty English boxes
 };
 
+// ---------- Version ----------
+// Shown small on the home screen, so you can check that a phone has the NEWEST copy of
+// the game (phones keep old copies for a while). Change it with every upload, together
+// with the ?v=… after each script and style.css in index.html.
+const GAME_VERSION = "2026-11-10e";
+
 // ---------- Helpers ----------
+
+// Something broke? Show a small message saying what (at most 3 different ones), so a
+// screenshot tells us what to fix. Also catches any error the game didn't expect.
+const problemsShown = new Set();
+function reportProblem(error, where = "") {
+  const text = String((error && error.message) || error).slice(0, 120) + (where ? ` @ ${where}` : "");
+  console.error(error);
+  if (problemsShown.has(text) || problemsShown.size >= 3) return;
+  problemsShown.add(text);
+  // showToast lives in game.js. Wait a moment in case it isn't ready yet.
+  setTimeout(() => {
+    if (typeof showToast === "function") showToast(`⚠️ Problem: ${text} (v ${GAME_VERSION})`, "מַשֶּׁהוּ הִשְׁתַּבֵּשׁ");
+  }, 500);
+}
+window.addEventListener("error", (event) => {
+  const file = String(event.filename || "").split("/").pop().split("?")[0];
+  reportProblem(event.error || event.message, file ? `${file}:${event.lineno}` : "");
+});
 
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -211,3 +235,9 @@ function clampToMap(p) {
   p.x = Math.min(Math.max(p.x, PLAYER_RADIUS), MAP.width - PLAYER_RADIUS);
   p.y = Math.min(Math.max(p.y, PLAYER_RADIUS), MAP.height - PLAYER_RADIUS);
 }
+
+// Show the version on the home screen.
+(function showVersion() {
+  const tag = document.getElementById("version-tag");
+  if (tag) tag.textContent = "v " + GAME_VERSION;
+})();

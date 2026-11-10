@@ -984,7 +984,8 @@ function drawMinimap(ctx, left, top, width, me, players, flags, time) {
   for (const p of Object.values(players)) {
     if (!p.alive) continue;
     const isMe = me && p.id === me.id;
-    if (p.inLog && !isMe) continue; // hiding in a log: not on the minimap either
+    // Hiding in a log: not on the minimap either (unless we're both in the same log).
+    if (p.inLog && !isMe && p.inLog !== me.inLog) continue;
     const isTeammate = me && p.team === me.team;
     if (!isMe && !isTeammate && !p.carrying) continue; // hide enemies unless they have a flag
     ctx.fillStyle = isMe ? "#facc15" : COLORS[p.team];

@@ -114,14 +114,20 @@ function showNewQuestion() {
   // The hint (like the infinitive "לֶאֱכֹל"), if this word has one.
   quizHint.hidden = !quiz.entry.hint;
   quizHint.textContent = quiz.entry.hint ? `(${quiz.entry.hint})` : "";
-  // Stop anything still being read, and read the new English word.
-  speakSteps([{ card: null, lines: [englishLine(quiz.entry)] }]);
   setBilingual(quizFeedback, "");
   quizFeedback.className = "quiz-feedback";
 
-  // Make one button per choice.
+  // Make one button per choice. (Before the voice starts, so a voice problem can never
+  // stop the answers from showing up.)
   quizChoices.innerHTML = "";
-  const choices = buildChoices(quiz.entry);
+  let choices;
+  try {
+    choices = buildChoices(quiz.entry);
+  } catch (error) {
+    // Something went wrong picking wrong answers: use 3 random other words instead.
+    reportProblem(error);
+    choices = shuffle([quiz.entry.hebrew, ...shuffle(WORDS.filter((w) => w.hebrew !== quiz.entry.hebrew)).slice(0, 3).map((w) => w.hebrew)]);
+  }
   // Long sentences get smaller text so they fit in the buttons.
   quizChoices.classList.toggle("long", choices.some((hebrew) => hebrew.length > 22));
   choices.forEach((hebrew, index) => {
@@ -135,6 +141,13 @@ function showNewQuestion() {
     button.addEventListener("click", () => choose(button));
     quizChoices.appendChild(button);
   });
+
+  // Stop anything still being read, and read the new English word.
+  try {
+    speakSteps([{ card: null, lines: [englishLine(quiz.entry)] }]);
+  } catch (error) {
+    reportProblem(error);
+  }
 }
 
 function choose(button) {

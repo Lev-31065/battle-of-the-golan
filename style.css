@@ -26,7 +26,7 @@ button, select, input { touch-action: manipulation; }
 /* The canvas covers the whole screen. */
 #game {
   position: fixed;
-  inset: 0;                    /* top, right, bottom, left all = 0 */
+  top: 0; right: 0; bottom: 0; left: 0;   /* all four edges (written out: older iPhones don't know "inset") */
   width: 100%;
   height: 100%;
   display: block;
@@ -147,7 +147,7 @@ button, select, input { touch-action: manipulation; }
 }
 .hurt-flash {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;   /* all four edges (written out: older iPhones don't know "inset") */
   box-shadow: inset 0 0 90px 30px rgba(220, 38, 38, 0.8);  /* red glow around the edges */
   opacity: 0;
   pointer-events: none;
@@ -155,7 +155,7 @@ button, select, input { touch-action: manipulation; }
 }
 
 /* ---------- Confetti (winner screen) ---------- */
-.confetti-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti-layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; pointer-events: none; }
 .confetti-piece {
   position: absolute;
   top: -20px;
@@ -235,7 +235,7 @@ button, select, input { touch-action: manipulation; }
 /* ---------- Home and lobby screens ---------- */
 .screen {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;   /* all four edges (written out: older iPhones don't know "inset") */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -330,7 +330,7 @@ button, select, input { touch-action: manipulation; }
 /* ---------- Popups: shop and questions ---------- */
 .overlay {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;   /* all four edges (written out: older iPhones don't know "inset") */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,3 +760,6 @@ button, select, input { touch-action: manipulation; }
 }
 /* English that was filled in by auto-translate (until the teacher changes it) */
 .word-en.auto-translated { background: #f5f3ff; border-color: #c4b5fd; color: #5b21b6; }
+
+/* The small version number on the home screen (GAME_VERSION in rules.js) */
+.version-tag { margin: 6px 0 0; color: #9ca3af; font-size: 11px; text-align: center; }

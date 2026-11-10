@@ -38,6 +38,11 @@ const effects = [];   // shockwave rings and floating numbers
 
 let rockPassUntil = 0; // until this time, I can walk through rocks (after answering a rock question)
 let myLog = null;      // the log I'm hiding inside right now (null = not hiding)
+// Which log I'm in, as a number: 1, 2, 3… (its place in MAP.logs, plus 1), or 0 = not hiding.
+// Phones send this number, so players hiding in the SAME log can see each other.
+function myLogNumber() {
+  return myLog ? MAP.logs.indexOf(myLog) + 1 : 0;
+}
 const berryAskedAt = new Map(); // bush number → when I last asked the referee to eat its berries
 let hurtAt = -Infinity; // when I last took damage (for the screen shake and red flash)
 
@@ -1390,7 +1395,7 @@ function update(dt) {
     p.moving = false;
     stopBounce();
     myLog = null;
-    p.inLog = false;
+    p.inLog = 0;
     return;
   }
 
@@ -1442,7 +1447,7 @@ function update(dt) {
     if (p.moving) p.facing = Math.atan2(dy, dx);
   }
 
-  p.inLog = Boolean(myLog);
+  p.inLog = myLogNumber();
 
   // Tell the referee where I am (and whether I'm hiding), 20 times a second.
   if (now - lastMoveSent > 50) sendMyPosition(p);
@@ -1450,7 +1455,7 @@ function update(dt) {
 
 function sendMyPosition(p) {
   lastMoveSent = performance.now();
-  sendToServer({ type: "move", x: p.x, y: p.y, facing: p.facing, moving: p.moving, inLog: Boolean(myLog) });
+  sendToServer({ type: "move", x: p.x, y: p.y, facing: p.facing, moving: p.moving, inLog: myLogNumber() });
 }
 
 // ---------- Drawing each frame ----------
@@ -1502,9 +1507,11 @@ function render() {
     for (const p of everyone) {
       if (!p.alive) continue;
       const isMe = p.id === client.myId;
-      if (p.inLog && !isMe) continue; // hiding in a log: invisible to everyone else
+      // Hiding in a log: invisible to everyone else, except people hiding in the SAME log.
+      const inMyLog = p.inLog && p.inLog === myLogNumber();
+      if (p.inLog && !isMe && !inMyLog) continue;
       if (p.carrying) drawCarriedFlag(ctx, p, p.carrying, gameTime);
-      if (isMe && myLog) ctx.globalAlpha = 0.45; // me inside a log: faint, so I can still find myself
+      if (isMe && myLog || inMyLog) ctx.globalAlpha = 0.45; // inside a log: faint, so we can still find ourselves
       drawPlayer(ctx, p, gameTime, isMe);
       ctx.globalAlpha = 1;
     }
