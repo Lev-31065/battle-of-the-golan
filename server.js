@@ -91,7 +91,11 @@ function serverEat(p, i) {
   if (boosts.length >= BERRY.maxAtOnce) boosts.sort((a, b) => a - b).shift(); // full: the oldest one makes room
   boosts.push(server.time + BERRY.duration);
   p.berryBoosts = boosts;
-  floatText(`🍒 +${Math.round(boosts.length * BERRY.boostEach * 100)}%`, p.x, p.y - 40, "#fca5a5", 0.8, "munch");
+  // Berries also heal you a little (never above full health).
+  const healed = Math.min(BERRY.heal, p.maxHp - p.hp);
+  p.hp += healed;
+  const heart = healed > 0 ? `  ❤️+${healed}` : "";
+  floatText(`🍒 +${Math.round(boosts.length * BERRY.boostEach * 100)}%${heart}`, p.x, p.y - 40, "#fca5a5", 0.8, "munch");
 }
 
 // ---------- Events (sent to phones with the next snapshot) ----------
@@ -143,7 +147,8 @@ function serverAddPlayer(id, name) {
     maxHp: MAX_HP,
     alive: true,
     respawnAt: 0,
-    weapon: null,
+    items: [],          // what I've bought (ids from ITEMS in rules.js), lost when knocked out
+    held: null,         // which of my items I'm holding right now (null = empty hands)
     carrying: null,
     boostUntil: 0,
     berryBoosts: [],    // end times of my berry speed boosts (they add up)
@@ -225,7 +230,16 @@ function serverHandle(id, msg) {
       serverGrab(p, msg.flag);
       break;
     case "buy":
-      if (msg.item === "hammer" && p.alive && nearShop(p, 40)) p.weapon = "hammer";
+      // The phone already made the player answer the questions (the item's cost).
+      // You buy each item once, and you start holding it straight away.
+      if (ITEMS[msg.item] && p.alive && nearShop(p, 40) && !p.items.includes(msg.item)) {
+        p.items.push(msg.item);
+        p.held = msg.item;
+      }
+      break;
+    case "hold":
+      // Picked something in the toolbar (or empty hands = null).
+      if (msg.item === null || p.items.includes(msg.item)) p.held = msg.item;
       break;
   }
 }
@@ -235,7 +249,7 @@ function serverStartGame() {
   server.phase = "playing";
   for (const p of Object.values(server.players)) {
     Object.assign(p, spawnPoint(p.team), {
-      hp: MAX_HP, alive: true, weapon: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: false, lastSwing: -10,
+      hp: MAX_HP, alive: true, items: [], held: null, carrying: null, boostUntil: 0, berryBoosts: [], inLog: false, lastSwing: -10,
       facing: p.team === "blue" ? 0 : Math.PI,
     });
     p.spawnCount += 1;
@@ -245,20 +259,22 @@ function serverStartGame() {
 
 // ---------- Fighting ----------
 
+// A swing with whatever hand weapon you're holding (stick, hammer…). Its numbers are in ITEMS.
 function serverSwing(p) {
-  if (server.phase !== "playing" || !p.alive || p.weapon !== "hammer" || p.carrying) return;
-  if (server.time - p.lastSwing < HAMMER.cooldown * 0.8) return; // too soon (a little leeway for lag)
+  const weapon = ITEMS[p.held];
+  if (server.phase !== "playing" || !p.alive || !weapon || weapon.kind !== "melee" || p.carrying) return;
+  if (server.time - p.lastSwing < weapon.cooldown * 0.8) return; // too soon (a little leeway for lag)
   p.lastSwing = server.time;
-  server.events.push({ kind: "ring", x: p.x, y: p.y, radius: HAMMER.range, life: 0.35, sound: "swing" });
+  server.events.push({ kind: "ring", x: p.x, y: p.y, radius: weapon.range, life: 0.35, sound: "swing" });
 
   // Hit every enemy inside the zone around you.
   for (const enemy of Object.values(server.players)) {
     if (enemy.team === p.team || !enemy.alive) continue;
-    if (distance(enemy, p) < HAMMER.range + enemy.radius) serverHurt(enemy, HAMMER.damage, p);
+    if (distance(enemy, p) < weapon.range + enemy.radius) serverHurt(enemy, weapon.damage, p);
   }
   // And the speed box.
   const box = server.speedBox;
-  if (box.alive && distance(box, p) < HAMMER.range + box.radius) serverHurt(box, HAMMER.damage, p);
+  if (box.alive && distance(box, p) < weapon.range + box.radius) serverHurt(box, weapon.damage, p);
 }
 
 function serverHurt(target, amount, attacker) {
@@ -276,11 +292,12 @@ function serverHurt(target, amount, attacker) {
     toast(`⚡ Speed boost! ${SPEED_BOOST.multiplier}× speed for ${SPEED_BOOST.duration} seconds`,
       `מְהִירוּת ×${SPEED_BOOST.multiplier} לְמֶשֶׁךְ ${SPEED_BOOST.duration} שְׁנִיּוֹת!`, attacker.id);
   } else {
-    // A player is knocked out: they drop any flag, lose their weapon, and respawn soon.
+    // A player is knocked out: they drop any flag, lose everything they bought, and respawn soon.
     target.alive = false;
     target.respawnAt = server.time + RESPAWN_TIME;
     serverDropFlag(target);
-    target.weapon = null;
+    target.items = [];
+    target.held = null;
     target.boostUntil = 0;
     target.berryBoosts = [];
     target.inLog = false;
@@ -407,7 +424,7 @@ function serverUpdate(dt) {
   for (const p of Object.values(server.players)) {
     // Respawn knocked-out players at their base, with nothing.
     if (!p.alive && server.time >= p.respawnAt) {
-      Object.assign(p, spawnPoint(p.team), { alive: true, hp: MAX_HP, weapon: null });
+      Object.assign(p, spawnPoint(p.team), { alive: true, hp: MAX_HP, items: [], held: null });
       p.spawnCount += 1;
     }
     // A carried flag travels with its carrier.

@@ -136,7 +136,12 @@ window.addEventListener("keydown", (event) => {
   keysDown.add(key);
   if (key === " ") {
     event.preventDefault(); // stops Space from also "clicking" whatever button was last pressed
-    swingHammer();
+    swingWeapon();
+  }
+  // Number keys pick a toolbar slot (1 = empty hands). Not while answering: there, 1–4 pick an answer.
+  const slot = parseInt(key, 10);
+  if (!quiz.open && slot >= 1 && slot <= 9 && toolbarEl.children[slot - 1]) {
+    holdItem(toolbarEl.children[slot - 1].dataset.item || null);
   }
   if (key === "e") tryOpenShop();
   if (key === "f") pressFlagButton();
@@ -840,6 +845,10 @@ function applySnapshot(snap) {
       // MY position is decided by this phone (so walking feels instant),
       // except when the referee teleports me (game start or respawn).
       if (teleported) Object.assign(p, { x, y, facing });
+      // Just tapped the toolbar? Keep my pick until the referee has caught up.
+      if (performance.now() - myHeldAt < HELD_TRUST_MS && (myHeld === null || (p.items || []).includes(myHeld))) p.held = myHeld;
+      // Knocked out = everything bought is gone, including half-paid progress.
+      if (!p.alive) shopPaid = {};
     } else {
       // Other players: glide smoothly toward where the referee says they are.
       Object.assign(p, { targetX: x, targetY: y, facing, moving });
@@ -909,6 +918,8 @@ function changePhase(phase) {
     showScreen(null);
     winnerEl.hidden = true;
     rockPassUntil = 0;
+    shopPaid = {};   // a new game: half-paid items start from zero
+    myHeld = null;
     if (window.innerHeight > window.innerWidth) {
       setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טִיפ: מְסוֹבְבִים אֶת הַטֶּלֶפוֹן לָרֹחַב כְּדֵי לִרְאוֹת יוֹתֵר מֵהַמַּפָּה!"), 3000);
     }
@@ -922,52 +933,152 @@ function changePhase(phase) {
 
 // ---------- The shop ----------
 
+// Every item costs some questions (ITEMS in rules.js). Only RIGHT answers count.
+// shopPaid remembers how many you've answered right so far for each item, so if you
+// close the question halfway you don't lose your progress. It's cleared when a new
+// game starts and when you're knocked out.
 const shopEl = document.getElementById("shop");
 const shopButton = document.getElementById("shop-button");
-const buyHammerButton = document.getElementById("buy-hammer");
-const hammerStatus = document.getElementById("hammer-status");
+const shopItemsEl = document.getElementById("shop-items");
+let shopPaid = {};
+
+// "1 question" / "5 questions" (Hebrew too).
+function questionsText(n) {
+  return n === 1 ? ["1 question", "שְׁאֵלָה אַחַת"] : [`${n} questions`, `${n} שְׁאֵלוֹת`];
+}
+
+// Build the shop's list: one button per item, in the order they're listed in ITEMS.
+function fillShop(p) {
+  shopItemsEl.textContent = "";
+  for (const [id, item] of Object.entries(ITEMS)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "shop-item";
+    const owned = (p.items || []).includes(id);
+    button.disabled = owned;
+
+    const icon = document.createElement("span");
+    icon.className = "shop-icon";
+    icon.textContent = item.icon;
+    const text = document.createElement("span");
+    text.className = "shop-text";
+    const name = document.createElement("b");
+    setBilingual(name, item.name, item.nameHe);
+    const about = document.createElement("small");
+    setBilingual(about, item.about, item.aboutHe);
+    text.append(name, about);
+    const price = document.createElement("span");
+    price.className = "shop-price";
+    const paid = shopPaid[id] || 0;
+    if (owned) setBilingual(price, "Owned ✓", "כְּבָר יֵשׁ");
+    else if (paid > 0) setBilingual(price, `${paid} of ${item.cost} ✓`, `${paid} מִתּוֹךְ ${item.cost}`);
+    else setBilingual(price, ...questionsText(item.cost));
+
+    button.append(icon, text, price);
+    button.addEventListener("click", () => startBuying(id));
+    shopItemsEl.appendChild(button);
+  }
+}
 
 function tryOpenShop() {
   const p = myPlayer();
   if (!p || isBusy() || !nearShop(p)) return;
   resetStick(); // shopping means standing still
-  const owned = p.weapon === "hammer";
-  buyHammerButton.disabled = owned;
-  if (owned) setBilingual(hammerStatus, "Owned ✓", "כְּבָר יֵשׁ");
-  else setBilingual(hammerStatus, "1 question", "שְׁאֵלָה אַחַת");
+  fillShop(p);
   shopEl.hidden = false;
 }
 
 onPress(shopButton, tryOpenShop);
 document.getElementById("shop-close").addEventListener("click", () => { shopEl.hidden = true; });
 
-buyHammerButton.addEventListener("click", () => {
+// Ask the next question for this item. Each right answer pays one question;
+// a wrong answer just shows the right one and then asks another (quiz.js does that).
+function startBuying(id) {
   const p = myPlayer();
-  if (!p || p.weapon === "hammer") return;
+  const item = ITEMS[id];
+  if (!p || !item || (p.items || []).includes(id)) return;
   shopEl.hidden = true;
+  const questionNumber = (shopPaid[id] || 0) + 1;
   openQuiz({
-    title: "🔨 Answer correctly to earn the Hammer",
-    titleHe: "עוֹנִים נָכוֹן וּמְקַבְּלִים פַּטִּישׁ",
+    title: `${item.icon} ${item.name}: question ${questionNumber} of ${item.cost}`,
+    titleHe: `${item.nameHe}: שְׁאֵלָה ${questionNumber} מִתּוֹךְ ${item.cost}`,
     onCorrect: () => {
-      sendToServer({ type: "buy", item: "hammer" });
-      showToast("🔨 You earned the Hammer! Tap Hit to swing it.", "יֵשׁ פַּטִּישׁ! לוֹחֲצִים עַל ״לְהַכּוֹת״ כְּדֵי לְהִשְׁתַּמֵּשׁ בּוֹ.");
+      shopPaid[id] = questionNumber;
+      if (questionNumber < item.cost) {
+        startBuying(id); // not paid off yet: straight on to the next question
+        return;
+      }
+      delete shopPaid[id];
+      sendToServer({ type: "buy", item: id });
+      holdItem(id); // hold it straight away (the referee does the same)
+      showToast(`${item.icon} You got the ${item.name}! It's in your toolbar.`, `יֵשׁ ${item.nameHe}! הוּא בְּסַרְגֵּל הַכֵּלִים.`);
     },
   });
-});
-
-// ---------- The hammer ----------
-
-const attackButton = document.getElementById("attack-button");
-onPress(attackButton, swingHammer);
-
-function canAttack(p) {
-  return p && p.weapon === "hammer" && !isBusy() && !p.carrying;
 }
 
-function swingHammer() {
+// ---------- The toolbar: pick what you're holding ----------
+// The referee decides what you hold, but tapping should feel instant, so this phone
+// remembers its own pick for a moment (until the referee has heard about it).
+
+const toolbarEl = document.getElementById("toolbar");
+let myHeld = null;           // what I picked on this phone
+let myHeldAt = -Infinity;    // when (performance.now()), so a slightly old snapshot can't undo the tap
+const HELD_TRUST_MS = 1000;
+
+function holdItem(id) {
+  myHeld = id;
+  myHeldAt = performance.now();
+  const p = myPlayer();
+  if (p) p.held = id;
+  sendToServer({ type: "hold", item: id });
+}
+
+// Rebuild the toolbar buttons only when what I own changes (cheap to call every frame).
+function updateToolbar(p) {
+  const show = client.phase === "playing" && p && p.alive && (p.items || []).length > 0;
+  toolbarEl.hidden = !show;
+  if (!show) return;
+  const slots = [null, ...Object.keys(ITEMS).filter((id) => p.items.includes(id))]; // null = ✋ empty hands
+  const key = slots.join(",");
+  if (toolbarEl.dataset.key !== key) {
+    toolbarEl.dataset.key = key;
+    toolbarEl.textContent = "";
+    slots.forEach((id, i) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tool-slot";
+      button.dataset.item = id || "";
+      button.textContent = id ? ITEMS[id].icon : "✋";
+      button.title = (id ? ITEMS[id].name : "Empty hands") + ` (${i + 1})`;
+      onPress(button, () => holdItem(id));
+      toolbarEl.appendChild(button);
+    });
+  }
+  for (const button of toolbarEl.children) {
+    button.classList.toggle("held", (button.dataset.item || null) === p.held);
+  }
+}
+
+// ---------- Hand weapons (stick, hammer…) ----------
+
+const attackButton = document.getElementById("attack-button");
+const attackIcon = document.getElementById("attack-icon");
+onPress(attackButton, swingWeapon);
+
+// The hand weapon I'm holding (its settings from ITEMS), or null.
+function heldWeapon(p) {
+  const item = p && ITEMS[p.held];
+  return item && item.kind === "melee" ? item : null;
+}
+
+function canAttack(p) {
+  return Boolean(heldWeapon(p)) && !isBusy() && !p.carrying;
+}
+
+function swingWeapon() {
   const p = myPlayer();
   if (!canAttack(p)) return;
-  if (gameTime - p.lastSwing < HAMMER.cooldown) return; // still cooling down
+  if (gameTime - p.lastSwing < heldWeapon(p).cooldown) return; // still cooling down
   p.lastSwing = gameTime; // start the swing animation right away
   sendToServer({ type: "swing" });
 }
@@ -1452,6 +1563,7 @@ function updateHud(p) {
   joystickBase.hidden = !playing; // the joystick shows whenever you're in a game
   if (!playing) {
     for (const b of [shopButton, flagButton, attackButton]) b.hidden = true;
+    toolbarEl.hidden = true;
     koMessage.hidden = true;
     return;
   }
@@ -1467,8 +1579,10 @@ function updateHud(p) {
   waterChip.hidden = !p.inWater || !p.alive;
   bushChip.hidden = !p.inBush || !p.alive;
   logChip.hidden = !myLog || !p.alive;
-  if (p.weapon === "hammer") setBilingual(weaponChip, "🔨 Hammer", "פַּטִּישׁ");
+  const held = ITEMS[p.held];
+  if (held) setBilingual(weaponChip, `${held.icon} ${held.name}`, held.nameHe);
   else setBilingual(weaponChip, "✋ No weapon", "בְּלִי נֶשֶׁק");
+  updateToolbar(p);
 
   carryChip.hidden = !p.carrying;
   if (p.carrying === p.team) {
@@ -1489,7 +1603,11 @@ function updateHud(p) {
 
   shopButton.hidden = isBusy() || !nearShop(p);
   attackButton.hidden = !canAttack(p);
-  attackButton.classList.toggle("cooling", gameTime - p.lastSwing < HAMMER.cooldown);
+  const weapon = heldWeapon(p);
+  if (weapon) {
+    if (attackIcon.textContent !== weapon.icon) attackIcon.textContent = weapon.icon;
+    attackButton.classList.toggle("cooling", gameTime - p.lastSwing < weapon.cooldown);
+  }
   flagButton.hidden = isBusy() || !(p.carrying || grabbableFlag(p));
   if (p.carrying) setBilingual(flagButtonLabel, "Drop", "לִזְרֹק");
   else setBilingual(flagButtonLabel, "Grab", "לִתְפֹּס");

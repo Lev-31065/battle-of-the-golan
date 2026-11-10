@@ -640,11 +640,15 @@ function drawPlayer(ctx, p, time, isMe) {
     }
   }
 
-  // The hammer is held in the right hand. While swinging, it spins all the way around.
+  // The weapon is held in the right hand. While swinging, it spins all the way around.
+  // (A fast weapon like the stick gets a quicker spin, so it's done before the next swing.)
   let handAngleR = p.facing + 0.9;
-  const swingProgress = (time - p.lastSwing) / SWING_TIME; // 0 → 1 during a swing
+  const held = ITEMS[p.held];
+  const swingTime = held && held.kind === "melee" ? Math.min(SWING_TIME, held.cooldown * 0.9) : SWING_TIME;
+  const swingProgress = (time - p.lastSwing) / swingTime; // 0 → 1 during a swing
   if (swingProgress >= 0 && swingProgress < 1) handAngleR += swingProgress * Math.PI * 2;
-  if (p.weapon === "hammer") drawHammer(ctx, p.x, y, handAngleR, p.radius);
+  if (p.held === "hammer") drawHammer(ctx, p.x, y, handAngleR, p.radius);
+  if (p.held === "stick") drawStick(ctx, p.x, y, handAngleR, p.radius);
 
   // Hands: two small circles on either side, turned toward where the player faces.
   const handAngleL = p.facing - 0.9;
@@ -717,6 +721,30 @@ function drawHammer(ctx, x, y, angle, bodyRadius) {
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.fillRect(bodyRadius + 24, -10, 4, 20);
   ctx.restore();              // put the pen back the way it was
+}
+
+// A thin, slightly bent wooden stick pointing outward from the player at `angle`.
+function drawStick(ctx, x, y, angle, bodyRadius) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = COLORS.outline;   // dark outline first…
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(bodyRadius - 4, 0);
+  ctx.quadraticCurveTo(bodyRadius + 18, -5, bodyRadius + 40, 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#a16207";        // …then the wood on top
+  ctx.lineWidth = 4.5;
+  ctx.stroke();
+  // A little twig sticking off the side
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(bodyRadius + 24, -3);
+  ctx.lineTo(bodyRadius + 31, -11);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // White text with a dark outline so it's readable on any background.

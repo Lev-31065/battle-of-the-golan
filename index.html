@@ -74,8 +74,12 @@
   <div class="actions">
     <button id="shop-button" class="action-button" type="button" hidden>🛒<span class="he" lang="he" dir="rtl">חֲנוּת</span><span class="en">Shop</span></button>
     <button id="flag-button" class="action-button flag" type="button" hidden>🚩<span id="flag-button-label" class="button-label"></span></button>
-    <button id="attack-button" class="action-button attack" type="button" hidden>🔨<span class="he" lang="he" dir="rtl">לְהַכּוֹת</span><span class="en">Hit</span></button>
+    <button id="attack-button" class="action-button attack" type="button" hidden><b id="attack-icon" class="attack-icon">🔨</b><span class="he" lang="he" dir="rtl">לְהַכּוֹת</span><span class="en">Hit</span></button>
   </div>
+
+  <!-- The toolbar: one button per thing you've bought (and ✋ for empty hands).
+       Tap one to hold it. It sits just above the action buttons. game.js fills it in. -->
+  <div id="toolbar" class="toolbar" hidden></div>
 
   <!--
     A note on the two languages: every English text has its Hebrew right under it, like this:
@@ -270,7 +274,8 @@
       <details class="how-to">
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
         <p><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span></p>
-        <p><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלָה בְּעִבְרִית כְּדֵי לְקַבֵּל <b>פַּטִּישׁ</b>.</span><span class="en">🛒 Visit your <b>shopkeeper</b> and answer a Hebrew question to earn a <b>hammer</b>.</span></p>
+        <p><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלוֹת בְּעִבְרִית כְּדֵי לִקְנוֹת <b>נֶשֶׁק</b>. לוֹחֲצִים עָלָיו בְּסַרְגֵּל הַכֵּלִים כְּדֵי לְהַחְזִיק אוֹתוֹ.</span><span class="en">🛒 Visit your <b>shopkeeper</b> and answer Hebrew questions to buy <b>weapons</b>. Tap one in your toolbar to hold it.</span></p>
+        <p><span class="he" lang="he" dir="rtl">אוֹכְלִים <b>פֵּרוֹת יַעַר</b> כְּדֵי לָרוּץ מַהֵר יוֹתֵר וּלְקַבֵּל בְּרִיאוּת.</span><span class="en">🍒 Eat <b>berries</b> to run faster and get health back.</span></p>
         <p><span class="he" lang="he" dir="rtl">עוֹנִים עַל שְׁאֵלָה כְּדֵי <b>לִתְפֹּס אֶת הַדֶּגֶל שֶׁל הָאוֹיֵב</b>, וּמַחֲזִירִים אוֹתוֹ לַבָּסִיס. הַקְּבוּצָה הָרִאשׁוֹנָה שֶׁמַּגִּיעָה לְ־<b>3</b> מְנַצַּחַת!</span><span class="en">🚩 Answer a question to <b>grab the enemy flag</b>, then carry it back to your base. First to <b>3</b> wins!</span></p>
         <p><span class="he" lang="he" dir="rtl">הִפִּילוּ אֶתְכֶם? הַדֶּגֶל נוֹפֵל, וְחוֹזְרִים לַבָּסִיס בְּלִי כְּלוּם.</span><span class="en">💥 Knocked out? You drop the flag and come back at your base with nothing.</span></p>
         <p><span class="he" lang="he" dir="rtl">אִי אֶפְשָׁר לַעֲבֹר דֶּרֶךְ סְלָעִים. נִתְקָעִים בְּסֶלַע? עוֹנִים עַל שְׁאֵלָה כְּדֵי לַעֲבֹר.</span><span class="en">🪨 Rocks are solid. Bump into one and you must answer a question to pass through.</span></p>
@@ -284,12 +289,9 @@
     <div class="panel">
       <button id="shop-close" class="close-button" type="button" aria-label="Close shop">✕</button>
       <h2><span class="he" lang="he" dir="rtl">חֲנוּת</span><span class="en">🛒 Shop</span></h2>
-      <p class="panel-sub"><span class="he" lang="he" dir="rtl">לוֹחֲצִים עַל נֶשֶׁק כְּדֵי לִקְנוֹת אוֹתוֹ. מְשַׁלְּמִים בִּתְשׁוּבָה לִשְׁאֵלָה בְּעִבְרִית!</span><span class="en">Tap a weapon to buy it. You pay by answering a Hebrew question!</span></p>
-      <button id="buy-hammer" class="shop-item" type="button">
-        <span class="shop-icon">🔨</span>
-        <span class="shop-text"><b><span class="he" lang="he" dir="rtl">פַּטִּישׁ</span><span class="en">Hammer</span></b><small><span class="he" lang="he" dir="rtl">פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב</span><span class="en">Hits every enemy close to you</span></small></span>
-        <span id="hammer-status" class="shop-price"></span>
-      </button>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">לוֹחֲצִים עַל מַשֶּׁהוּ כְּדֵי לִקְנוֹת אוֹתוֹ. מְשַׁלְּמִים בִּתְשׁוּבוֹת לִשְׁאֵלוֹת בְּעִבְרִית. רַק תְּשׁוּבוֹת נְכוֹנוֹת נֶחְשָׁבוֹת!</span><span class="en">Tap something to buy it. You pay by answering Hebrew questions. Only right answers count!</span></p>
+      <!-- One button per item in ITEMS (rules.js). game.js fills this in. -->
+      <div id="shop-items" class="shop-items"></div>
     </div>
   </div>
 

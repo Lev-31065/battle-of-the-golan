@@ -18,12 +18,26 @@ const BUMP = {
   teammates: true,  // false = you can walk through your own teammates
 };
 
-// ---------- Hammer ----------
-// 34 damage × 3 hits = 102, so 3 hits knock out anything with 100 health.
-const HAMMER = {
-  damage: 34,
-  range: 85,      // how far the hit zone reaches from your center
-  cooldown: 0.6,  // seconds you must wait between swings
+// ---------- The shop ----------
+// Everything you can buy. The shop and the toolbar list them in THIS order.
+//   cost      = how many questions you must answer RIGHT to buy it (wrong answers don't count)
+//   kind      = "melee": a hand weapon. Tap Hit to hurt every enemy within `range` of you.
+//   damage    = health taken off per hit (players have MAX_HP = 100)
+//   range     = how far the hit zone reaches from your center
+//   cooldown  = seconds you must wait between swings
+// Bought items stay in your toolbar until you're knocked out.
+const ITEMS = {
+  stick: {
+    kind: "melee", cost: 2, damage: 8, range: 70, cooldown: 0.25,
+    icon: "🏑", name: "Stick", nameHe: "מַקֵּל",
+    about: "Super fast, but weak", aboutHe: "מָהִיר מְאוֹד, אֲבָל חַלָּשׁ",
+  },
+  // 34 damage × 3 hits = 102, so 3 hits knock out anything with 100 health.
+  hammer: {
+    kind: "melee", cost: 5, damage: 34, range: 85, cooldown: 0.6,
+    icon: "🔨", name: "Hammer", nameHe: "פַּטִּישׁ",
+    about: "Strong: hits every enemy close to you", aboutHe: "חָזָק: פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב",
+  },
 };
 
 // ---------- Speed boost box ----------
@@ -34,12 +48,13 @@ const SPEED_BOOST = {
 };
 
 // ---------- Berries (in the "berry" bushes) ----------
-// Touch a berry to eat it: a speed boost. Boosts from several berries add up.
+// Touch a berry to eat it: a speed boost, and some health back. Boosts from several berries add up.
 // Each berry grows back by itself later. (Where the berries are: MAP.berries in map.js.)
 const BERRY = {
   boostEach: 0.1,   // each berry = 10% faster…
   duration: 8,      // …for 8 seconds
   maxAtOnce: 5,     // at most 5 berry boosts at the same time (= 50% faster)
+  heal: 15,         // each berry gives back this much health (never above MAX_HP)
   touch: 8,         // how close your body's edge must get to a berry to eat it
   regrow: 80,       // seconds until an eaten berry grows back
 };
