@@ -483,6 +483,41 @@ function mixReviewWords(deck) {
 //                   plus 2 sentences. (Made from a conjugation table, so the wrong answers
 //                   follow a pattern: other tense, other gender, other person.)
 // icon = the emoji shown before the deck's name.
+
+// Helper for the newer conjugation decks: builds the 16 questions (8 past + 8 future)
+// from a short table, so each verb is just two lines of Hebrew that are easy to check.
+// The people are always in this order:
+//   I, you (m.), you (f.), he, she, we, you all (m.), they
+// The wrong answers follow the same pattern as the hand-written decks:
+// the same person in the other tense, the other gender (or I <-> we), and another person.
+const CONJ_PEOPLE = [
+  { en: "I", he: "אֲנִי" },
+  { en: "you (m.)", he: "אַתָּה" },
+  { en: "you (f.)", he: "אַתְּ" },
+  { en: "he", he: "הוּא" },
+  { en: "she", he: "הִיא" },
+  { en: "we", he: "אֲנַחְנוּ" },
+  { en: "you all (m.)", he: "אַתֶּם" },
+  { en: "they", he: "הֵם" },
+];
+const CONJ_SWAP = [5, 2, 1, 4, 3, 0, 7, 6];  // the other gender (or I <-> we)
+const CONJ_OTHER = [3, 0, 5, 0, 2, 7, 1, 3]; // another person
+function conjWords(hint, pastEn, futureEn, past, future) {
+  const words = [];
+  for (const [forms, otherTense, english] of [[past, future, pastEn], [future, past, "will " + futureEn]]) {
+    forms.forEach((form, i) => {
+      const who = CONJ_PEOPLE[i];
+      words.push({
+        english: who.en + " " + english,
+        hint,
+        hebrew: who.he + " " + form,
+        wrong: [otherTense[i], forms[CONJ_SWAP[i]], forms[CONJ_OTHER[i]]].map(f => who.he + " " + f),
+      });
+    });
+  }
+  return words;
+}
+
 const TOPIC_DECKS = [
   // ===== Theme decks =====
   {
@@ -746,6 +781,95 @@ const TOPIC_DECKS = [
       { english: "she helps with the homework", hebrew: "הִיא עוֹזֶרֶת בְּשִׁעוּרֵי הַבַּיִת", wrong: ["הִיא עוֹזֶרֶת אֶת שִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת לְשִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת מִשִּׁעוּרֵי הַבַּיִת"] },
     ],
   },
+  {
+    id: "root-kra", kind: "root", icon: "🌱", english: "Root ק־ר־א: read, call", hebrew: "שֹׁרֶשׁ ק־ר־א: לִקְרֹא",
+    words: [
+      { english: "to read", hebrew: "לִקְרֹא", wrong: ["קוֹרֵא", "קְרִיאָה", "לִכְתֹּב"] },
+      { english: "he reads", hebrew: "הוּא קוֹרֵא", wrong: ["הוּא קוֹרֵאת", "הוּא קוֹרְאִים", "הוּא קָרָא"] },
+      { english: "she reads", hebrew: "הִיא קוֹרֵאת", wrong: ["הִיא קוֹרֵא", "הִיא קוֹרְאוֹת", "הִיא קָרְאָה"] },
+      { english: "they (m.) read", hebrew: "הֵם קוֹרְאִים", wrong: ["הֵם קוֹרְאוֹת", "הֵם קוֹרֵא", "הֵם קָרְאוּ"] },
+      { english: "they (f.) read", hebrew: "הֵן קוֹרְאוֹת", wrong: ["הֵן קוֹרְאִים", "הֵן קוֹרֵאת", "הֵן קָרְאוּ"] },
+      { english: "reading (the activity)", hebrew: "קְרִיאָה", wrong: ["קוֹרֵא", "מִקְרָא", "כְּתִיבָה"] },
+      { english: "the Bible (Scripture)", hebrew: "מִקְרָא", wrong: ["קְרִיאָה", "מִכְתָּב", "סִפּוּר"] },
+      // קוֹרֵא + אֶת (reads THE …) / nothing (reads A …) / עַל (about) / בְּ (where) / לְ (calls someone) / קוֹרְאִים לִי = my name is
+      { english: "she reads the book", hebrew: "הִיא קוֹרֵאת אֶת הַסֵּפֶר", wrong: ["הִיא קוֹרֵאת הַסֵּפֶר", "הִיא קוֹרֵאת לַסֵּפֶר", "הִיא קוֹרֵאת עַל הַסֵּפֶר"] },
+      { english: "he reads a book", hebrew: "הוּא קוֹרֵא סֵפֶר", wrong: ["הוּא קוֹרֵא אֶת סֵפֶר", "הוּא קוֹרֵא לְסֵפֶר", "הוּא קוֹרֵאת סֵפֶר"] },
+      { english: "she reads about Israel", hebrew: "הִיא קוֹרֵאת עַל יִשְׂרָאֵל", wrong: ["הִיא קוֹרֵאת אֶת יִשְׂרָאֵל", "הִיא קוֹרֵאת לְיִשְׂרָאֵל", "הִיא קוֹרֵאת בְּיִשְׂרָאֵל"] },
+      { english: "he reads in the library", hebrew: "הוּא קוֹרֵא בַּסִּפְרִיָּה", wrong: ["הוּא קוֹרֵא לַסִּפְרִיָּה", "הוּא קוֹרֵא אֶת הַסִּפְרִיָּה", "הוּא קוֹרֵא מֵהַסִּפְרִיָּה"] },
+      { english: "the teacher (m.) calls Dana", hebrew: "הַמּוֹרֶה קוֹרֵא לְדָנָה", wrong: ["הַמּוֹרֶה קוֹרֵא אֶת דָּנָה", "הַמּוֹרֶה קוֹרֵא עִם דָּנָה", "הַמּוֹרֶה קוֹרֵאת לְדָנָה"] },
+      { english: "my name is Noam (they call me Noam)", hebrew: "קוֹרְאִים לִי נוֹעַם", wrong: ["קוֹרְאִים אוֹתִי נוֹעַם", "קוֹרֵא לִי נוֹעַם", "קוֹרְאִים לוֹ נוֹעַם"] },
+    ],
+  },
+  {
+    id: "root-shal", kind: "root", icon: "🌱", english: "Root ש־א־ל: ask, borrow", hebrew: "שֹׁרֶשׁ ש־א־ל: לִשְׁאֹל",
+    words: [
+      { english: "to ask", hebrew: "לִשְׁאֹל", wrong: ["שׁוֹאֵל", "שְׁאֵלָה", "לַעֲנוֹת"] },
+      { english: "he asks", hebrew: "הוּא שׁוֹאֵל", wrong: ["הוּא שׁוֹאֶלֶת", "הוּא שׁוֹאֲלִים", "הוּא שָׁאַל"] },
+      { english: "she asks", hebrew: "הִיא שׁוֹאֶלֶת", wrong: ["הִיא שׁוֹאֵל", "הִיא שׁוֹאֲלוֹת", "הִיא שָׁאֲלָה"] },
+      { english: "they (m.) ask", hebrew: "הֵם שׁוֹאֲלִים", wrong: ["הֵם שׁוֹאֲלוֹת", "הֵם שׁוֹאֵל", "הֵם שָׁאֲלוּ"] },
+      { english: "they (f.) ask", hebrew: "הֵן שׁוֹאֲלוֹת", wrong: ["הֵן שׁוֹאֲלִים", "הֵן שׁוֹאֶלֶת", "הֵן שָׁאֲלוּ"] },
+      { english: "a question", hebrew: "שְׁאֵלָה", wrong: ["שְׁאֵלוֹן", "תְּשׁוּבָה", "שׁוֹאֵל"] },
+      { english: "a questionnaire", hebrew: "שְׁאֵלוֹן", wrong: ["שְׁאֵלָה", "שְׁאֵלוֹת", "מִבְחָן"] },
+      // שׁוֹאֵל + אֶת (asks someone) / עַל (about) / a question (no אֶת) / מִ (borrows FROM) / אִם (whether)
+      { english: "he asks the teacher (f.)", hebrew: "הוּא שׁוֹאֵל אֶת הַמּוֹרָה", wrong: ["הוּא שׁוֹאֵל לַמּוֹרָה", "הוּא שׁוֹאֵל עִם הַמּוֹרָה", "הוּא שׁוֹאֵל מֵהַמּוֹרָה"] },
+      { english: "she asks about the test", hebrew: "הִיא שׁוֹאֶלֶת עַל הַמִּבְחָן", wrong: ["הִיא שׁוֹאֶלֶת אֶת הַמִּבְחָן", "הִיא שׁוֹאֶלֶת לַמִּבְחָן", "הִיא שׁוֹאֶלֶת בַּמִּבְחָן"] },
+      { english: "they (m.) ask a question", hebrew: "הֵם שׁוֹאֲלִים שְׁאֵלָה", wrong: ["הֵם שׁוֹאֲלִים אֶת שְׁאֵלָה", "הֵם שׁוֹאֲלִים לִשְׁאֵלָה", "הֵם שׁוֹאֵל שְׁאֵלָה"] },
+      { english: "he borrows a pen from Dana", hebrew: "הוּא שׁוֹאֵל עֵט מִדָּנָה", wrong: ["הוּא שׁוֹאֵל עֵט לְדָנָה", "הוּא שׁוֹאֵל עֵט אֶת דָּנָה", "הוּא שׁוֹאֵל עֵט עַל דָּנָה"] },
+      { english: "she asks if there is a test", hebrew: "הִיא שׁוֹאֶלֶת אִם יֵשׁ מִבְחָן", wrong: ["הִיא שׁוֹאֶלֶת עַל יֵשׁ מִבְחָן", "הִיא שׁוֹאֶלֶת אֶת יֵשׁ מִבְחָן", "הִיא שׁוֹאֵל אִם יֵשׁ מִבְחָן"] },
+    ],
+  },
+  {
+    id: "root-shma", kind: "root", icon: "🌱", english: "Root ש־מ־ע: hear", hebrew: "שֹׁרֶשׁ ש־מ־ע: לִשְׁמֹעַ",
+    words: [
+      { english: "to hear", hebrew: "לִשְׁמֹעַ", wrong: ["שׁוֹמֵעַ", "שְׁמוּעָה", "לְדַבֵּר"] },
+      { english: "he hears", hebrew: "הוּא שׁוֹמֵעַ", wrong: ["הוּא שׁוֹמַעַת", "הוּא שׁוֹמְעִים", "הוּא שָׁמַע"] },
+      { english: "she hears", hebrew: "הִיא שׁוֹמַעַת", wrong: ["הִיא שׁוֹמֵעַ", "הִיא שׁוֹמְעוֹת", "הִיא שָׁמְעָה"] },
+      { english: "they (m.) hear", hebrew: "הֵם שׁוֹמְעִים", wrong: ["הֵם שׁוֹמְעוֹת", "הֵם שׁוֹמֵעַ", "הֵם שָׁמְעוּ"] },
+      { english: "they (f.) hear", hebrew: "הֵן שׁוֹמְעוֹת", wrong: ["הֵן שׁוֹמְעִים", "הֵן שׁוֹמַעַת", "הֵן שָׁמְעוּ"] },
+      { english: "a rumor", hebrew: "שְׁמוּעָה", wrong: ["שְׁאֵלָה", "שׁוֹמֵעַ", "סִפּוּר"] },
+      { english: "what's up? (how's it going?)", hebrew: "מָה נִשְׁמָע?", wrong: ["מָה שׁוֹמֵעַ?", "מָה שָׁמַע?", "אֵיפֹה נִשְׁמָע?"] },
+      // שׁוֹמֵעַ + אֶת (hears something) / עַל (hears about) / מִ (hears from) / לְ (listens to = obeys)
+      { english: "she hears the music", hebrew: "הִיא שׁוֹמַעַת אֶת הַמּוּזִיקָה", wrong: ["הִיא שׁוֹמַעַת הַמּוּזִיקָה", "הִיא שׁוֹמַעַת לַמּוּזִיקָה", "הִיא שׁוֹמֵעַ אֶת הַמּוּזִיקָה"] },
+      { english: "he hears about the trip", hebrew: "הוּא שׁוֹמֵעַ עַל הַטִּיּוּל", wrong: ["הוּא שׁוֹמֵעַ אֶת הַטִּיּוּל", "הוּא שׁוֹמֵעַ לַטִּיּוּל", "הוּא שׁוֹמֵעַ בַּטִּיּוּל"] },
+      { english: "they (m.) hear from Dana", hebrew: "הֵם שׁוֹמְעִים מִדָּנָה", wrong: ["הֵם שׁוֹמְעִים לְדָנָה", "הֵם שׁוֹמְעִים אֶת דָּנָה", "הֵם שׁוֹמֵעַ מִדָּנָה"] },
+      { english: "the children obey the teacher (f.) (listen to her)", hebrew: "הַיְּלָדִים שׁוֹמְעִים לַמּוֹרָה", wrong: ["הַיְּלָדִים שׁוֹמְעִים אֶת הַמּוֹרָה", "הַיְּלָדִים שׁוֹמְעִים עַל הַמּוֹרָה", "הַיְּלָדִים שׁוֹמֵעַ לַמּוֹרָה"] },
+    ],
+  },
+  {
+    id: "root-rah", kind: "root", icon: "🌱", english: "Root ר־א־ה: see, look", hebrew: "שֹׁרֶשׁ ר־א־ה: לִרְאוֹת",
+    words: [
+      { english: "to see", hebrew: "לִרְאוֹת", wrong: ["רוֹאֶה", "מַרְאָה", "לִשְׁמֹעַ"] },
+      { english: "he sees", hebrew: "הוּא רוֹאֶה", wrong: ["הוּא רוֹאָה", "הוּא רוֹאִים", "הוּא רָאָה"] },
+      { english: "she sees", hebrew: "הִיא רוֹאָה", wrong: ["הִיא רוֹאֶה", "הִיא רוֹאוֹת", "הִיא רָאֲתָה"] },
+      { english: "they (m.) see", hebrew: "הֵם רוֹאִים", wrong: ["הֵם רוֹאוֹת", "הֵם רוֹאֶה", "הֵם רָאוּ"] },
+      { english: "they (f.) see", hebrew: "הֵן רוֹאוֹת", wrong: ["הֵן רוֹאִים", "הֵן רוֹאָה", "הֵן רָאוּ"] },
+      { english: "a mirror", hebrew: "מַרְאָה", wrong: ["מַרְאֶה", "רוֹאָה", "חַלּוֹן"] },
+      { english: "see you!", hebrew: "נִתְרָאֶה!", wrong: ["נִרְאֶה!", "רָאִינוּ!", "נִשְׁמַע!"] },
+      // רוֹאֶה + אֶת (sees THE …) / nothing (sees A …) / בְּ (on TV) / נִרְאֶה = looks, seems
+      { english: "she sees the sea", hebrew: "הִיא רוֹאָה אֶת הַיָּם", wrong: ["הִיא רוֹאָה הַיָּם", "הִיא רוֹאָה לַיָּם", "הִיא רוֹאֶה אֶת הַיָּם"] },
+      { english: "he watches a movie", hebrew: "הוּא רוֹאֶה סֶרֶט", wrong: ["הוּא רוֹאֶה אֶת סֶרֶט", "הוּא רוֹאֶה בְּסֶרֶט", "הוּא רוֹאָה סֶרֶט"] },
+      { english: "they (m.) watch the game on TV", hebrew: "הֵם רוֹאִים אֶת הַמִּשְׂחָק בַּטֵּלֶוִיזְיָה", wrong: ["הֵם רוֹאִים אֶת הַמִּשְׂחָק לַטֵּלֶוִיזְיָה", "הֵם רוֹאִים אֶת הַמִּשְׂחָק עַל הַטֵּלֶוִיזְיָה", "הֵם רוֹאִים הַמִּשְׂחָק בַּטֵּלֶוִיזְיָה"] },
+      { english: "he looks tired", hebrew: "הוּא נִרְאֶה עָיֵף", wrong: ["הוּא רוֹאֶה עָיֵף", "הוּא נִרְאֵית עָיֵף", "הוּא נִרְאֶה עֲיֵפָה"] },
+      { english: "she looks happy", hebrew: "הִיא נִרְאֵית שְׂמֵחָה", wrong: ["הִיא רוֹאָה שְׂמֵחָה", "הִיא נִרְאֶה שְׂמֵחָה", "הִיא נִרְאֵית שָׂמֵחַ"] },
+    ],
+  },
+  {
+    id: "root-ntn", kind: "root", icon: "🌱", english: "Root נ־ת־ן: give", hebrew: "שֹׁרֶשׁ נ־ת־ן: לָתֵת",
+    words: [
+      { english: "to give", hebrew: "לָתֵת", wrong: ["נוֹתֵן", "מַתָּנָה", "לָקַחַת"] },
+      { english: "he gives", hebrew: "הוּא נוֹתֵן", wrong: ["הוּא נוֹתֶנֶת", "הוּא נוֹתְנִים", "הוּא נָתַן"] },
+      { english: "she gives", hebrew: "הִיא נוֹתֶנֶת", wrong: ["הִיא נוֹתֵן", "הִיא נוֹתְנוֹת", "הִיא נָתְנָה"] },
+      { english: "they (m.) give", hebrew: "הֵם נוֹתְנִים", wrong: ["הֵם נוֹתְנוֹת", "הֵם נוֹתֵן", "הֵם נָתְנוּ"] },
+      { english: "they (f.) give", hebrew: "הֵן נוֹתְנוֹת", wrong: ["הֵן נוֹתְנִים", "הֵן נוֹתֶנֶת", "הֵן נָתְנוּ"] },
+      { english: "a gift", hebrew: "מַתָּנָה", wrong: ["נְתוּנִים", "נוֹתֵן", "חֲבִילָה"] },
+      { english: "give me (to a boy)", hebrew: "תֵּן לִי", wrong: ["תְּנִי לִי", "נוֹתֵן לִי", "תֵּן אוֹתִי"] },
+      // נוֹתֵן + אֶת (the thing) + לְ (to whom) / no אֶת for "a …" / נוֹתֵן לְ + infinitive = lets
+      { english: "he gives the book to Dana", hebrew: "הוּא נוֹתֵן אֶת הַסֵּפֶר לְדָנָה", wrong: ["הוּא נוֹתֵן אֶת הַסֵּפֶר אֶת דָּנָה", "הוּא נוֹתֵן לַסֵּפֶר לְדָנָה", "הוּא נוֹתֵן אֶת הַסֵּפֶר מִדָּנָה"] },
+      { english: "she gives Mom a gift", hebrew: "הִיא נוֹתֶנֶת מַתָּנָה לְאִמָּא", wrong: ["הִיא נוֹתֶנֶת מַתָּנָה אֶת אִמָּא", "הִיא נוֹתֶנֶת אֶת מַתָּנָה לְאִמָּא", "הִיא נוֹתֶנֶת מַתָּנָה מֵאִמָּא"] },
+      { english: "the teacher (m.) gives us homework", hebrew: "הַמּוֹרֶה נוֹתֵן לָנוּ שִׁעוּרֵי בַּיִת", wrong: ["הַמּוֹרֶה נוֹתֵן אוֹתָנוּ שִׁעוּרֵי בַּיִת", "הַמּוֹרֶה נוֹתֵן לָהֶם שִׁעוּרֵי בַּיִת", "הַמּוֹרֶה נוֹתֶנֶת לָנוּ שִׁעוּרֵי בַּיִת"] },
+      { english: "Mom lets him play", hebrew: "אִמָּא נוֹתֶנֶת לוֹ לְשַׂחֵק", wrong: ["אִמָּא נוֹתֶנֶת אוֹתוֹ לְשַׂחֵק", "אִמָּא נוֹתֶנֶת לוֹ מְשַׂחֵק", "אִמָּא נוֹתֵן לוֹ לְשַׂחֵק"] },
+    ],
+  },
 
   // ===== Conjugation decks: one verb in the past and future =====
   // Wrong answers: the same person in the other tense, the other gender (or I <-> we), and another person.
@@ -1000,6 +1124,69 @@ const TOPIC_DECKS = [
       { english: "they will wait", hint: "לְחַכּוֹת", hebrew: "הֵם יְחַכּוּ", wrong: ["הֵם חִכּוּ", "הֵם תְּחַכּוּ", "הֵם יְחַכֶּה"] },
       { english: "we waited for the bus", hint: "לְחַכּוֹת", hebrew: "חִכִּינוּ לָאוֹטוֹבּוּס", wrong: ["נְחַכֶּה לָאוֹטוֹבּוּס", "חִכִּינוּ אֶת הָאוֹטוֹבּוּס", "חִכִּיתִי לָאוֹטוֹבּוּס"] },
       { english: "she will wait for me at the bus stop", hint: "לְחַכּוֹת", hebrew: "הִיא תְּחַכֶּה לִי בַּתַּחֲנָה", wrong: ["הִיא חִכְּתָה לִי בַּתַּחֲנָה", "הִיא תְּחַכֶּה אוֹתִי בַּתַּחֲנָה", "הִיא יְחַכֶּה לִי בַּתַּחֲנָה"] },
+    ],
+  },
+
+  // ----- Newer conjugation decks, built with conjWords() (see the top of TOPIC_DECKS) -----
+  // Each table: I, you (m.), you (f.), he, she, we, you all (m.), they
+  {
+    id: "conj-lmd-teach", kind: "conj", icon: "🔁", english: "Conjugate ל־מ־ד: taught / will teach", hebrew: "ל־מ־ד: לְלַמֵּד",
+    words: [
+      ...conjWords("לְלַמֵּד", "taught", "teach",
+        ["לִמַּדְתִּי", "לִמַּדְתָּ", "לִמַּדְתְּ", "לִמֵּד", "לִמְּדָה", "לִמַּדְנוּ", "לִמַּדְתֶּם", "לִמְּדוּ"],
+        ["אֲלַמֵּד", "תְּלַמֵּד", "תְּלַמְּדִי", "יְלַמֵּד", "תְּלַמֵּד", "נְלַמֵּד", "תְּלַמְּדוּ", "יְלַמְּדוּ"]),
+      { english: "last year she taught me Hebrew", hint: "לְלַמֵּד", hebrew: "בַּשָּׁנָה שֶׁעָבְרָה הִיא לִמְּדָה אוֹתִי עִבְרִית", wrong: ["בַּשָּׁנָה שֶׁעָבְרָה הִיא תְּלַמֵּד אוֹתִי עִבְרִית", "בַּשָּׁנָה שֶׁעָבְרָה הִיא לָמְדָה אוֹתִי עִבְרִית", "בַּשָּׁנָה שֶׁעָבְרָה הִיא לִמֵּד אוֹתִי עִבְרִית"] },
+      { english: "tomorrow I will teach the class about Jerusalem", hint: "לְלַמֵּד", hebrew: "מָחָר אֲלַמֵּד אֶת הַכִּתָּה עַל יְרוּשָׁלַיִם", wrong: ["מָחָר לִמַּדְתִּי אֶת הַכִּתָּה עַל יְרוּשָׁלַיִם", "מָחָר אֶלְמַד אֶת הַכִּתָּה עַל יְרוּשָׁלַיִם", "מָחָר אֲלַמֵּד לַכִּתָּה עַל יְרוּשָׁלַיִם"] },
+    ],
+  },
+  {
+    id: "conj-kra", kind: "conj", icon: "🔁", english: "Conjugate ק־ר־א: read / will read", hebrew: "ק־ר־א: לִקְרֹא",
+    words: [
+      ...conjWords("לִקְרֹא", "read (past)", "read",
+        ["קָרָאתִי", "קָרָאתָ", "קָרָאת", "קָרָא", "קָרְאָה", "קָרָאנוּ", "קְרָאתֶם", "קָרְאוּ"],
+        ["אֶקְרָא", "תִּקְרָא", "תִּקְרְאִי", "יִקְרָא", "תִּקְרָא", "נִקְרָא", "תִּקְרְאוּ", "יִקְרְאוּ"]),
+      { english: "yesterday I read a book in Hebrew", hint: "לִקְרֹא", hebrew: "אֶתְמוֹל קָרָאתִי סֵפֶר בְּעִבְרִית", wrong: ["אֶתְמוֹל אֶקְרָא סֵפֶר בְּעִבְרִית", "אֶתְמוֹל קָרָאתִי סֵפֶר לְעִבְרִית", "אֶתְמוֹל קָרָאנוּ סֵפֶר בְּעִבְרִית"] },
+      { english: "tomorrow you (m.) will read the letter", hint: "לִקְרֹא", hebrew: "מָחָר תִּקְרָא אֶת הַמִּכְתָּב", wrong: ["מָחָר קָרָאתָ אֶת הַמִּכְתָּב", "מָחָר תִּקְרָא הַמִּכְתָּב", "מָחָר תִּקְרְאִי אֶת הַמִּכְתָּב"] },
+    ],
+  },
+  {
+    id: "conj-shal", kind: "conj", icon: "🔁", english: "Conjugate ש־א־ל: asked / will ask", hebrew: "ש־א־ל: לִשְׁאֹל",
+    words: [
+      ...conjWords("לִשְׁאֹל", "asked", "ask",
+        ["שָׁאַלְתִּי", "שָׁאַלְתָּ", "שָׁאַלְתְּ", "שָׁאַל", "שָׁאֲלָה", "שָׁאַלְנוּ", "שְׁאַלְתֶּם", "שָׁאֲלוּ"],
+        ["אֶשְׁאַל", "תִּשְׁאַל", "תִּשְׁאֲלִי", "יִשְׁאַל", "תִּשְׁאַל", "נִשְׁאַל", "תִּשְׁאֲלוּ", "יִשְׁאֲלוּ"]),
+      { english: "yesterday we asked the guide (m.) a question", hint: "לִשְׁאֹל", hebrew: "אֶתְמוֹל שָׁאַלְנוּ אֶת הַמַּדְרִיךְ שְׁאֵלָה", wrong: ["אֶתְמוֹל נִשְׁאַל אֶת הַמַּדְרִיךְ שְׁאֵלָה", "אֶתְמוֹל שָׁאַלְנוּ לַמַּדְרִיךְ שְׁאֵלָה", "אֶתְמוֹל שָׁאַלְתִּי אֶת הַמַּדְרִיךְ שְׁאֵלָה"] },
+      { english: "tomorrow they will ask about the trip", hint: "לִשְׁאֹל", hebrew: "מָחָר הֵם יִשְׁאֲלוּ עַל הַטִּיּוּל", wrong: ["מָחָר הֵם שָׁאֲלוּ עַל הַטִּיּוּל", "מָחָר הֵם יִשְׁאֲלוּ אֶת הַטִּיּוּל", "מָחָר הֵם נִשְׁאַל עַל הַטִּיּוּל"] },
+    ],
+  },
+  {
+    id: "conj-shma", kind: "conj", icon: "🔁", english: "Conjugate ש־מ־ע: heard / will hear", hebrew: "ש־מ־ע: לִשְׁמֹעַ",
+    words: [
+      ...conjWords("לִשְׁמֹעַ", "heard", "hear",
+        ["שָׁמַעְתִּי", "שָׁמַעְתָּ", "שָׁמַעַתְּ", "שָׁמַע", "שָׁמְעָה", "שָׁמַעְנוּ", "שְׁמַעְתֶּם", "שָׁמְעוּ"],
+        ["אֶשְׁמַע", "תִּשְׁמַע", "תִּשְׁמְעִי", "יִשְׁמַע", "תִּשְׁמַע", "נִשְׁמַע", "תִּשְׁמְעוּ", "יִשְׁמְעוּ"]),
+      { english: "yesterday I heard a new song", hint: "לִשְׁמֹעַ", hebrew: "אֶתְמוֹל שָׁמַעְתִּי שִׁיר חָדָשׁ", wrong: ["אֶתְמוֹל אֶשְׁמַע שִׁיר חָדָשׁ", "אֶתְמוֹל שָׁמַעְנוּ שִׁיר חָדָשׁ", "אֶתְמוֹל שָׁמַעְתִּי שִׁיר חֲדָשָׁה"] },
+      { english: "tomorrow you (f.) will hear about the test", hint: "לִשְׁמֹעַ", hebrew: "מָחָר תִּשְׁמְעִי עַל הַמִּבְחָן", wrong: ["מָחָר שָׁמַעַתְּ עַל הַמִּבְחָן", "מָחָר תִּשְׁמְעִי אֶת הַמִּבְחָן", "מָחָר תִּשְׁמַע עַל הַמִּבְחָן"] },
+    ],
+  },
+  {
+    id: "conj-rah", kind: "conj", icon: "🔁", english: "Conjugate ר־א־ה: saw / will see", hebrew: "ר־א־ה: לִרְאוֹת",
+    words: [
+      ...conjWords("לִרְאוֹת", "saw", "see",
+        ["רָאִיתִי", "רָאִיתָ", "רָאִית", "רָאָה", "רָאֲתָה", "רָאִינוּ", "רְאִיתֶם", "רָאוּ"],
+        ["אֶרְאֶה", "תִּרְאֶה", "תִּרְאִי", "יִרְאֶה", "תִּרְאֶה", "נִרְאֶה", "תִּרְאוּ", "יִרְאוּ"]),
+      { english: "yesterday we saw a movie", hint: "לִרְאוֹת", hebrew: "אֶתְמוֹל רָאִינוּ סֶרֶט", wrong: ["אֶתְמוֹל נִרְאֶה סֶרֶט", "אֶתְמוֹל רָאִיתִי סֶרֶט", "אֶתְמוֹל רָאִינוּ אֶת סֶרֶט"] },
+      { english: "tomorrow you all (m.) will see the sea", hint: "לִרְאוֹת", hebrew: "מָחָר תִּרְאוּ אֶת הַיָּם", wrong: ["מָחָר רְאִיתֶם אֶת הַיָּם", "מָחָר תִּרְאוּ הַיָּם", "מָחָר יִרְאוּ אֶת הַיָּם"] },
+    ],
+  },
+  {
+    id: "conj-ntn", kind: "conj", icon: "🔁", english: "Conjugate נ־ת־ן: gave / will give", hebrew: "נ־ת־ן: לָתֵת",
+    words: [
+      ...conjWords("לָתֵת", "gave", "give",
+        ["נָתַתִּי", "נָתַתָּ", "נָתַתְּ", "נָתַן", "נָתְנָה", "נָתַנּוּ", "נְתַתֶּם", "נָתְנוּ"],
+        ["אֶתֵּן", "תִּתֵּן", "תִּתְּנִי", "יִתֵּן", "תִּתֵּן", "נִתֵּן", "תִּתְּנוּ", "יִתְּנוּ"]),
+      { english: "yesterday he gave me a gift", hint: "לָתֵת", hebrew: "אֶתְמוֹל הוּא נָתַן לִי מַתָּנָה", wrong: ["אֶתְמוֹל הוּא יִתֵּן לִי מַתָּנָה", "אֶתְמוֹל הוּא נָתַן אוֹתִי מַתָּנָה", "אֶתְמוֹל הוּא נָתְנָה לִי מַתָּנָה"] },
+      { english: "tomorrow I will give the book to Dana", hint: "לָתֵת", hebrew: "מָחָר אֶתֵּן אֶת הַסֵּפֶר לְדָנָה", wrong: ["מָחָר נָתַתִּי אֶת הַסֵּפֶר לְדָנָה", "מָחָר אֶתֵּן אֶת הַסֵּפֶר אֶת דָּנָה", "מָחָר נִתֵּן אֶת הַסֵּפֶר לְדָנָה"] },
     ],
   },
 ];
