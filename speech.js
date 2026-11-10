@@ -87,18 +87,26 @@ let speechToken = 0;
 let speechAudio = null;  // a recording that's playing right now (if any)
 
 // Go quiet right away and hide the word card.
+// Returns true if the voice was actually talking (so the next line should wait a bit longer).
 function stopSpeech() {
   speechToken++;
-  if (canSpeak) speechSynthesis.cancel();
+  let wasTalking = false;
+  // Only "cancel" when something is really being said or waiting to be said:
+  // on Android, cancelling for no reason can make the NEXT line fail.
+  if (canSpeak && (speechSynthesis.speaking || speechSynthesis.pending)) {
+    speechSynthesis.cancel();
+    wasTalking = true;
+  }
   if (speechAudio) { speechAudio.pause(); speechAudio = null; }
   hideWordCard();
+  return wasTalking;
 }
 
 // steps: a list of { card, lines }.
 //   card  = a word to show at the top while its lines are read (or null for no card)
 //   lines = what to say, in order: { text, lang: "en" or "he", file (optional recording) }
 function speakSteps(steps) {
-  stopSpeech();
+  const wasTalking = stopSpeech();
   const token = speechToken;
   let stepIndex = 0;
   let lineIndex = 0;
@@ -123,8 +131,8 @@ function speakSteps(steps) {
     sayLine(step.lines[lineIndex++], token, next);
   }
 
-  // A tiny pause first: some browsers drop speech that starts right after a stop.
-  setTimeout(next, 60);
+  // A pause first: phones (Android especially) fail on speech that starts right after a stop.
+  setTimeout(next, wasTalking ? 250 : 60);
 }
 
 // Say one line, then call done() when it's finished.
@@ -162,34 +170,53 @@ function sayLine(line, token, done) {
 // signal never comes). Keeping the last few in this list stops that.
 const liveUtterances = [];
 
-// If the voice fails, show ONE small message saying why, so we can fix it.
-let voiceProblemShown = false;
-function reportVoiceProblem(why) {
-  if (voiceProblemShown || typeof showToast !== "function") return;
-  voiceProblemShown = true;
-  showToast(`🗣️ Voice problem: ${why} (voices: ${voices.length})`, "בְּעָיָה בַּקּוֹל");
+// If the voice fails, show a small message saying why, so we can fix it.
+// At most once for English and once for Hebrew (so it doesn't keep popping up).
+const voiceProblemShown = {};
+function reportVoiceProblem(why, line, voiceName) {
+  if (voiceProblemShown[line.lang] || typeof showToast !== "function") return;
+  voiceProblemShown[line.lang] = true;
+  const language = line.lang === "he" ? "Hebrew" : "English";
+  showToast(`🗣️ ${language} voice problem: ${why} · voice: ${voiceName || "phone's choice"} · voices: ${voices.length}`,
+    line.lang === "he" ? "בְּעָיָה בַּקּוֹל בְּעִבְרִית" : "בְּעָיָה בַּקּוֹל בְּאַנְגְּלִית");
 }
 
-// Ask the built-in voice to say something.
-// useChosenVoice = false means "let the phone pick" (our second try if a voice fails).
-function speakText(line, finish, useChosenVoice = true) {
-  const utterance = new SpeechSynthesisUtterance(line.text);
+// Hebrew without the nikud dots (some phone voices choke on them).
+function withoutNikud(text) {
+  return text.replace(/[֑-ׇ]/g, "");
+}
+
+// Ask the built-in voice to say something. If it fails, try again in simpler ways:
+//   try 0: our chosen voice
+//   try 1: no chosen voice (the phone picks one for the language)
+//   try 2: a moment later, phone's voice, normal speed, and Hebrew without nikud
+// If all 3 fail, show a message with the reason.
+function speakText(line, finish, attempt = 0) {
+  const text = attempt >= 2 && line.lang === "he" ? withoutNikud(line.text) : line.text;
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = line.lang === "he" ? "he-IL" : "en-US";
-  const voice = useChosenVoice ? pickVoice(line.lang) : null;
+  const voice = attempt === 0 ? pickVoice(line.lang) : null;
   if (voice) utterance.voice = voice;
-  utterance.rate = line.lang === "he" ? VOICE.hebrewRate : VOICE.englishRate;
+  utterance.rate = attempt >= 2 ? 1 : line.lang === "he" ? VOICE.hebrewRate : VOICE.englishRate;
   let started = false;
   const token = speechToken;
+  let failed = false; // this try failed (a retry, if any, keeps its own watch)
   utterance.onstart = () => { started = true; };
   utterance.onend = finish;
   utterance.onerror = (event) => {
+    failed = true;
     const why = event.error || "error";
     if (why === "interrupted" || why === "canceled") return finish(); // we stopped it ourselves: fine
+    if (token !== speechToken) return;                                // something newer took over
     // "not-allowed" = the browser wants a tap first. Unlock again at the next tap.
-    if (why === "not-allowed") speechUnlocked = false;
-    // The chosen voice didn't work? Try once more and let the phone pick its own voice.
-    else if (voice && !started && token === speechToken) return speakText(line, finish, false);
-    reportVoiceProblem(why);
+    if (why === "not-allowed") {
+      speechUnlocked = false;
+    } else if (!started && attempt < 2) {
+      // Try again in a simpler way (a short wait first helps Android).
+      setTimeout(() => { if (token === speechToken) speakText(line, finish, attempt + 1); }, attempt === 0 ? 0 : 300);
+      return;
+    }
+    reportVoiceProblem(why, line, voice && voice.name);
     finish();
   };
   liveUtterances.push(utterance);
@@ -199,7 +226,9 @@ function speakText(line, finish, useChosenVoice = true) {
   speechSynthesis.speak(utterance);
   // Nothing happened after 3 seconds? Say so (once).
   setTimeout(() => {
-    if (!started && token === speechToken && voiceOn) reportVoiceProblem(speechSynthesis.speaking ? "stuck" : "didn't start");
+    if (!started && !failed && token === speechToken && voiceOn) {
+      reportVoiceProblem(speechSynthesis.speaking ? "stuck" : "didn't start", line, voice && voice.name);
+    }
   }, 3000);
 }
 
