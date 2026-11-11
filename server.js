@@ -328,6 +328,13 @@ function serverCheckSpears() {
     if (p.held !== "spear" || !p.alive || p.frozen || p.carrying) continue;
     if (server.time - p.lastSwing < spear.cooldown) continue; // just stabbed someone
     const tip = spearTip(p);
+    // The speed box: one stab smashes it (and you get the speed boost).
+    const box = server.speedBox;
+    if (box.alive && distance(box, tip) <= box.radius + spear.tipReach) {
+      p.lastSwing = server.time;
+      serverHurt(box, box.hp, p);
+      continue;
+    }
     for (const enemy of Object.values(server.players)) {
       if (enemy.team === p.team || !enemy.alive) continue;
       if (distance(enemy, tip) > enemy.radius + spear.tipReach) continue;
