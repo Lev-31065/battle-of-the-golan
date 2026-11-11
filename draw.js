@@ -715,6 +715,26 @@ function drawPlayer(ctx, p, time, isMe) {
     ctx.fill();
   }
 
+  // Berry boosts: one little red berry circling the player for each boost that's working,
+  // so everyone can see who's sped up.
+  const berryCount = Math.min((p.berryBoosts || []).filter((end) => end > time).length, BERRY.maxAtOnce);
+  for (let i = 0; i < berryCount; i++) {
+    const angle = time * 3 + (i / berryCount) * Math.PI * 2;
+    const bx = p.x + Math.cos(angle) * (p.radius + 12);
+    const by = y + Math.sin(angle) * (p.radius + 12) * 0.6;
+    ctx.fillStyle = "#e11d48";
+    ctx.strokeStyle = COLORS.outline;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bx, by, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.arc(bx - 1.5, by - 1.5, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Frozen by a rock: a see-through block of ice around the whole player.
   if (p.frozen) drawIce(ctx, p.x, y, p.radius + 9, time);
 
@@ -897,11 +917,11 @@ function drawShots(ctx, shots, time) {
 }
 
 // While aiming with the Throw button: a dashed line showing where it will fly.
-function drawAimLine(ctx, p, angle, range, blast = 0) {
+function drawAimLine(ctx, p, angle, range, blast = 0, blocked = false) {
   const endX = p.x + Math.cos(angle) * (p.radius + range);
   const endY = p.y + Math.sin(angle) * (p.radius + range);
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.strokeStyle = blocked ? "rgba(239, 68, 68, 0.9)" : "rgba(255,255,255,0.85)"; // red = can't throw that way
   ctx.lineWidth = 4;
   ctx.setLineDash([14, 10]);
   ctx.beginPath();

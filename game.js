@@ -1235,6 +1235,11 @@ function throwNow(angle) {
   const item = heldThrowable(p);
   if (!item || !canThrow(p)) return;
   if (gameTime - p.lastSwing < item.cooldown) return; // still cooling down
+  // Hiding in a log: only straight out of an open end (sideways would hit the log's wall).
+  if (myLog && !throwFitsLog(myLog, angle)) {
+    showToast("🪵 From inside a log, throw out of an open end.", "מִתּוֹךְ בּוּל עֵץ זוֹרְקִים רַק הַחוּצָה מִצַּד פָּתוּחַ.");
+    return;
+  }
   p.lastSwing = gameTime; // start the throwing animation right away
   p.facing = angle;       // turn to face the throw
   sendMyPosition(p);      // so the referee throws it from exactly where I am
@@ -1504,9 +1509,14 @@ function checkBerries(p) {
 }
 
 // How much faster my berries make me: 1 = not at all, 1.3 = three berries (30% faster).
-function berryMultiplier(p) {
-  const active = (p.berryBoosts || []).filter((end) => end > gameTime).length;
-  return 1 + Math.min(active, BERRY.maxAtOnce) * BERRY.boostEach;
+// How many berry boosts are working right now (0 … BERRY.maxAtOnce).
+function activeBerries(p) {
+  return Math.min((p.berryBoosts || []).filter((end) => end > gameTime).length, BERRY.maxAtOnce);
+}
+
+// Extra speed from berries, as a share of normal speed (3 berries = 0.3 = +30%).
+function berryBonus(p) {
+  return activeBerries(p) * BERRY.boostEach;
 }
 
 // ---------- Winner screen ----------
@@ -1607,14 +1617,17 @@ function update(dt) {
       dy /= amount;
     }
 
-    // Work out speed. Each thing multiplies it:
-    //   river ×0.35  bush ×0.3 (not with forest boots)  carrying a flag ×0.7   speed boost ×1.5   berries +10% each
-    let speed = PLAYER_SPEED;
-    if (p.inWater) speed *= MAP.waterSlowdown;
-    else if (p.inBush && !(p.items || []).includes("boots")) speed *= MAP.bushSlowdown;
+    // Work out speed.
+    //   The ground: normal 1, river 0.35, bush 0.3 (forest boots: 1).
+    //   Berries ADD 0.1 each (of normal speed), so they help just as much in a bush:
+    //     a bush with 3 berries = 0.3 + 0.3 = 0.6. Normal ground with 3 berries = 1.3.
+    //   Then: carrying a flag ×0.7, speed box boost ×1.5.
+    let ground = 1;
+    if (p.inWater) ground = MAP.waterSlowdown;
+    else if (p.inBush && !(p.items || []).includes("boots")) ground = MAP.bushSlowdown;
+    let speed = PLAYER_SPEED * (ground + berryBonus(p));
     if (p.carrying) speed *= CARRY_SLOWDOWN;
     if (p.boostUntil > gameTime) speed *= SPEED_BOOST.multiplier;
-    speed *= berryMultiplier(p);
 
     const oldX = p.x;
     const oldY = p.y;
@@ -1661,6 +1674,7 @@ const logChip = document.getElementById("log-chip");
 const weaponChip = document.getElementById("weapon-chip");
 const carryChip = document.getElementById("carry-chip");
 const boostChip = document.getElementById("boost-chip");
+const berryChip = document.getElementById("berry-chip");
 const koMessage = document.getElementById("ko-message");
 
 function render() {
@@ -1724,7 +1738,9 @@ function render() {
   const aimingWith = aim.active && heldThrowable(me);
   if (aimingWith && client.phase === "playing") {
     // (A grenade also shows its blast circle where it will land.)
-    drawAimLine(ctx, me, aimAngle(me), aimingWith.range, aimingWith.lands ? POMEGRANATE.blast : 0);
+    // (Red = blocked: you're in a log and aiming at its wall.)
+    const blocked = Boolean(myLog) && !throwFitsLog(myLog, aimAngle(me));
+    drawAimLine(ctx, me, aimAngle(me), aimingWith.range, aimingWith.lands ? POMEGRANATE.blast : 0, blocked);
   }
 
   // Hiding in a log: everything gets dark, darkest at the edges of the screen.
@@ -1809,6 +1825,16 @@ function updateHud(p) {
   const boostLeft = Math.ceil(p.boostUntil - gameTime);
   boostChip.hidden = boostLeft <= 0;
   setBilingual(boostChip, `⚡ Speed boost ${boostLeft}s`, `מְהִירוּת! עוֹד ${boostLeft} שְׁנִיּוֹת`);
+
+  // Berry boosts: how much faster, and how long until the LAST one runs out.
+  const berryCount = p.alive ? activeBerries(p) : 0;
+  berryChip.hidden = berryCount === 0;
+  if (berryCount > 0) {
+    const berryLeft = Math.ceil(Math.max(...p.berryBoosts) - gameTime);
+    const percent = Math.round(berryCount * BERRY.boostEach * 100);
+    // (‎ = an invisible mark that keeps "+30%" the right way round inside Hebrew text.)
+    setBilingual(berryChip, `🍒 Berries: +${percent}% speed, ${berryLeft}s`, `גַּרְגְּרִים: ‎+${percent}%‎ מְהִירוּת, עוֹד ${berryLeft} שְׁנִיּוֹת`);
+  }
 
   koMessage.hidden = p.alive;
   if (!p.alive) {

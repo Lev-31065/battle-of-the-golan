@@ -57,6 +57,7 @@ button, select, input { touch-action: manipulation; }
 .log-chip { background: #f3e8d6; color: #6b4423; }
 .carry-chip { background: #fef3c7; color: #92400e; }
 .boost-chip { background: #fde047; color: #713f12; }
+.berry-chip { background: #fecdd3; color: #9f1239; }
 .score-chip { display: flex; gap: 6px; align-items: center; font-size: 16px; }
 .score-chip b { font-size: 18px; font-weight: 800; }
 .score-blue b { color: #2563eb; }

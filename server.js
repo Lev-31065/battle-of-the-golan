@@ -288,6 +288,34 @@ function serverStartGame() {
 
 // ---------- Fighting ----------
 
+// Logs (step 6): hiding in a log keeps you safe from everything except pomegranates.
+// From inside, you can only attack OUT through the open ends.
+
+// The log this player is hiding in, or null.
+function logOf(p) {
+  return p && p.inLog ? MAP.logs[p.inLog - 1] || null : null;
+}
+
+// Is `target` safe from `attacker` because it's hiding in a log? (Not if they're both in the SAME log.)
+function safeInLog(target, attacker) {
+  return Boolean(target.inLog) && target.inLog !== (attacker && attacker.inLog);
+}
+
+// Is the spot (x, y) out past one of the log's open ends, lined up with the hole?
+// `radius` = the size of whatever is there (a player's body counts if it overlaps the opening).
+function outThroughEnd(log, x, y, radius = 0) {
+  const { along, side } = logLocal(log, x, y);
+  return Math.abs(along) > log.length / 2 && Math.abs(side) < LOG.width / 2 + radius;
+}
+
+// Can `attacker` reach `target` (a player or the speed box), as far as logs go?
+function logAllowsHit(attacker, target) {
+  if (target.inLog !== undefined && safeInLog(target, attacker)) return false; // target is hiding
+  const log = logOf(attacker);
+  if (!log || (target.inLog && target.inLog === attacker.inLog)) return true; // not hiding, or same log
+  return outThroughEnd(log, target.x, target.y, target.radius); // hiding: only out through the ends
+}
+
 // A swing with whatever hand weapon you're holding (stick, hammer…). Its numbers are in ITEMS.
 function serverSwing(p) {
   const weapon = ITEMS[p.held];
@@ -296,14 +324,14 @@ function serverSwing(p) {
   p.lastSwing = server.time;
   server.events.push({ kind: "ring", x: p.x, y: p.y, radius: weapon.range, life: 0.35, sound: "swing" });
 
-  // Hit every enemy inside the zone around you.
+  // Hit every enemy inside the zone around you (logs can get in the way: logAllowsHit).
   for (const enemy of Object.values(server.players)) {
-    if (enemy.team === p.team || !enemy.alive) continue;
+    if (enemy.team === p.team || !enemy.alive || !logAllowsHit(p, enemy)) continue;
     if (distance(enemy, p) < weapon.range + enemy.radius) serverHurt(enemy, weapon.damage, p);
   }
   // And the speed box.
   const box = server.speedBox;
-  if (box.alive && distance(box, p) < weapon.range + box.radius) serverHurt(box, weapon.damage, p);
+  if (box.alive && logAllowsHit(p, box) && distance(box, p) < weapon.range + box.radius) serverHurt(box, weapon.damage, p);
 }
 
 // ---------- The spear ----------
@@ -328,6 +356,9 @@ function serverCheckSpears() {
     if (p.held !== "spear" || !p.alive || p.frozen || p.carrying) continue;
     if (server.time - p.lastSwing < spear.cooldown) continue; // just stabbed someone
     const tip = spearTip(p);
+    // Hiding in a log? The spear only works if its tip sticks out of an open end.
+    const log = logOf(p);
+    if (log && !outThroughEnd(log, tip.x, tip.y)) continue;
     // The speed box: one stab smashes it (and you get the speed boost).
     const box = server.speedBox;
     if (box.alive && distance(box, tip) <= box.radius + spear.tipReach) {
@@ -336,7 +367,7 @@ function serverCheckSpears() {
       continue;
     }
     for (const enemy of Object.values(server.players)) {
-      if (enemy.team === p.team || !enemy.alive) continue;
+      if (enemy.team === p.team || !enemy.alive || safeInLog(enemy, p)) continue;
       if (distance(enemy, tip) > enemy.radius + spear.tipReach) continue;
       p.lastSwing = server.time; // (phones use this to draw a quick jab)
       serverHurt(enemy, enemy.hp, p); // all their health = knocked out
@@ -355,6 +386,9 @@ function serverThrow(p, angle) {
   if (server.phase !== "playing" || !p.alive || !item || item.kind !== "throw" || p.carrying || p.frozen) return;
   if (!Number.isFinite(angle) || !(p.ammo[id] > 0)) return;
   if (server.time - p.lastSwing < item.cooldown * 0.8) return; // too soon (a little leeway for lag)
+  // Hiding in a log: you can only throw straight out of an open end (sideways = the log's wall).
+  const log = logOf(p);
+  if (log && !throwFitsLog(log, angle)) return;
   p.lastSwing = server.time;
   p.facing = angle;
 
@@ -380,6 +414,7 @@ function serverThrow(p, angle) {
     vx: dirX * item.speed,   // speed in each direction (for phones to draw it smoothly between snapshots)
     vy: dirY * item.speed,
     flown: 0,                // how far it has flown so far
+    ownerLog: p.inLog,       // the log it was thrown from (0 = none): it can hit people in THAT log only
     hitIds: [],              // who it already hit (a ninja star hits each enemy only once)
   });
   server.events.push({ kind: "sound", x: p.x, y: p.y, life: 0, sound: "throw" });
@@ -412,6 +447,7 @@ function serverMoveShots(dt) {
     for (const enemy of Object.values(server.players)) {
       if (item.lands) break;
       if (enemy.team === shot.team || !enemy.alive || shot.hitIds.includes(enemy.id)) continue;
+      if (enemy.inLog && enemy.inLog !== shot.ownerLog) continue; // hiding in a log: it flies over them
       if (distanceToLine(enemy, fromX, fromY, toX, toY) > enemy.radius + item.size) continue;
       shot.hitIds.push(enemy.id);
       if (item.freezes) serverFreeze(enemy, owner);

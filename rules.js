@@ -142,7 +142,16 @@ const BERRY = {
 const LOG = {
   width: 44,        // how thick a log is
   darkness: 0.55,   // how dark your screen gets while hiding (0 = not at all, 1 = black)
+  // Hiding inside = safe from everything except pomegranates. From inside you can only
+  // attack out through the open ends. Throwing from inside: aim within this many degrees
+  // of straight along the log, or it would hit the log's wall.
+  throwAngle: 30,
 };
+
+// Throwing from inside a log: is `angle` (radians) close enough to straight out of one end?
+function throwFitsLog(log, angle) {
+  return Math.abs(Math.cos(angle - log.angle)) >= Math.cos(LOG.throwAngle * Math.PI / 180);
+}
 
 // ---------- Flags ----------
 const WIN_SCORE = 3;          // captures needed to win
@@ -238,7 +247,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-11c";
+const GAME_VERSION = "2026-11-11d";
 
 // ---------- Helpers ----------
 

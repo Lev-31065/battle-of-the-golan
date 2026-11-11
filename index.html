@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-11c">
+  <link rel="stylesheet" href="style.css?v=2026-11-11d">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -36,6 +36,7 @@
     <div id="weapon-chip" class="chip"></div>
     <div id="carry-chip" class="chip carry-chip" hidden></div>
     <div id="boost-chip" class="chip boost-chip" hidden></div>
+    <div id="berry-chip" class="chip berry-chip" hidden></div>
     <div id="water-chip" class="chip water-chip" hidden><span class="he" lang="he" dir="rtl">בַּנָּהָר — אִטִּי, וְהַזֶּרֶם סוֹחֵף!</span><span class="en">🌊 In the river — slow, and the current pulls you!</span></div>
     <div id="log-chip" class="chip log-chip" hidden><span class="he" lang="he" dir="rtl">בְּתוֹךְ בּוּל עֵץ — אַף אֶחָד לֹא רוֹאֶה אֶתְכֶם!</span><span class="en">🪵 Hiding in a log — nobody can see you!</span></div>
     <div id="bush-chip" class="chip bush-chip" hidden><span class="he" lang="he" dir="rtl">בַּשִּׂיחַ — אִטִּי!</span><span class="en">🌿 In a bush — slow!</span></div>
@@ -368,18 +369,18 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-11c"></script>
-  <script src="rules.js?v=2026-11-11c"></script>
-  <script src="sound.js?v=2026-11-11c"></script>
-  <script src="speech.js?v=2026-11-11c"></script>
-  <script src="words.js?v=2026-11-11c"></script>
-  <script src="progress.js?v=2026-11-11c"></script>
-  <script src="account.js?v=2026-11-11c"></script>
-  <script src="decks.js?v=2026-11-11c"></script>
-  <script src="quiz.js?v=2026-11-11c"></script>
-  <script src="draw.js?v=2026-11-11c"></script>
-  <script src="network.js?v=2026-11-11c"></script>
-  <script src="server.js?v=2026-11-11c"></script>
-  <script src="game.js?v=2026-11-11c"></script>
+  <script src="map.js?v=2026-11-11d"></script>
+  <script src="rules.js?v=2026-11-11d"></script>
+  <script src="sound.js?v=2026-11-11d"></script>
+  <script src="speech.js?v=2026-11-11d"></script>
+  <script src="words.js?v=2026-11-11d"></script>
+  <script src="progress.js?v=2026-11-11d"></script>
+  <script src="account.js?v=2026-11-11d"></script>
+  <script src="decks.js?v=2026-11-11d"></script>
+  <script src="quiz.js?v=2026-11-11d"></script>
+  <script src="draw.js?v=2026-11-11d"></script>
+  <script src="network.js?v=2026-11-11d"></script>
+  <script src="server.js?v=2026-11-11d"></script>
+  <script src="game.js?v=2026-11-11d"></script>
 </body>
 </html>
