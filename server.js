@@ -257,13 +257,13 @@ function serverHandle(id, msg) {
           p.held = msg.item;
         } else if (!p.items.includes(msg.item)) {
           p.items.push(msg.item);
-          p.held = msg.item;
+          if (isHoldable(msg.item)) p.held = msg.item; // (boots are worn, not held)
         }
       }
       break;
     case "hold":
       // Picked something in the toolbar (or empty hands = null).
-      if (msg.item === null || p.items.includes(msg.item)) p.held = msg.item;
+      if (msg.item === null || (p.items.includes(msg.item) && isHoldable(msg.item))) p.held = msg.item;
       break;
   }
 }
@@ -299,6 +299,38 @@ function serverSwing(p) {
   // And the speed box.
   const box = server.speedBox;
   if (box.alive && distance(box, p) < weapon.range + box.radius) serverHurt(box, weapon.damage, p);
+}
+
+// ---------- The spear ----------
+
+// Where the tip of a player's spear is: straight out in front of them, a little to the right
+// (it's in the right hand). drawSpear in draw.js draws it in the same spot.
+function spearTip(p) {
+  const reach = p.radius + ITEMS.spear.length;
+  const side = ITEMS.spear.side;
+  const right = p.facing + Math.PI / 2;
+  return {
+    x: p.x + Math.cos(p.facing) * reach + Math.cos(right) * side,
+    y: p.y + Math.sin(p.facing) * reach + Math.sin(right) * side,
+  };
+}
+
+// Runs every frame. Anyone holding a spear whose tip touches an enemy knocks them out.
+// (Not while frozen or carrying a flag, the same as the other weapons.)
+function serverCheckSpears() {
+  const spear = ITEMS.spear;
+  for (const p of Object.values(server.players)) {
+    if (p.held !== "spear" || !p.alive || p.frozen || p.carrying) continue;
+    if (server.time - p.lastSwing < spear.cooldown) continue; // just stabbed someone
+    const tip = spearTip(p);
+    for (const enemy of Object.values(server.players)) {
+      if (enemy.team === p.team || !enemy.alive) continue;
+      if (distance(enemy, tip) > enemy.radius + spear.tipReach) continue;
+      p.lastSwing = server.time; // (phones use this to draw a quick jab)
+      serverHurt(enemy, enemy.hp, p); // all their health = knocked out
+      break; // one stab at a time
+    }
+  }
 }
 
 // ---------- Throwing (rocks, ninja stars) ----------
@@ -571,6 +603,7 @@ function serverUpdate(dt) {
   }
 
   serverMoveShots(dt); // thrown rocks and ninja stars fly (and maybe hit someone)
+  serverCheckSpears(); // spear tips touching enemies
 
   const box = server.speedBox;
   if (!box.alive && server.time >= box.respawnAt) Object.assign(box, makeSpeedBox());

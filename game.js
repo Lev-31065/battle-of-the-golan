@@ -1027,8 +1027,17 @@ function startBuying(id) {
       }
       delete shopPaid[id];
       sendToServer({ type: "buy", item: id });
+      if (item.kind === "wear") {
+        // Boots: you wear them, so they're not in your hand or your toolbar.
+        const p = myPlayer();
+        if (p && !(p.items || []).includes(id)) p.items = [...(p.items || []), id]; // (works now, before the referee's reply)
+        showToast(`${item.icon} You put on the ${item.name}! Bushes don't slow you down now.`, `נָעַלְתֶּם ${item.nameHe}! הַשִּׂיחִים כְּבָר לֹא מְאַטִּים אֶתְכֶם.`);
+        return;
+      }
       holdItem(id); // hold it straight away (the referee does the same)
-      if (item.kind === "throw") {
+      if (item.kind === "spear") {
+        showToast(`${item.icon} You got the Spear! Touch an enemy with the tip to knock them out.`, `יֵשׁ חֲנִית! נוֹגְעִים בְּאוֹיֵב עִם הַחֹד כְּדֵי לְהַפִּיל אוֹתוֹ.`);
+      } else if (item.kind === "throw") {
         showToast(`${item.icon} +${item.perBuy} ${item.name}! Drag from the Throw button to aim.`, `${item.nameHe} +${item.perBuy}! גּוֹרְרִים מִכַּפְתּוֹר הַזְּרִיקָה כְּדֵי לְכַוֵּן.`);
       } else {
         showToast(`${item.icon} You got the ${item.name}! It's in your toolbar.`, `יֵשׁ ${item.nameHe}! הוּא בְּסַרְגֵּל הַכֵּלִים.`);
@@ -1056,10 +1065,12 @@ function holdItem(id) {
 
 // Rebuild the toolbar buttons only when what I own changes (cheap to call every frame).
 function updateToolbar(p) {
-  const show = client.phase === "playing" && p && p.alive && (p.items || []).length > 0;
+  // Only things you can hold get a button (boots are worn, so they don't).
+  const holdable = Object.keys(ITEMS).filter((id) => (p && p.items || []).includes(id) && isHoldable(id));
+  const show = client.phase === "playing" && p && p.alive && holdable.length > 0;
   toolbarEl.hidden = !show;
   if (!show) return;
-  const slots = [null, ...Object.keys(ITEMS).filter((id) => p.items.includes(id))]; // null = ✋ empty hands
+  const slots = [null, ...holdable]; // null = ✋ empty hands
   const ammo = p.ammo || {};
   const key = slots.map((id) => id + ":" + (ammo[id] || "")).join(","); // (counts too, so the badges update)
   if (toolbarEl.dataset.key !== key) {
@@ -1561,10 +1572,10 @@ function update(dt) {
     }
 
     // Work out speed. Each thing multiplies it:
-    //   river ×0.35  bush ×0.3   carrying a flag ×0.7   speed boost ×1.5   berries +10% each
+    //   river ×0.35  bush ×0.3 (not with forest boots)  carrying a flag ×0.7   speed boost ×1.5   berries +10% each
     let speed = PLAYER_SPEED;
     if (p.inWater) speed *= MAP.waterSlowdown;
-    else if (p.inBush) speed *= MAP.bushSlowdown;
+    else if (p.inBush && !(p.items || []).includes("boots")) speed *= MAP.bushSlowdown;
     if (p.carrying) speed *= CARRY_SLOWDOWN;
     if (p.boostUntil > gameTime) speed *= SPEED_BOOST.multiplier;
     speed *= berryMultiplier(p);
@@ -1736,7 +1747,7 @@ function updateHud(p) {
   document.getElementById("score-blue").textContent = score.blue;
   document.getElementById("score-red").textContent = score.red;
   waterChip.hidden = !p.inWater || !p.alive;
-  bushChip.hidden = !p.inBush || !p.alive;
+  bushChip.hidden = !p.inBush || !p.alive || (p.items || []).includes("boots"); // (boots: not slow)
   logChip.hidden = !myLog || !p.alive;
   const held = ITEMS[p.held];
   if (held) setBilingual(weaponChip, `${held.icon} ${held.name}`, held.nameHe);

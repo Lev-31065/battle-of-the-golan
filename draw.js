@@ -609,13 +609,15 @@ function drawPlayer(ctx, p, time, isMe) {
   // Feet: two small dark ovals under the body that take turns stepping forward while walking.
   if (!p.inWater) {
     const step = p.moving ? Math.sin(time * 12) * 6 : 0;
-    ctx.fillStyle = "#374151";
+    // Forest boots = brown feet (so everyone can see who's wearing them).
+    const boots = (p.items || []).includes("boots");
+    ctx.fillStyle = boots ? "#92400e" : "#374151";
     for (const side of [-1, 1]) {
       const forward = step * side;
       const fx = p.x + Math.cos(p.facing) * forward + Math.cos(p.facing + Math.PI / 2) * 9 * side;
       const fy = p.y + p.radius * 0.55 + Math.sin(p.facing) * forward + Math.sin(p.facing + Math.PI / 2) * 9 * side * 0.5;
       ctx.beginPath();
-      ctx.ellipse(fx, fy, 7, 5, p.facing, 0, Math.PI * 2);
+      ctx.ellipse(fx, fy, boots ? 8.5 : 7, boots ? 6 : 5, p.facing, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -649,10 +651,17 @@ function drawPlayer(ctx, p, time, isMe) {
   if (swingProgress >= 0 && swingProgress < 1) {
     // Throwing: the hand snaps forward and back. Hand weapons: a full spin.
     if (held && held.kind === "throw") handAngleR -= Math.sin(swingProgress * Math.PI) * 0.9;
-    else handAngleR += swingProgress * Math.PI * 2;
+    else if (held && held.kind !== "spear") handAngleR += swingProgress * Math.PI * 2;
   }
   if (p.held === "hammer") drawHammer(ctx, p.x, y, handAngleR, p.radius);
   if (p.held === "stick") drawStick(ctx, p.x, y, handAngleR, p.radius);
+  // The spear points straight ahead (it's put away while carrying a flag, because it doesn't work then).
+  // Right after a stab it jabs forward a little.
+  if (p.held === "spear" && !p.carrying) {
+    const jab = swingProgress >= 0 && swingProgress < 1 ? Math.sin(swingProgress * Math.PI) * 10 : 0;
+    drawSpear(ctx, p.x, y, p.facing, p.radius, jab);
+    handAngleR = p.facing + Math.asin(Math.min(1, ITEMS.spear.side / p.radius)); // the right hand sits on the shaft
+  }
 
   // Hands: two small circles on either side, turned toward where the player faces.
   const handAngleL = p.facing - 0.9;
@@ -732,6 +741,40 @@ function drawHammer(ctx, x, y, angle, bodyRadius) {
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.fillRect(bodyRadius + 24, -10, 4, 20);
   ctx.restore();              // put the pen back the way it was
+}
+
+// A long spear pointing straight ahead at `angle`. Its tip ends ITEMS.spear.length past the
+// body's edge, the same spot the referee checks (spearTip in server.js). `jab` pushes it forward.
+function drawSpear(ctx, x, y, angle, bodyRadius, jab) {
+  const tip = bodyRadius + ITEMS.spear.length + jab;
+  const side = ITEMS.spear.side; // the spear sits a little to the right, in the right hand
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.lineCap = "round";
+  // The wooden shaft (it starts behind the body, so it looks held, not glued on)
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(-bodyRadius * 0.6, side);
+  ctx.lineTo(tip - 14, side);
+  ctx.stroke();
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  // The metal point
+  ctx.fillStyle = "#cbd5e1";
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(tip, side);
+  ctx.lineTo(tip - 18, side - 6);
+  ctx.lineTo(tip - 14, side);
+  ctx.lineTo(tip - 18, side + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 // A thin, slightly bent wooden stick pointing outward from the player at `angle`.
