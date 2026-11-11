@@ -599,6 +599,14 @@ button, select, input { touch-action: manipulation; }
   cursor: pointer;
 }
 .deck-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Right side of a deck row: % mastery, then the word count */
+.deck-row-right { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 4px; flex-shrink: 0; } /* word count on top, mastery underneath */
+.deck-mastery { display: flex; align-items: center; gap: 6px; }
+.deck-mastery b { min-width: 38px; font-size: 13px; font-weight: 800; color: #6d28d9; text-align: right; }
+.mastery-bar { width: 40px; height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+.mastery-bar i { display: block; height: 100%; border-radius: 4px; background: #8b5cf6; }
+.deck-mastery.full b { color: #15803d; }
+.deck-mastery.full .mastery-bar i { background: #22c55e; }
 .deck-row-count { display: flex; flex-direction: column; flex-shrink: 0; color: #6b7280; font-size: 13px; text-align: right; }
 #deck-name { margin-bottom: 10px; max-width: 480px; }
 .deck-tip { margin: 0 0 10px; color: #6b7280; font-size: 13px; line-height: 1.4; }
@@ -658,7 +666,7 @@ button, select, input { touch-action: manipulation; }
 .host-row { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 .host-row .class-game-button { width: auto; min-width: 260px; padding: 16px 28px; font-size: 20px; }
 .teacher-pick { margin: 0; color: #5b21b6; font-size: 16px; font-weight: 600; }
-.deck-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+.deck-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); /* minmax(0, …): wide rows can't stretch a column */ gap: 16px; align-items: start; }
 .deck-column { padding: 12px; border-radius: 14px; background: #f3f4f6; }
 /* The levels list is long, so it scrolls inside its column */
 .levels-list { max-height: 55vh; overflow-y: auto; padding-right: 4px; touch-action: pan-y; }

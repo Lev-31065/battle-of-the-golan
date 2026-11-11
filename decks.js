@@ -93,8 +93,28 @@ function setTeacherPick(id) {
   renderDeckList();
 }
 
+// % mastery of a deck: how many of its words YOU know well (right 3 times in a row,
+// the same rule as the lobby and home screen), out of all its words. Uses deckProgress (progress.js).
+function makeMastery(deck) {
+  const { known, total } = deckProgress(deck);
+  const percent = total > 0 ? Math.round((known / total) * 100) : 0;
+  const box = document.createElement("span");
+  box.className = "deck-mastery" + (percent >= 100 ? " full" : "");
+  box.title = `You know ${known} of ${total} words well (right 3 times in a row) · אַתֶּם יוֹדְעִים ${known} מִתּוֹךְ ${total} מִלִּים`;
+  const bar = document.createElement("span");
+  bar.className = "mastery-bar";
+  const fill = document.createElement("i");
+  fill.style.width = percent + "%";
+  bar.appendChild(fill);
+  const number = document.createElement("b");
+  number.textContent = percent + "%";
+  box.append(bar, number);
+  return box;
+}
+
 // One clickable row. english/hebrew = the two lines; detail = small gray text on the right.
-function makePickRow(id, english, hebrew, detail, detailHe) {
+// deck (optional) = show your % mastery of it.
+function makePickRow(id, english, hebrew, detail, detailHe, deck = null) {
   const row = document.createElement("button");
   row.type = "button";
   row.className = "deck-row" + (id === teacherPickId() ? " picked" : "");
@@ -102,11 +122,17 @@ function makePickRow(id, english, hebrew, detail, detailHe) {
   name.className = "deck-row-name";
   setBilingual(name, english, hebrew); // (setBilingual uses textContent: typed names can't break the page)
   row.appendChild(name);
-  if (detail) {
-    const count = document.createElement("span");
-    count.className = "deck-row-count";
-    setBilingual(count, detail, detailHe);
-    row.appendChild(count);
+  if (detail || deck) {
+    const right = document.createElement("span");
+    right.className = "deck-row-right";
+    if (deck) right.appendChild(makeMastery(deck));
+    if (detail) {
+      const count = document.createElement("span");
+      count.className = "deck-row-count";
+      setBilingual(count, detail, detailHe);
+      right.appendChild(count);
+    }
+    row.appendChild(right);
   }
   row.addEventListener("click", () => setTeacherPick(id));
   return row;
@@ -121,7 +147,7 @@ function renderDeckList() {
     const line = document.createElement("div");
     line.className = "deck-line";
     const n = deck.words.length;
-    const row = makePickRow(id, deck.english, "", `${n} words`, `${n} מִלִּים`);
+    const row = makePickRow(id, deck.english, "", `${n} words`, `${n} מִלִּים`, deck);
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "deck-edit";
@@ -161,7 +187,7 @@ function renderDeckList() {
     copy.title = "Copy & edit · הַעְתָּקָה וַעֲרִיכָה";
     copy.setAttribute("aria-label", "Copy and edit this deck");
     copy.addEventListener("click", () => openDeckEditor(null, deck));
-    line.append(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`), copy);
+    line.append(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`, deck), copy);
     premadeList.appendChild(line);
   }
 
@@ -170,7 +196,7 @@ function renderDeckList() {
   levelsList.innerHTML = "";
   levelsList.appendChild(makePickRow(AUTO, "🤖 Auto: a level for each player", "אוֹטוֹמָטִי: רָמָה אִישִׁית"));
   for (const deck of DECKS) {
-    levelsList.appendChild(makePickRow(deck.id, `${deck.number} · ${deck.english}`, `${deck.numberHe} · ${deck.hebrew}`));
+    levelsList.appendChild(makePickRow(deck.id, `${deck.number} · ${deck.english}`, `${deck.numberHe} · ${deck.hebrew}`, "", "", deck));
   }
 
   // Under the Host button: what the class will play.
