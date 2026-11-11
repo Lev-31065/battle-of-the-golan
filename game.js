@@ -36,6 +36,27 @@ let speedBox = null;
 let berries = null;   // which bushes have ripe berries (true/false for each bush), or null = all ripe
 const effects = [];   // shockwave rings and floating numbers
 let shots = [];       // thrown rocks and ninja stars flying right now (from the referee)
+let mines = [];       // pomegranate grenades hiding on the ground (only my team's get drawn)
+let trees = [];       // planted pomegranate trees (state "tree", or "log" once they've turned into one)
+
+// Trees that turned into logs become real hollow logs: they're added to the end of MAP.logs,
+// so you can hide in them just like the map's own logs. The map's own logs always come first.
+const MAP_LOG_COUNT = MAP.logs.length;
+const treeLogs = new Map(); // tree id → its log (the same object every time, so hiding inside keeps working)
+function syncTreeLogs() {
+  const logIds = trees.filter((t) => t.state === "log").map((t) => t.id).sort((a, b) => a - b);
+  const now = MAP.logs.slice(MAP_LOG_COUNT).map((log) => log.treeId);
+  if (logIds.join(",") === now.join(",")) return; // nothing changed
+  MAP.logs.length = MAP_LOG_COUNT; // take the old tree logs off…
+  for (const id of logIds) {        // …and put the current ones back, in id order (the same on every phone)
+    if (!treeLogs.has(id)) {
+      const t = trees.find((tree) => tree.id === id);
+      treeLogs.set(id, { treeId: id, x: t.x, y: t.y, length: POMEGRANATE.logLength, angle: t.angle, dirX: Math.cos(t.angle), dirY: Math.sin(t.angle) });
+    }
+    MAP.logs.push(treeLogs.get(id));
+  }
+  if (myLog && !MAP.logs.includes(myLog)) myLog = null; // (a new game cleared the log I was in)
+}
 
 let rockPassUntil = 0; // until this time, I can walk through rocks (after answering a rock question)
 let myLog = null;      // the log I'm hiding inside right now (null = not hiding)
@@ -56,6 +77,7 @@ function resetTimers() {
   rockPassUntil = 0;
   effects.length = 0;
   shots = [];
+  mines = [];
   myLog = null;
   berryAskedAt.clear();
   answeredFreezeId = 0;
@@ -897,6 +919,9 @@ function applySnapshot(snap) {
   berries = snap.berries || null;
   // Flying things: remember WHEN we heard about them, so drawing can slide them forward until the next snapshot.
   shots = (snap.shots || []).map((s) => ({ ...s, seenAt: gameTime }));
+  mines = snap.mines || [];
+  trees = snap.trees || [];
+  syncTreeLogs();
   client.winner = snap.winner;
 
   // Things that just happened: messages, damage numbers, shockwaves.
@@ -1035,7 +1060,9 @@ function startBuying(id) {
         return;
       }
       holdItem(id); // hold it straight away (the referee does the same)
-      if (item.kind === "spear") {
+      if (item.kind === "plant") {
+        showToast(`${item.icon} You got a Pomegranate tree! Walk to a good spot and press Plant.`, `יֵשׁ עֵץ רִמּוֹנִים! הוֹלְכִים לְמָקוֹם טוֹב וְלוֹחֲצִים "לִשְׁתֹּל".`);
+      } else if (item.kind === "spear") {
         showToast(`${item.icon} You got the Spear! Touch an enemy with the tip to knock them out.`, `יֵשׁ חֲנִית! נוֹגְעִים בְּאוֹיֵב עִם הַחֹד כְּדֵי לְהַפִּיל אוֹתוֹ.`);
       } else if (item.kind === "throw") {
         showToast(`${item.icon} +${item.perBuy} ${item.name}! Drag from the Throw button to aim.`, `${item.nameHe} +${item.perBuy}! גּוֹרְרִים מִכַּפְתּוֹר הַזְּרִיקָה כְּדֵי לְכַוֵּן.`);
@@ -1111,13 +1138,22 @@ function heldWeapon(p) {
   return item && item.kind === "melee" ? item : null;
 }
 
+// Holding a tree to plant? (Then the Hit button becomes a Plant button.)
+function holdingTree(p) {
+  return Boolean(p) && p.held === "tree" && (p.items || []).includes("tree");
+}
+
 function canAttack(p) {
-  return Boolean(heldWeapon(p)) && !isBusy() && !p.carrying;
+  return Boolean(heldWeapon(p) || holdingTree(p)) && !isBusy() && !p.carrying;
 }
 
 function swingWeapon() {
   const p = myPlayer();
   if (!canAttack(p)) return;
+  if (holdingTree(p)) {
+    sendToServer({ type: "plant" }); // the referee checks the spot and plants it (or says why not)
+    return;
+  }
   if (gameTime - p.lastSwing < heldWeapon(p).cooldown) return; // still cooling down
   p.lastSwing = gameTime; // start the swing animation right away
   sendToServer({ type: "swing" });
@@ -1676,11 +1712,20 @@ function render() {
     }
   }
   drawBushes(ctx, berries);
+  if (client.phase === "playing" || client.phase === "over") {
+    // Pomegranate trees, on top of bushes (the ones that became logs are drawn with the other logs).
+    for (const tree of trees) if (tree.state === "tree") drawPomegranateTree(ctx, tree, gameTime);
+    // Hidden grenades: only MY team can see ours (faint). The other team sees nothing!
+    for (const mine of mines) if (me && mine.team === me.team) drawMine(ctx, mine, gameTime);
+  }
   if (client.phase === "playing") drawShots(ctx, shots, gameTime); // flying over the bushes
   drawEffects(ctx, effects, gameTime);
   // Aiming a throw: show where it will fly.
   const aimingWith = aim.active && heldThrowable(me);
-  if (aimingWith && client.phase === "playing") drawAimLine(ctx, me, aimAngle(me), aimingWith.range);
+  if (aimingWith && client.phase === "playing") {
+    // (A grenade also shows its blast circle where it will land.)
+    drawAimLine(ctx, me, aimAngle(me), aimingWith.range, aimingWith.lands ? POMEGRANATE.blast : 0);
+  }
 
   // Hiding in a log: everything gets dark, darkest at the edges of the screen.
   if (client.phase === "playing" && myLog) drawLogDarkness(ctx, view.dpr);
@@ -1777,6 +1822,17 @@ function updateHud(p) {
   if (weapon) {
     if (attackIcon.textContent !== weapon.icon) attackIcon.textContent = weapon.icon;
     attackButton.classList.toggle("cooling", gameTime - p.lastSwing < weapon.cooldown);
+  } else if (holdingTree(p)) {
+    if (attackIcon.textContent !== ITEMS.tree.icon) attackIcon.textContent = ITEMS.tree.icon;
+    attackButton.classList.remove("cooling");
+  }
+  // The button's words: "Plant" while holding a tree, otherwise "Hit".
+  const planting = holdingTree(p);
+  const attackHe = attackButton.querySelector(".he");
+  const attackEn = attackButton.querySelector(".en");
+  if (attackEn.textContent !== (planting ? "Plant" : "Hit")) {
+    attackHe.textContent = planting ? "לִשְׁתֹּל" : "לְהַכּוֹת";
+    attackEn.textContent = planting ? "Plant" : "Hit";
   }
   // The Throw button (instead of Hit) while holding something to throw.
   const throwable = heldThrowable(p);

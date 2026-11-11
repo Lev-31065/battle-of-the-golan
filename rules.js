@@ -70,6 +70,15 @@ const ITEMS = {
     about: "No button: touch an enemy with the tip = knocked out!",
     aboutHe: "בְּלִי כַּפְתּוֹר: נוֹגְעִים בְּאוֹיֵב עִם הַחֹד = נוֹקְאָאוּט!",
   },
+  // lands = true: it doesn't hit anyone while flying. It lands at the end of its range and
+  // becomes a hidden trap (settings in POMEGRANATE below).
+  grenade: {
+    kind: "throw", cost: 4, perBuy: 1, damage: 0, range: 260, speed: 360, size: 11, cooldown: 0.6,
+    freezes: false, goesThrough: true, lands: true,
+    icon: "💣", name: "Pomegranate grenade", nameHe: "רִמּוֹן יָד",
+    about: "Throw it: it hides, and blows up when an enemy comes near (half their health)",
+    aboutHe: "זוֹרְקִים אוֹתוֹ: הוּא מִתְחַבֵּא וּמִתְפּוֹצֵץ כְּשֶׁאוֹיֵב מִתְקָרֵב (חֲצִי מֵהַחַיִּים)",
+  },
   // Same damage as the hammer, but thrown. Flies its full range, through everyone in its path.
   stars: {
     kind: "throw", cost: 5, perBuy: 4, damage: 34, range: 470, speed: 470, size: 12, cooldown: 0.35,
@@ -78,6 +87,27 @@ const ITEMS = {
     about: "You get 4. Each one hits every enemy in its path",
     aboutHe: "מְקַבְּלִים 4. כָּל אֶחָד פּוֹגֵעַ בְּכָל אוֹיֵב בַּדֶּרֶךְ",
   },
+  // kind "plant" = hold it, then press the Plant button to plant it in front of you.
+  tree: {
+    kind: "plant", cost: 8,
+    icon: "🌳", name: "Pomegranate tree", nameHe: "עֵץ רִמּוֹנִים",
+    about: "Plant it anywhere: it drops 4 hidden grenades over 2 minutes, then becomes a log",
+    aboutHe: "שׁוֹתְלִים אוֹתוֹ אֵיפֹה שֶׁרוֹצִים: הוּא מַפִּיל 4 רִמּוֹנֵי יָד בְּמֶשֶׁךְ 2 דַּקּוֹת, וְאָז הוֹפֵךְ לְבוּל עֵץ",
+  },
+};
+
+// ---------- Pomegranates (the grenade and the tree) ----------
+const POMEGRANATE = {
+  hideTime: 20,      // a grenade on the ground hides this many seconds; then it blows up by itself
+  trigger: 45,       // an enemy whose body gets this close to it sets it off
+  blast: 130,        // the seeds hit every enemy this close to the explosion
+  damageShare: 0.5,  // …and take away this share of their FULL health (0.5 = half)
+  treeLife: 120,     // seconds a tree lives. It drops its grenades evenly over this time, then becomes a log
+  treeDrops: 4,      // how many grenades a tree drops
+  dropMin: 70,       // a dropped grenade lands this far from the tree's middle…
+  dropMax: 130,      // …up to this far
+  plantAhead: 60,    // a tree gets planted this far in front of your body
+  logLength: 150,    // the log it turns into
 };
 
 // Can you hold this item in your hand (= it gets a toolbar button)? Worn things like boots can't.
@@ -208,7 +238,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-11a";
+const GAME_VERSION = "2026-11-11b";
 
 // ---------- Helpers ----------
 

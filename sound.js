@@ -75,6 +75,8 @@ const SOUNDS = {
   munch:   () => melody([520, 700], 0.05, { type: "triangle", volume: 0.07 }),  // eating berries
   throw:   () => tone(350, 0.14, { type: "triangle", slideTo: 900, volume: 0.09 }), // a whoosh (rock, ninja star)
   freeze:  () => melody([1500, 1150, 1800], 0.05, { type: "sine", volume: 0.1 }),  // icy tinkle: frozen by a rock
+  boom:    () => { tone(110, 0.6, { type: "sawtooth", slideTo: 35, volume: 0.25 }); tone(70, 0.4, { type: "square", slideTo: 30, volume: 0.15 }); }, // pomegranate grenade
+  plant:   () => melody([392, 523, 659], 0.06, { type: "triangle", volume: 0.12 }), // planting a tree
 };
 
 function playSound(name) {

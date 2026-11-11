@@ -841,6 +841,29 @@ function drawShot(ctx, itemId, x, y, spin, size = 1) {
     ctx.beginPath();
     ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
     ctx.fill();
+  } else if (itemId === "grenade") {
+    // A red pomegranate with a little crown on top.
+    const skin = ctx.createRadialGradient(-4, -4, 1, 0, 0, 12);
+    skin.addColorStop(0, "#fca5a5");
+    skin.addColorStop(0.5, "#dc2626");
+    skin.addColorStop(1, "#7f1d1d");
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(0, 1, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#991b1b";
+    ctx.beginPath();
+    ctx.moveTo(-5, -8);
+    ctx.lineTo(-6, -15);
+    ctx.lineTo(-2, -11);
+    ctx.lineTo(0, -16);
+    ctx.lineTo(2, -11);
+    ctx.lineTo(6, -15);
+    ctx.lineTo(5, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -853,19 +876,28 @@ function drawShots(ctx, shots, time) {
     if (!item) continue;
     const ahead = Math.min(Math.max(0, time - s.seenAt) * item.speed, item.range - s.flown);
     const x = s.x + (s.vx / item.speed) * ahead;
-    const y = s.y + (s.vy / item.speed) * ahead;
+    let y = s.y + (s.vy / item.speed) * ahead;
+    // A grenade is lobbed in an arc: it rises, then comes down where it lands.
+    let lift = 0;
+    let size = 1;
+    if (item.lands) {
+      const progress = Math.min(1, (s.flown + ahead) / item.range); // 0 → 1
+      lift = Math.sin(progress * Math.PI) * 60;
+      size = 1 + Math.sin(progress * Math.PI) * 0.4;
+    }
     // A small shadow underneath, so it looks like it's flying above the ground.
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
     ctx.ellipse(x + 4, y + 14, 9, 4, 0, 0, Math.PI * 2);
     ctx.fill();
+    y -= lift;
     // Ninja stars spin fast; rocks tumble slowly.
-    drawShot(ctx, s.item, x, y, time * (s.item === "stars" ? 20 : 6));
+    drawShot(ctx, s.item, x, y, time * (s.item === "stars" ? 20 : 6), size);
   }
 }
 
 // While aiming with the Throw button: a dashed line showing where it will fly.
-function drawAimLine(ctx, p, angle, range) {
+function drawAimLine(ctx, p, angle, range, blast = 0) {
   const endX = p.x + Math.cos(angle) * (p.radius + range);
   const endY = p.y + Math.sin(angle) * (p.radius + range);
   ctx.save();
@@ -880,6 +912,87 @@ function drawAimLine(ctx, p, angle, range) {
   ctx.beginPath();
   ctx.arc(endX, endY, 10, 0, Math.PI * 2); // a little circle where it lands
   ctx.stroke();
+  if (blast > 0) {
+    // A grenade: a red dashed circle showing how far its seeds will reach.
+    ctx.strokeStyle = "rgba(248, 113, 113, 0.8)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.arc(endX, endY, blast, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+// ---------- Pomegranates ----------
+
+// A hidden grenade on the ground. Only its own team sees it: faint, with a ring that
+// shrinks as its 20 seconds run out, and a dashed circle for how close sets it off.
+function drawMine(ctx, mine, time) {
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  drawShot(ctx, "grenade", mine.x, mine.y, 0, 0.9);
+  const left = Math.max(0, Math.min(1, (mine.explodeAt - time) / POMEGRANATE.hideTime)); // 1 → 0
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(mine.x, mine.y, 17, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(248, 113, 113, 0.7)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 7]);
+  ctx.beginPath();
+  ctx.arc(mine.x, mine.y, POMEGRANATE.trigger + PLAYER_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// A planted pomegranate tree: trunk, a round leafy top, and the pomegranates still on it.
+// A little colored ring at its foot shows whose team planted it.
+function drawPomegranateTree(ctx, tree, time) {
+  const { x, y } = tree;
+  ctx.save();
+  // Team ring + shadow
+  ctx.strokeStyle = COLORS[tree.team];
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 26, 26, 11, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 26, 48, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Trunk
+  ctx.fillStyle = "#78350f";
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.rect(x - 7, y - 4, 14, 32);
+  ctx.fill();
+  ctx.stroke();
+  // Leafy top: a few overlapping circles, swaying a tiny bit
+  const sway = Math.sin(time * 1.5 + tree.id) * 1.5;
+  const leaves = [[-20, -22, 24], [18, -24, 24], [0, -40, 26], [0, -16, 26]];
+  ctx.fillStyle = "#15803d";
+  for (const [dx, dy, r] of leaves) {
+    ctx.beginPath();
+    ctx.arc(x + dx + sway, y + dy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#22c55e";
+  for (const [dx, dy, r] of leaves) {
+    ctx.beginPath();
+    ctx.arc(x + dx + sway - r * 0.25, y + dy - r * 0.3, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // The pomegranates that haven't dropped yet
+  const spots = [[-22, -20], [20, -26], [-4, -46], [6, -12]];
+  for (let i = tree.dropped; i < POMEGRANATE.treeDrops && i < spots.length; i++) {
+    drawShot(ctx, "grenade", x + spots[i][0] + sway, y + spots[i][1], 0, 0.75);
+  }
   ctx.restore();
 }
 
@@ -1172,7 +1285,21 @@ function drawMinimap(ctx, left, top, width, me, players, flags, time) {
 function drawEffects(ctx, effects, time) {
   for (const e of effects) {
     const t = (time - e.born) / e.life; // 0 when it starts → 1 when it's gone
-    if (e.kind === "ring") {
+    if (e.kind === "boom") {
+      // A pomegranate grenade going off: an orange flash, then red seeds flying out.
+      ctx.fillStyle = `rgba(251, 146, 60, ${0.55 * (1 - t)})`;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius * (0.3 + 0.7 * Math.min(1, t * 2.5)), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(185, 28, 28, ${1 - t})`;
+      for (let i = 0; i < 18; i++) {
+        const angle = i * 2.4 + e.x * 0.01; // spread out evenly (the same on every phone)
+        const dist = e.radius * t * (0.6 + 0.4 * ((i * 7) % 5) / 4);
+        ctx.beginPath();
+        ctx.ellipse(e.x + Math.cos(angle) * dist, e.y + Math.sin(angle) * dist, 5, 3.5, angle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (e.kind === "ring") {
       ctx.strokeStyle = `rgba(255,255,255,${1 - t})`;
       ctx.lineWidth = 8 * (1 - t) + 1;
       ctx.beginPath();

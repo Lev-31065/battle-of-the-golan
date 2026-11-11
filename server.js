@@ -76,6 +76,8 @@ function resetRound() {
   // When each berry was last eaten (-Infinity = never, so it's ripe).
   server.berryEatenAt = MAP.berries.map(() => -Infinity);
   server.shots = [];
+  server.mines = []; // pomegranate grenades lying hidden on the ground
+  server.trees = []; // planted pomegranate trees (and the logs they turned into)
   server.winner = null;
 }
 
@@ -261,6 +263,9 @@ function serverHandle(id, msg) {
         }
       }
       break;
+    case "plant":
+      serverPlant(p);
+      break;
     case "hold":
       // Picked something in the toolbar (or empty hands = null).
       if (msg.item === null || (p.items.includes(msg.item) && isHoldable(msg.item))) p.held = msg.item;
@@ -396,8 +401,9 @@ function serverMoveShots(dt) {
     // Whoever threw it (they might have left the game since; then just their name).
     const owner = server.players[shot.ownerId] || { id: null, name: shot.ownerName };
 
-    // Did it hit an enemy on the way?
+    // Did it hit an enemy on the way? (A grenade flies over everyone; it only lands.)
     for (const enemy of Object.values(server.players)) {
+      if (item.lands) break;
       if (enemy.team === shot.team || !enemy.alive || shot.hitIds.includes(enemy.id)) continue;
       if (distanceToLine(enemy, fromX, fromY, toX, toY) > enemy.radius + item.size) continue;
       shot.hitIds.push(enemy.id);
@@ -410,7 +416,7 @@ function serverMoveShots(dt) {
     }
     // Things that do damage can smash the speed box too.
     const box = server.speedBox;
-    if (!shot.done && item.damage > 0 && box.alive && !shot.hitIds.includes("box") &&
+    if (!shot.done && !item.lands && item.damage > 0 && box.alive && !shot.hitIds.includes("box") &&
         distanceToLine(box, fromX, fromY, toX, toY) <= box.radius + item.size) {
       shot.hitIds.push("box");
       serverHurt(box, item.damage, owner);
@@ -421,9 +427,119 @@ function serverMoveShots(dt) {
     shot.y = toY;
     shot.flown += step;
     const offMap = shot.x < 0 || shot.y < 0 || shot.x > MAP.width || shot.y > MAP.height;
-    if (shot.flown >= item.range || offMap) shot.done = true;
+    if (shot.flown >= item.range || offMap) {
+      shot.done = true;
+      // A grenade lands where it stopped and hides there.
+      if (item.lands) addMine(shot.x, shot.y, shot.team, owner);
+    }
   }
   server.shots = server.shots.filter((shot) => !shot.done);
+}
+
+// ---------- Pomegranates (settings in POMEGRANATE in rules.js) ----------
+
+// A pomegranate grenade lands on the ground. Enemies can't see it (their phones don't draw it).
+function addMine(x, y, team, owner) {
+  server.mines.push({
+    id: server.nextShotId++,
+    x: Math.min(MAP.width - 10, Math.max(10, x)),
+    y: Math.min(MAP.height - 10, Math.max(10, y)),
+    team,
+    ownerId: owner.id,
+    ownerName: owner.name,
+    explodeAt: server.time + POMEGRANATE.hideTime, // nobody came near? It blows up by itself then.
+  });
+}
+
+// Runs every frame: does an enemy walk near a hidden grenade? Is its time up?
+function serverUpdateMines() {
+  for (const mine of server.mines) {
+    const enemyNear = Object.values(server.players).some((enemy) =>
+      enemy.team !== mine.team && enemy.alive && distance(enemy, mine) < enemy.radius + POMEGRANATE.trigger);
+    if (enemyNear || server.time >= mine.explodeAt) {
+      mine.done = true;
+      explodeMine(mine);
+    }
+  }
+  server.mines = server.mines.filter((mine) => !mine.done);
+}
+
+// BOOM: seeds fly everywhere. Every enemy in range loses half of their FULL health.
+function explodeMine(mine) {
+  server.events.push({ kind: "boom", x: mine.x, y: mine.y, radius: POMEGRANATE.blast, life: 0.7, sound: "boom" });
+  const owner = server.players[mine.ownerId] || { id: null, name: mine.ownerName };
+  for (const enemy of Object.values(server.players)) {
+    if (enemy.team === mine.team || !enemy.alive) continue;
+    if (distance(enemy, mine) < POMEGRANATE.blast + enemy.radius) {
+      serverHurt(enemy, Math.ceil(enemy.maxHp * POMEGRANATE.damageShare), owner);
+    }
+  }
+}
+
+// Is this a good spot for a tree? Not in a river, a base, on top of a rock, log or another
+// tree, or right at the edge of the map. (There must be room for the log it turns into.)
+function canPlantAt(x, y) {
+  const edge = POMEGRANATE.logLength / 2 + 20;
+  if (x < edge || y < edge || x > MAP.width - edge || y > MAP.height - edge) return false;
+  if (isInWater(x, y)) return false;
+  for (const base of Object.values(MAP.bases)) {
+    if (Math.hypot(x - base.x, y - base.y) < base.radius + 60) return false;
+  }
+  for (const [rx, ry] of MAP.rocks) {
+    if (Math.hypot(x - rx, y - ry) < ROCK_RADIUS + 90) return false;
+  }
+  for (const log of MAP.logs) {
+    if (Math.hypot(x - log.x, y - log.y) < log.length / 2 + 90) return false;
+  }
+  for (const tree of server.trees) {
+    if (Math.hypot(x - tree.x, y - tree.y) < POMEGRANATE.logLength + 20) return false;
+  }
+  return true;
+}
+
+// A player pressed Plant while holding a tree: plant it just in front of them.
+function serverPlant(p) {
+  if (server.phase !== "playing" || !p.alive || p.held !== "tree" || p.carrying || p.frozen) return;
+  const reach = p.radius + POMEGRANATE.plantAhead;
+  const x = p.x + Math.cos(p.facing) * reach;
+  const y = p.y + Math.sin(p.facing) * reach;
+  if (!canPlantAt(x, y)) {
+    toast("🌳 You can't plant a tree here. Try an open spot (not a river, base, rock or log).",
+      "אִי אֶפְשָׁר לִשְׁתֹּל עֵץ כָּאן. נַסּוּ מָקוֹם פָּתוּחַ (לֹא נָהָר, בָּסִיס, סֶלַע אוֹ בּוּל עֵץ).", p.id);
+    return;
+  }
+  p.items = p.items.filter((id) => id !== "tree");
+  p.held = null;
+  server.trees.push({
+    id: server.nextShotId++,
+    x, y,
+    team: p.team,
+    ownerId: p.id,
+    ownerName: p.name,
+    plantedAt: server.time,
+    dropped: 0,                       // grenades dropped so far
+    state: "tree",                    // "tree" → later "log"
+    angle: Math.random() * Math.PI,   // which way the log will lie
+  });
+  server.events.push({ kind: "sound", x, y, life: 0, sound: "plant" });
+  toast("🌳 Tree planted! It will drop hidden pomegranate grenades.", "שְׁתַלְתֶּם עֵץ! הוּא יַפִּיל רִמּוֹנֵי יָד נִסְתָּרִים.", p.id);
+}
+
+// Runs every frame: trees drop a grenade every (treeLife ÷ treeDrops) seconds,
+// and after the last one they turn into a hollow log (phones add it to MAP.logs).
+function serverUpdateTrees() {
+  const every = POMEGRANATE.treeLife / POMEGRANATE.treeDrops; // 120 ÷ 4 = every 30 seconds
+  for (const tree of server.trees) {
+    if (tree.state !== "tree") continue;
+    if (tree.dropped < POMEGRANATE.treeDrops && server.time >= tree.plantedAt + (tree.dropped + 1) * every) {
+      tree.dropped += 1;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = POMEGRANATE.dropMin + Math.random() * (POMEGRANATE.dropMax - POMEGRANATE.dropMin);
+      const owner = server.players[tree.ownerId] || { id: null, name: tree.ownerName };
+      addMine(tree.x + Math.cos(angle) * dist, tree.y + Math.sin(angle) * dist, tree.team, owner);
+    }
+    if (server.time >= tree.plantedAt + POMEGRANATE.treeLife) tree.state = "log";
+  }
 }
 
 // Hit by a rock: frozen until you answer a question right (your phone asks it, and
@@ -604,6 +720,8 @@ function serverUpdate(dt) {
 
   serverMoveShots(dt); // thrown rocks and ninja stars fly (and maybe hit someone)
   serverCheckSpears(); // spear tips touching enemies
+  serverUpdateTrees(); // pomegranate trees drop grenades, then become logs
+  serverUpdateMines(); // hidden grenades go off
 
   const box = server.speedBox;
   if (!box.alive && server.time >= box.respawnAt) Object.assign(box, makeSpeedBox());
@@ -635,6 +753,9 @@ function serverSnapshot() {
 
     // Things flying through the air (just what phones need to draw them).
     shots: server.shots.map((s) => ({ id: s.id, item: s.item, x: s.x, y: s.y, vx: s.vx, vy: s.vy, flown: s.flown })),
+    // Hidden grenades (phones only draw their OWN team's) and planted trees.
+    mines: (server.mines || []).map((m) => ({ id: m.id, x: m.x, y: m.y, team: m.team, explodeAt: m.explodeAt })),
+    trees: (server.trees || []).map((t) => ({ id: t.id, x: t.x, y: t.y, team: t.team, dropped: t.dropped, state: t.state, angle: t.angle })),
 
     players: Object.values(server.players).map((p) => ({ ...p, ammo: { ...p.ammo } })),
     events: server.events,
