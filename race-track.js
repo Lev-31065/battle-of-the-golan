@@ -15,6 +15,7 @@
 const TRACK = {
   segments: [],
   length: 0, // the length of one lap, in track units
+  gates: [], // the answer gates: { number, index (which segment it stands on) }
 };
 
 // How big each kind of sprite is in the world (width, height), and whether a sled
@@ -81,23 +82,22 @@ function wrapTrack(z) {
   // addRoad(ease in, hold, ease out, curve, height)
   //   curve: 2 = gentle, 4 = medium, 6 = sharp (minus = to the left)
   //   height: 20 = small hill, 40 = big hill (minus = downhill)
-  addRoad(50, 50, 50, 0, 0);       // the starting straight
-  addRoad(50, 50, 50, 2, 0);       // a gentle right
-  addRoad(50, 50, 50, 0, 40);      // up a big hill
-  addRoad(50, 50, 50, -4, 20);     // a left bend, still climbing
-  addRoad(25, 50, 25, -2, -10);    // S-bends…
-  addRoad(25, 50, 25, 4, 10);
-  addRoad(25, 50, 25, 2, -10);
-  addRoad(25, 50, 25, -3, 0);
-  addRoad(100, 100, 100, 0, -60);  // the long sled run, all downhill
-  addRoad(50, 50, 50, 5, 0);       // a sharp right at the bottom
-  addRoad(25, 25, 25, 0, 20);      // two bumps
-  addRoad(25, 25, 25, 0, -20);
-  addRoad(50, 100, 50, -4, 30);    // a long left, climbing
-  addRoad(50, 50, 50, 3, -30);     // a right, going down
-  addRoad(50, 50, 50, 0, 0);
-  addRoad(50, 50, 50, -2, -lastY() / segmentLength); // back to the starting height
-  addRoad(50, 50, 50, 0, 0);       // the final straight to the line
+  addRoad(30, 30, 30, 0, 0);       // the starting straight
+  addRoad(30, 40, 30, 2, 0);       // a gentle right
+  addRoad(30, 40, 30, 0, 30);      // up a big hill
+  addRoad(30, 40, 30, -4, 15);     // a left bend, still climbing
+  addRoad(20, 30, 20, -2, -8);     // S-bends…
+  addRoad(20, 30, 20, 4, 8);
+  addRoad(20, 30, 20, 2, -8);
+  addRoad(20, 30, 20, -3, 0);
+  addRoad(60, 60, 60, 0, -45);     // the long sled run, all downhill
+  addRoad(30, 40, 30, 5, 0);       // a sharp right at the bottom
+  addRoad(20, 20, 20, 0, 15);      // two bumps
+  addRoad(20, 20, 20, 0, -15);
+  addRoad(30, 60, 30, -4, 25);     // a long left, climbing
+  addRoad(30, 40, 30, 3, -25);     // a right, going down
+  addRoad(30, 30, 30, -2, -lastY() / segmentLength); // back to the starting height
+  addRoad(30, 30, 30, 0, 0);       // the final straight to the line
 
   TRACK.length = segments.length * segmentLength;
 
@@ -124,4 +124,17 @@ function wrapTrack(z) {
   // Snowmen cheering at the start line.
   add(4, "snowman", -1.5);
   add(4, "snowman", 1.5);
+
+  // ----- Answer gates -----
+  // Every RACE.gateEvery segments there's a gate across the track: a sign with an English
+  // word, and one Hebrew answer over each lane. (race-game.js picks the words.)
+  // Nothing stands right next to a gate, so its poles are easy to see.
+  for (let n = RACE.firstGate; n < segments.length - 60; n += RACE.gateEvery) {
+    const gate = { number: TRACK.gates.length, index: n };
+    TRACK.gates.push(gate);
+    segments[n].gate = gate;
+    for (let k = n - 3; k <= n + 3; k++) {
+      segments[k].sprites = segments[k].sprites.filter((s) => Math.abs(s.offset) > 2.2);
+    }
+  }
 })();

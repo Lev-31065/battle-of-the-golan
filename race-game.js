@@ -17,6 +17,11 @@ let myFinishedPlace = 0;  // my place once I've crossed the finish line (0 = sti
 let inDeepSnow = false;
 const snowPuffs = [];     // snow spraying up behind my sled (on the screen only)
 let mySledSize = 100;     // how wide my sled is on the screen, in pixels (set while drawing)
+let gateQuestion = null;  // the question on the next gate: { z, gate, entry, choices, shownAt, lane, settledAt }
+let gateFeedback = null;  // after a gate: { kind: "right" / "wrong" / "missed", entry, until }
+let lastGateZ = -Infinity; // the last gate I went through (its distance along the race)
+let boostUntil = -Infinity; // right answer: faster until this time
+let slowUntil = -Infinity;  // wrong answer: slower until this time
 const raceWinnerEl = document.getElementById("winner");
 
 // ---------- Steering ----------
@@ -79,10 +84,13 @@ function raceUpdate(dt) {
     me.x = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, me.x));
 
     // Past the red and white edge = deep snow: much slower.
+    // A right answer at a gate = a boost (faster for a moment); a wrong one = slowed down.
     inDeepSnow = Math.abs(me.x) > 1;
-    const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1);
+    const boosting = gameTime < boostUntil, slowed = gameTime < slowUntil;
+    const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
+      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1);
     if (mySpeed > top) mySpeed = Math.max(top, mySpeed - RACE.offTrackSlowdown * dt);
-    else mySpeed = Math.min(top, mySpeed + RACE.accel * dt);
+    else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
 
     // Crashing into a tree, a snowman, a rock or a cabin.
     if (inDeepSnow && gameTime - crashAt > 0.6) {
@@ -116,8 +124,9 @@ function raceUpdate(dt) {
       }
     }
 
-    // Tell the referee where I am, 10 times a second.
+    checkGates(me);
 
+    // Tell the referee where I am, 10 times a second.
     if (gameTime - lastRaceSend > RACE.sendEvery / 1000) {
       lastRaceSend = gameTime;
       sendToServer({ type: "move", x: me.x, y: me.y, speed: mySpeed, steer: mySteer });
@@ -141,6 +150,91 @@ function raceUpdate(dt) {
     myFinishedPlace = me.place;
     playSound(me.place === 1 ? "win" : "score");
   }
+}
+
+// ---------- Answer gates ----------
+// When a gate comes into view, this phone picks a word from MY level (each phone asks its
+// own questions, like the quiz popup): the English goes on the sign, and the right Hebrew
+// plus 2 wrong ones go over the 3 lanes, in random order. Whichever lane I'm in when I
+// pass under the gate is my answer.
+
+// The next gate ahead of distance y: { z (its distance along the race), gate }, or null.
+function nextGateAhead(y) {
+  const lapStart = Math.floor(y / TRACK.length) * TRACK.length;
+  for (const lapsAhead of [0, 1]) {
+    for (const gate of TRACK.gates) {
+      const z = lapStart + lapsAhead * TRACK.length + gate.index * RACE.segmentLength;
+      if (z > y && z > lastGateZ) return z < RACE.laps * TRACK.length ? { z, gate } : null; // (no gates after the finish)
+    }
+  }
+  return null;
+}
+
+// Which lane a sideways spot is in: 0 = left, 1 = middle, 2 = right, -1 = off the track.
+function laneAt(x) {
+  if (Math.abs(x) > 1) return -1;
+  return Math.max(0, Math.min(2, Math.floor((x + 1) / 2 * 3)));
+}
+
+// Three answers: the right one and 2 wrong ones (the quiz's tricky wrong answers first).
+function gateChoices(entry) {
+  let others = [];
+  try {
+    others = buildChoices(entry).filter((hebrew) => hebrew !== entry.hebrew);
+  } catch (error) {
+    reportProblem(error);
+  }
+  if (others.length < 2) {
+    const spare = shuffle(WORDS.map((w) => w.hebrew).filter((hebrew) => hebrew !== entry.hebrew));
+    others = [...others, ...spare].slice(0, 2);
+  }
+  return shuffle([entry.hebrew, others[0], others[1]].filter(Boolean));
+}
+
+function checkGates(me) {
+  // A gate is coming: put a question on it.
+  if (!gateQuestion) {
+    const next = nextGateAhead(me.y);
+    if (next && next.z - me.y <= RACE.gateShowAt * RACE.segmentLength) {
+      const entry = pickNextWord();
+      gateQuestion = { z: next.z, gate: next.gate, entry, choices: gateChoices(entry), shownAt: gameTime, lane: laneAt(me.x), settledAt: gameTime };
+      gateFeedback = null; // (the new question replaces the last "Correct!")
+      try { speakSteps([{ card: null, lines: [englishLine(entry)] }]); } catch (error) { reportProblem(error); }
+    }
+    return;
+  }
+  // Remember when I last changed lanes: that's how long I took to "answer" (for Auto levels).
+  const lane = laneAt(me.x);
+  if (lane !== gateQuestion.lane) {
+    gateQuestion.lane = lane;
+    gateQuestion.settledAt = gameTime;
+  }
+  if (me.y < gateQuestion.z) return;
+
+  // Passing under the gate: the lane I'm in is my answer.
+  const { entry, choices, shownAt, settledAt } = gateQuestion;
+  lastGateZ = gateQuestion.z;
+  gateQuestion = null;
+  if (lane === -1) {
+    // Off the track: no answer. (Nothing is saved, but you still see the answer.)
+    gateFeedback = { kind: "missed", entry, until: gameTime + RACE.feedbackTime };
+    playSound("wrong");
+    return;
+  }
+  const right = choices[lane] === entry.hebrew;
+  autoLevelAnswer(right, Math.max(0, settledAt - shownAt));
+  recordAnswer(entry, right);
+  gateFeedback = { kind: right ? "right" : "wrong", entry, until: gameTime + RACE.feedbackTime };
+  if (right) {
+    boostUntil = gameTime + RACE.boostTime;
+    playSound("correct");
+    playSound("boost");
+  } else {
+    slowUntil = gameTime + RACE.slowTime;
+    playSound("wrong");
+  }
+  // Read the right Hebrew answer out loud either way.
+  try { speakSteps([{ card: null, lines: [hebrewLine(entry)] }]); } catch (error) { reportProblem(error); }
 }
 
 // Everyone in order: finished sleds by their place, then the rest by how far they've gone.
@@ -172,14 +266,17 @@ function raceRender() {
   const sleds = !racing ? [] : Object.values(players)
     .filter((p) => p.id !== client.myId)
     .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, steer: p.steer }));
-  drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, time: gameTime, sleds });
+  const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
+  drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, time: gameTime, sleds, gate });
   if (!racing) return;
+  const boosting = gameTime < boostUntil;
+  if (boosting) drawBoostLines(ctx, w, h, gameTime);
 
-  // My sled, near the bottom in the middle. It bumps along in deep snow.
+  // My sled, in the middle, where the track is under the camera. It bumps along in deep snow.
   const size = SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2;
   const fraction = mySpeed / RACE.maxSpeed;
   const bounce = inDeepSnow ? Math.sin(gameTime * 30) * size * 0.025 : Math.sin(gameTime * 18) * size * 0.006 * fraction;
-  const bottom = h * 0.97 + bounce;
+  const bottom = h * (RACE.horizon + 0.5) + bounce;
   mySledSize = size;
   ctx.fillStyle = "#ffffff";
   for (const puff of snowPuffs) {
@@ -204,6 +301,14 @@ function raceRender() {
     finishedPlace: myFinishedPlace,
     deepSnow: inDeepSnow,
     showArrows: !started || sinceStart < 4,
+    gate: gateQuestion ? {
+      english: gateQuestion.entry.english, choices: gateQuestion.choices, myLane: laneAt(me.x),
+      // Fully shown until the gate is 40 segments away, then fading to almost nothing at 12.
+      fade: Math.max(0.12, Math.min(1, ((gateQuestion.z - me.y) / RACE.segmentLength - 12) / 28)),
+    } : null,
+    feedback: gateFeedback && gameTime < gateFeedback.until ? gateFeedback : null,
+    boosting,
+    slowed: gameTime < slowUntil,
   });
 }
 
@@ -247,6 +352,16 @@ function showRaceWinner() {
 function raceResetTimers() {
   crashAt = -Infinity;
   lastRaceSend = -Infinity;
+  forgetGates();
+}
+
+// Forget the gate question, "Correct!" and any boost or slowdown (a new race, or the clock jumped).
+function forgetGates() {
+  gateQuestion = null;
+  gateFeedback = null;
+  lastGateZ = -Infinity;
+  boostUntil = -Infinity;
+  slowUntil = -Infinity;
 }
 
 function raceClear() {
@@ -254,6 +369,7 @@ function raceClear() {
   mySpeed = 0;
   myFinishedPlace = 0;
   steerFingers.clear();
+  forgetGates();
   snowPuffs.length = 0;
   raceWinnerEl.hidden = true;
 }
@@ -271,6 +387,7 @@ function raceOnPhase(phase) {
     myFinishedPlace = 0;
     lastCountdown = null;
     inDeepSnow = false;
+    forgetGates();
     steerFingers.clear();
     snowPuffs.length = 0;
   } else if (phase === "over") {

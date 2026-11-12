@@ -13,7 +13,7 @@
 const raceCamera = { depth: 1 / Math.tan((RACE.fieldOfView / 2) * Math.PI / 180) };
 raceCamera.playerZ = RACE.cameraHeight * raceCamera.depth;
 
-const SLED_WIDTH = 420; // a sled's width in track units
+const SLED_WIDTH = 600; // a sled's width in track units
 
 const RACE_COLORS = {
   snow: "#f6f9fd", snowDark: "#e2ebf5",           // the snow beside the track (light/dark stripes)
@@ -32,7 +32,7 @@ function projectPoint(p, cameraX, cameraY, cameraZ, w, h) {
   p.camera.z = p.world.z - cameraZ;
   p.screen.scale = raceCamera.depth / p.camera.z;
   p.screen.x = Math.round(w / 2 + p.screen.scale * p.camera.x * w / 2);
-  p.screen.y = Math.round(h / 2 - p.screen.scale * p.camera.y * h / 2);
+  p.screen.y = Math.round(h * RACE.horizon - p.screen.scale * p.camera.y * h / 2); // (RACE.horizon = where the horizon sits)
   p.screen.w = Math.round(p.screen.scale * RACE.roadWidth * w / 2);
 }
 
@@ -62,7 +62,7 @@ const HILL_WAVES = [[2, 0.5, 0.3], [3, 0.3, 0.8], [5, 0.2, 0.1], [11, 0.08, 0.6]
 // `turn` goes up as you turn right and down as you turn left, so the mountains slide
 // sideways. Far mountains slide slowly, near hills slide faster (that's "parallax").
 function drawRaceSky(ctx, w, h, turn) {
-  const horizon = h * 0.53;
+  const horizon = h * (RACE.horizon + 0.03);
   const sky = ctx.createLinearGradient(0, 0, 0, horizon);
   sky.addColorStop(0, "#4ea4e6");
   sky.addColorStop(1, "#d4ebfa");
@@ -71,12 +71,12 @@ function drawRaceSky(ctx, w, h, turn) {
   // The sun.
   ctx.fillStyle = "rgba(255, 250, 220, 0.9)";
   ctx.beginPath();
-  ctx.arc(w * 0.8, h * 0.12, Math.max(14, h * 0.05), 0, Math.PI * 2);
+  ctx.arc(w * 0.8, h * 0.08, Math.max(12, h * 0.04), 0, Math.PI * 2);
   ctx.fill();
 
   // Far away: Mt Hermon itself, gray-blue with a snowy top.
   const farShift = turn * 0.15;
-  const mountainY = (x) => horizon - h * (0.15 + 0.11 * ridge(((x / w) * 0.5 + farShift) % 1 + 1, HERMON_WAVES));
+  const mountainY = (x) => horizon - h * (0.1 + 0.075 * ridge(((x / w) * 0.5 + farShift) % 1 + 1, HERMON_WAVES));
   ctx.beginPath();
   ctx.moveTo(0, horizon);
   for (let x = 0; x <= w + 4; x += 4) ctx.lineTo(x, mountainY(x));
@@ -91,7 +91,7 @@ function drawRaceSky(ctx, w, h, turn) {
   ctx.moveTo(0, 0);
   for (let x = 0; x <= w + 6; x += 6) {
     const t = (x / w) * 0.5 + farShift;
-    ctx.lineTo(x, horizon - h * 0.15 + h * 0.012 * Math.sin(t * 90));
+    ctx.lineTo(x, horizon - h * 0.1 + h * 0.01 * Math.sin(t * 90));
   }
   ctx.lineTo(w, 0);
   ctx.closePath();
@@ -364,6 +364,7 @@ function shadeColor(hex, amount) {
 //   turn:     for sliding the mountains as you turn
 //   time:     the clock (for flapping scarves)
 //   sleds:    other sleds: [{ y (distance along the track), x (sideways), color, name, steer }]
+//   gate:     the question on the next gate: { number, english, choices: [left, middle, right] } (or null)
 // }
 function drawRaceScene(ctx, w, h, scene) {
   const segments = TRACK.segments;
@@ -432,6 +433,7 @@ function drawRaceScene(ctx, w, h, scene) {
       ctx.drawImage(picture, 0, 0, picture.width, picture.height * (1 - hidden / tall), sx - width / 2, top, width, tall - hidden);
     }
     if (seg.index === 0) drawStartBanner(ctx, w, seg);
+    if (seg.gate) drawGate(ctx, w, seg, scene.gate && scene.gate.number === seg.gate.number ? scene.gate : null);
     for (const sled of sledsOn.get(seg.index) || []) {
       const t = (wrapTrack(sled.y) % L) / L;
       const s = lerp(seg.p1.screen.scale, seg.p2.screen.scale, t);
@@ -470,29 +472,6 @@ function drawStartBanner(ctx, w, seg) {
   ctx.textBaseline = "alphabetic";
 }
 
-// ---------- The race info on top ----------
-
-// Hebrew on top (bigger), English underneath (smaller), centered on x.
-function drawBilingualText(ctx, hebrew, english, x, y, size, color = "#ffffff") {
-  ctx.textAlign = "center";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(15, 23, 42, 0.75)";
-  ctx.fillStyle = color;
-  ctx.font = `800 ${size}px Rubik, Arial, sans-serif`;
-  ctx.direction = "rtl";
-  ctx.lineWidth = Math.max(3, size / 7);
-  ctx.strokeText(hebrew, x, y);
-  ctx.fillText(hebrew, x, y);
-  ctx.direction = "ltr";
-  if (english) {
-    const small = Math.round(size * 0.5);
-    ctx.font = `600 ${small}px Rubik, Arial, sans-serif`;
-    ctx.lineWidth = Math.max(2, small / 6);
-    ctx.strokeText(english, x, y + small * 1.3);
-    ctx.fillText(english, x, y + small * 1.3);
-  }
-}
-
 // "1st", "2nd", "3rd", "4th"…
 function ordinal(n) {
   const last = n % 10, lastTwo = n % 100;
@@ -502,19 +481,192 @@ function ordinal(n) {
   return n + "th";
 }
 
-// info = { lap, place, racers, kmh, countdown (a number, "go", or null), finishedPlace, deepSnow, showArrows }
+
+// ---------- Fitting words into a box ----------
+
+// Split text into lines that fit `maxWidth` (breaking between words).
+function wrapLines(ctx, text, maxWidth) {
+  const words = String(text).split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? line + " " + word : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Write text centered in a box, as big as fits (up to `maxSize`), on up to 2 lines.
+function drawTextInBox(ctx, text, x, y, boxW, boxH, maxSize, color, hebrew, weight = 800) {
+  let size = Math.min(maxSize, boxH * 0.62);
+  let lines;
+  ctx.direction = hebrew ? "rtl" : "ltr";
+  for (;;) {
+    ctx.font = `${weight} ${size}px Rubik, Arial, sans-serif`;
+    lines = wrapLines(ctx, text, boxW * 0.92);
+    const tooWide = lines.some((l) => ctx.measureText(l).width > boxW * 0.92);
+    if ((lines.length <= 2 && !tooWide && lines.length * size * 1.1 <= boxH * 0.92) || size <= 6) break;
+    size *= 0.9;
+  }
+  if (size < 5) { ctx.direction = "ltr"; return; }
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const shown = Math.min(lines.length, 2);
+  lines.slice(0, 2).forEach((l, i) => {
+    ctx.fillText(l, x, y + (i - (shown - 1) / 2) * size * 1.1);
+  });
+  ctx.textBaseline = "alphabetic";
+  ctx.direction = "ltr";
+}
+
+function roundedBox(ctx, x, y, w, h, r, fill, stroke, lineWidth) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth || 2; ctx.stroke(); }
+}
+
+// ---------- An answer gate ----------
+// A frame across the track: the English word on top, and one Hebrew answer hanging
+// over each lane. You drive under the answer you think is right.
+// info = { english, choices: [left, middle, right] }, or null = not your question yet (shows "?").
+const LANE_COLORS = ["#2563eb", "#7c3aed", "#0e7490"];
+
+function drawGate(ctx, w, seg, info) {
+  const a = seg.p1.screen;
+  if (a.y > seg.clip + 2) return; // behind a hill
+  const unit = a.scale * w / 2;   // pixels per track unit, at this distance
+  const tall = 1500 * unit;
+  if (tall < 6) return;
+  const poleW = Math.max(2, a.w * 0.035);
+  const edges = [-1, -1 / 3, 1 / 3, 1].map((t) => a.x + a.w * t);
+  const top = a.y - tall;
+  ctx.fillStyle = "#334155";
+  for (const x of edges) ctx.fillRect(x - poleW / 2, top, poleW, tall);
+  const beamH = tall * 0.06;
+  ctx.fillRect(edges[0] - poleW / 2, top, edges[3] - edges[0] + poleW, beamH);
+
+  // The English word, on a white sign above the frame.
+  const signW = a.w * 0.95, signH = tall * 0.24;
+  roundedBox(ctx, a.x - signW / 2, top - signH, signW, signH, signH * 0.2, "#ffffff", "#1e3a8a", Math.max(1, signH * 0.06));
+  drawTextInBox(ctx, info ? info.english : "?", a.x, top - signH / 2, signW, signH, 200, "#1e3a8a", false);
+
+  // One Hebrew answer over each lane.
+  const panelTop = top + beamH;
+  const panelH = tall * 0.3;
+  for (let lane = 0; lane < 3; lane++) {
+    const gap = (edges[lane + 1] - edges[lane]) * 0.05;
+    const left = edges[lane] + poleW / 2 + gap / 2;
+    const width = edges[lane + 1] - edges[lane] - poleW - gap;
+    roundedBox(ctx, left, panelTop, width, panelH, panelH * 0.12, LANE_COLORS[lane], "#ffffff", Math.max(1, panelH * 0.04));
+    drawTextInBox(ctx, info ? info.choices[lane] : "?", left + width / 2, panelTop + panelH / 2, width, panelH, 200, "#ffffff", true);
+  }
+}
+
+// ---------- The race info on top ----------
+
+// Hebrew on top (bigger), English underneath (smaller). align = "center", "left" or "right" of x.
+function drawBilingualText(ctx, hebrew, english, x, y, size, color = "#ffffff", align = "center") {
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(15, 23, 42, 0.75)";
+  ctx.fillStyle = color;
+  ctx.font = `800 ${size}px Rubik, Arial, sans-serif`;
+  ctx.direction = "rtl";
+  ctx.textAlign = align;
+  ctx.lineWidth = Math.max(3, size / 7);
+  ctx.strokeText(hebrew, x, y);
+  ctx.fillText(hebrew, x, y);
+  ctx.direction = "ltr";
+  ctx.textAlign = align;
+  if (english) {
+    const small = Math.round(size * 0.5);
+    ctx.font = `600 ${small}px Rubik, Arial, sans-serif`;
+    ctx.lineWidth = Math.max(2, small / 6);
+    ctx.strokeText(english, x, y + small * 1.3);
+    ctx.fillText(english, x, y + small * 1.3);
+  }
+  ctx.textAlign = "center";
+}
+
+const PANEL_COLORS = { right: "rgba(22, 163, 74, 0.92)", wrong: "rgba(220, 38, 38, 0.92)", missed: "rgba(71, 85, 105, 0.92)" };
+
+// The question panel at the top: the English word, then the 3 Hebrew answers in a row,
+// in the same order as the lanes (left, middle, right). The lane I'm in has a yellow frame.
+// Returns where the panel ends (so other things can go under it).
+function drawGatePanel(ctx, w, size, gate) {
+  const panelW = Math.min(w * 0.56, 540);
+  const x = (w - panelW) / 2;
+  const y = 6;
+  const wordH = size * 1.5;
+  const tipH = size * 0.9;
+  const answerH = size * 1.9;
+  const panelH = wordH + tipH + answerH + 12;
+  roundedBox(ctx, x, y, panelW, panelH, 14, "rgba(15, 23, 42, 0.72)");
+  drawTextInBox(ctx, gate.english, w / 2, y + 2 + wordH / 2, panelW - 20, wordH, size * 1.3, "#ffffff", false);
+  // How to answer (Hebrew first).
+  drawTextInBox(ctx, "נוֹסְעִים מִתַּחַת לַתְּשׁוּבָה הַנְּכוֹנָה · Drive under the right Hebrew",
+    w / 2, y + wordH + tipH / 2, panelW - 20, tipH, size * 0.5, "#cbd5e1", true, 600);
+  const boxW = (panelW - 16) / 3;
+  const boxY = y + wordH + tipH + 4;
+  for (let lane = 0; lane < 3; lane++) {
+    const bx = x + 6 + lane * (boxW + 2);
+    const mine = lane === gate.myLane;
+    roundedBox(ctx, bx, boxY, boxW, answerH, 10, LANE_COLORS[lane], mine ? "#fde047" : null, 4);
+    drawTextInBox(ctx, gate.choices[lane], bx + boxW / 2, boxY + answerH / 2, boxW - 6, answerH, size, "#ffffff", true);
+  }
+  return y + panelH;
+}
+
+// After a gate: "Correct!" (green), "The answer is…" (red) or "Missed the gate" (gray), at the top.
+function drawGateFeedback(ctx, w, size, feedback) {
+  const panelW = Math.min(w * 0.56, 540);
+  const x = (w - panelW) / 2;
+  const panelH = size * 2.6;
+  roundedBox(ctx, x, 6, panelW, panelH, 14, PANEL_COLORS[feedback.kind]);
+  const e = feedback.entry;
+  let he, en;
+  if (feedback.kind === "right") { he = `✅ נָכוֹן! ${e.hebrew}`; en = `Correct! ${e.english} = ${e.hebrew} · ⚡ Speed boost!`; }
+  else if (feedback.kind === "wrong") { he = `❌ הַתְּשׁוּבָה: ${e.hebrew}`; en = `The answer is ${e.hebrew} (${e.english})`; }
+  else { he = `פִּסַּפְתֶּם אֶת הַשַּׁעַר · ${e.hebrew}`; en = `Missed the gate · ${e.english} = ${e.hebrew}`; }
+  drawTextInBox(ctx, he, w / 2, 6 + panelH * 0.38, panelW - 20, panelH * 0.62, size * 1.1, "#ffffff", true);
+  drawTextInBox(ctx, en, w / 2, 6 + panelH * 0.8, panelW - 20, panelH * 0.3, size * 0.55, "#f1f5f9", false, 600);
+  return 6 + panelH;
+}
+
+// info = { lap, place, racers, kmh, countdown (a number, "go", or null), finishedPlace,
+//          deepSnow, showArrows, gate (the question, or null), feedback (or null), boosting, slowed }
 function drawRaceHud(ctx, w, h, info) {
-  const size = Math.max(18, Math.min(30, h * 0.065));
+  const size = Math.max(16, Math.min(28, h * 0.06));
+  // The lap, top left.
+  drawBilingualText(ctx, `הַקָּפָה ${info.lap}/${RACE.laps}`, `Lap ${info.lap}/${RACE.laps}`, 14, size + 6, size, "#ffffff", "left");
+
+  let below = 6;
   if (info.finishedPlace) {
-    drawBilingualText(ctx, `🏁 סִיַּמְתֶּם! מָקוֹם ${info.finishedPlace}`, `You finished! ${ordinal(info.finishedPlace)} place`, w / 2, h * 0.32, size * 1.6, "#fde047");
-  } else {
-    drawBilingualText(ctx, `הַקָּפָה ${info.lap}/${RACE.laps}`, `Lap ${info.lap}/${RACE.laps}`, w / 2, size + 8, size);
+    drawBilingualText(ctx, `🏁 סִיַּמְתֶּם! מָקוֹם ${info.finishedPlace}`, `You finished! ${ordinal(info.finishedPlace)} place`, w / 2, h * 0.3, size * 1.6, "#fde047");
+  } else if (info.feedback) {
+    below = drawGateFeedback(ctx, w, size, info.feedback);
+  } else if (info.gate) {
+    // (It fades away just before the gate, so you can see the real gate you drive under.)
+    ctx.globalAlpha = info.gate.fade === undefined ? 1 : info.gate.fade;
+    below = drawGatePanel(ctx, w, size, info.gate);
+    ctx.globalAlpha = 1;
   }
   // My place, bottom left. My speed, bottom right.
-  drawBilingualText(ctx, `מָקוֹם ${info.place}`, `${ordinal(info.place)} of ${info.racers}`, Math.max(70, w * 0.1), h - size * 1.2, size * 1.2, "#fde047");
-  drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - Math.max(70, w * 0.1), h - size * 1.2, size);
+  const cornerX = Math.max(70, w * 0.1);
+  drawBilingualText(ctx, `מָקוֹם ${info.place}`, `${ordinal(info.place)} of ${info.racers}`, cornerX, h - size * 1.2, size * 1.2, "#fde047");
+  drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - cornerX, h - size * 1.2, size);
+  if (info.boosting) drawBilingualText(ctx, "⚡ טוּרְבּוֹ!", "Boost!", w - cornerX, h - size * 3.2, size * 0.9, "#fde047");
+  else if (info.slowed) drawBilingualText(ctx, "🐢 אִטִּי…", "Slowed down", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
   if (info.deepSnow && !info.finishedPlace) {
-    drawBilingualText(ctx, "שֶׁלֶג עָמֹק — אִטִּי!", "❄️ Deep snow — slow!", w / 2, size * 2.9 + 8, size * 0.75, "#bae6fd");
+    drawBilingualText(ctx, "שֶׁלֶג עָמֹק — אִטִּי!", "❄️ Deep snow — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");
   }
   if (info.showArrows) {
     // Where to tap to steer.
@@ -525,6 +677,25 @@ function drawRaceHud(ctx, w, h, info) {
   }
   if (info.countdown !== null) {
     const go = info.countdown === "go";
-    drawBilingualText(ctx, go ? "יוֹצְאִים!" : String(info.countdown), go ? "Go!" : "", w / 2, h * 0.42, size * (go ? 2.6 : 3.4), go ? "#4ade80" : "#ffffff");
+    drawBilingualText(ctx, go ? "יוֹצְאִים!" : String(info.countdown), go ? "Go!" : "", w / 2, h * 0.5, size * (go ? 2.6 : 3.4), go ? "#4ade80" : "#ffffff");
+  }
+}
+
+// White speed lines flying past while boosting.
+function drawBoostLines(ctx, w, h, time) {
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+  ctx.lineWidth = 2;
+  const cx = w / 2, cy = h * RACE.horizon;
+  const far = Math.max(w, h);
+  for (let i = 0; i < 26; i++) {
+    const angle = (i / 26) * Math.PI * 2 + i * 1.7;
+    if (Math.sin(angle) < -0.2) continue; // (not up in the sky)
+    const t = (time * 2.2 + i * 0.37) % 1; // each line slides outward, then starts again
+    const r1 = far * (0.25 + t * 0.55);
+    const r2 = r1 + far * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+    ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+    ctx.stroke();
   }
 }

@@ -315,19 +315,29 @@ const RACE = {
   countdown: 3,           // seconds of 3… 2… 1… before the sleds can go
   segmentLength: 200,     // how long one piece of the track is
   roadWidth: 2000,        // HALF the width of the track (from the middle to one edge)
-  lanes: 3,               // lanes on the track (the answer gates will use them later)
-  maxSpeed: 10000,        // top speed (track units per second)
-  accel: 3200,            // how fast you speed up on the track
+  lanes: 3,               // lanes on the track (one answer over each lane at the gates)
+  maxSpeed: 6000,         // top speed (track units per second). Was 10000: too fast
+  accel: 2000,            // how fast you speed up on the track
   offTrackSpeed: 0.3,     // in the deep snow beside the track, your top speed drops to 30%
-  offTrackSlowdown: 9000, // how fast deep snow slows you down
+  offTrackSlowdown: 6000, // how fast deep snow slows you down
   steerSpeed: 2.2,        // how fast you slide left and right at top speed
   curvePush: 0.32,        // how hard curves push you toward the outside
   maxSide: 2.2,           // how far from the middle you can go (1 = the track's edge)
   crashSpeed: 0.2,        // hitting a tree or snowman drops you to 20% speed
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
+  // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
+  firstGate: 110,         // the first gate stands on this segment
+  gateEvery: 210,         // then one gate every this many segments (about 7 seconds apart)
+  gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
+  boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
+  boostTime: 2.5,         // …for this many seconds
+  slowSpeed: 0.45,        // wrong answer: top speed drops to 45%…
+  slowTime: 1.5,          // …for this many seconds
+  feedbackTime: 2,        // seconds "Correct!" or "The answer is…" stays on the screen
   // Screen
-  cameraHeight: 1000,     // how high the camera floats above the snow
+  cameraHeight: 1700,     // how high the camera floats above the snow (higher = more from above). Was 1000
   fieldOfView: 100,       // how wide the camera sees (degrees)
+  horizon: 0.36,          // where the horizon is on the screen (0 = top, 0.5 = middle). Higher up = you see more track
   drawDistance: 220,      // how many segments ahead get drawn (fewer = faster on old phones)
   sendEvery: 100,         // milliseconds between "here's where my sled is" messages
   colors: ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#f97316"], // one per sled
@@ -337,7 +347,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12k";
+const GAME_VERSION = "2026-11-12l";
 
 // ---------- Helpers ----------
 
