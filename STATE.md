@@ -1,14 +1,14 @@
 # State
 
 ## Works now
-- **Core game:** capture the flag (first to 3), rivers, bushes at 30%, rocks that ask a question, hammer shop, speed box, minimap, sounds, room codes, invite links. Tested on real phones with 2+ players.
+- **Core game:** capture the flag (first to 3), rivers, bushes at 30%, rocks that ask a question, shop, speed box, minimap, sounds, room codes, invite links. Tested on real phones with 2+ players.
 - **Capture-the-flag upgrades (2026-11-10), tested by Daniel ("everything is amazing"):**
   - **Joystick always visible:** rests faded in the bottom-left corner; jumps under your thumb on the left half; goes back on release.
   - **Solid players + bounce (`BUMP` in `rules.js`):** each phone pushes its OWN player out of others and adds a short bounce, with the soft `nudge` sound. Skipped while answering/shopping (so you can't be shoved off a flag).
   - **Map look (`draw.js`):** ground (grass tufts, flowers, dirt paths, rivers with reeds, base floors) painted ONCE onto a hidden canvas (`GROUND_RES` 1.5); rocks/bushes/logs/berries are reusable sprites. ~0.1 ms per frame headless. 3D look: rocks with sides, crate with top+front, dome bushes with shadows, raised bridge rails, shaded ball players with stepping feet.
   - **Map v2:** 2600×1500, mirrored halves (`mirrorLeftHalf()` in `map.js`), long middle, bridges far from the center. Trees became "leafy" bushes (all bushes slow you); several huge bushes.
-  - **River:** 40% speed + current pushes you downstream (`MAP.riverFlow` 45).
-  - **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide. Hidden players can still be hammered.
+  - **River:** 35% speed (was 40%) + current pushes you downstream (`MAP.riverFlow` 45).
+  - **Hollow logs (`LOG` in `rules.js`, `checkLogs` in `game.js`):** solid from the sides; walk into an open end = hide (screen darkens, others don't draw you or show you on the minimap). Flag carriers can't hide. Step 6 protection: see "not yet tested" below.
   - **Speed box** respawns in 30 s (was 60).
 - **"🔁 Verb roots: past & future" (11 `conj-*` decks, 2026-11-09):** tested by Daniel.
 - **Scoring rule (`checkBase` in `server.js`):** both flags inside a team's circle = a point for that team, whether the flags are on the stand, on the ground, or carried by a teammate. A flag in an enemy's hands doesn't count. Your own flag dropped inside your base goes straight home. Tested on phones.
@@ -16,7 +16,7 @@
 - **Leaving:** 🚪 button in the game and 🏠 Home in the lobby, with an "Are you sure?" popup. Tested on phones. (The popups use z-index 40; the screens are 30.)
 - **Rejoining:** joining mid-game works. The room code shows on the left edge during play. A joiner's last room code is pre-filled for 3 hours. The same nickname goes back on the same team (`server.pastTeams`). The 2026-11-08 rejoin fixes (timer reset on clock jumps, auto re-join, replacing a silent same-name player) were tested by Daniel; no problems reported.
 - **Questions:** the popup closes instantly after a right answer. A flag-grab question closes by itself if the flag returns home or someone else grabs it.
-- **Voice (`speech.js`):** reads the English when a question opens, the Hebrew after a wrong answer, and a recap after a right answer. 🗣️ turns it on/off.
+- **Voice (`speech.js`) (silent on Daniel's Pixel right now, see Known problem):** reads the English when a question opens, the Hebrew after a wrong answer, and a recap after a right answer. 🗣️ turns it on/off.
 - **Flashcards (`progress.js`):** spaced repetition. Settings in `REVIEW_STEPS` in `rules.js`.
 - **Logins (`account.js` + Supabase):** email + password or a sign-in link, 13+ checkbox. Progress follows the account. Tested live.
 - **Delete my account:** red link on the home screen. It calls the `delete_my_account()` function in Supabase, which is set up in `setup.sql`. The account's progress and decks go with it (cascade). Tested on phones.
@@ -31,23 +31,106 @@
 - **Hebrew first everywhere:** Hebrew on top and bigger, English underneath and smaller.
 - **Restructure (2026-11-08), all tested by Daniel:**
   - **Game-mode screen:** "Create a room" → pick a game. Capture the Flag + 2 "🔒 Coming soon" buttons. `server.mode` = "ctf".
-  - **Two kinds of rooms:** normal (from Play Game): each phone picks its own level from a list of Auto + levels only. Class game (from the teacher dashboard): the teacher picks for everyone; students' picker is grayed out. Enforced by the referee (`server.classGame`).
-  - **Teacher dashboard** (replaces "My decks", logged-in only, free for now): wide computer layout, "🏫 Host a class game", and 3 columns to pick the class deck: My decks (✏️ edit), Premade decks (📋 copy & edit), Levels (incl. Auto).
+  - **Two kinds of rooms:** normal (from Play Game): each phone picks its own level from a list of Auto + levels only. Class game (from the deck dashboard): the teacher picks for everyone; students' picker is grayed out. Enforced by the referee (`server.classGame`).
+  - **Deck dashboard** (was "Teacher dashboard"; replaces "My decks", logged-in only, free for now): wide computer layout, "🏫 Host a class game", and 3 columns to pick the class deck: My decks (✏️ edit), Premade decks (📋 copy & edit), Levels (incl. Auto).
   - **Premade decks** (`TOPIC_DECKS`): class games only. Contents replaced on 2026-11-09 (see above).
   - **Custom dropdown** in the lobby, right under the room code (phones' built-in lists covered the whole screen). Daniel loves it.
   - **Deck editor as a table:** Hebrew | English | wrong answers (➕ tags, up to 5) | 🗑. Enter moves like a spreadsheet. Pasting from Excel fills many rows (extra columns = wrong answers). Copying a premade deck keeps feminine versions (♀ tag).
 
-## Built + uploaded, not yet tested on phones (2026-11-10)
-- **Premade decks:** 🔁 לְלַמֵּד (teach) + 5 new roots (ק־ר־א, ש־א־ל, ש־מ־ע, ר־א־ה, נ־ת־ן), each a 🌱 root deck and a 🔁 conjugation deck. New 🔁 decks are built from 2-line tables by `conjWords()` in `words.js`. Nikud to check: שָׁמַעַתְּ, רָאֲתָה, נָתַתְּ, נָתַנּוּ, תִּתְּנִי, קְרָאתֶם, לִמַּדְתִּי.
-- **Berries (`BERRY` in `rules.js`, v2 2026-11-10):** every berry has its own spot (`MAP.berries`, a spiral in each berry bush; 4 per bush, 12 in the two huge r170 bushes at the top of the middle). Touch a berry = eat it (referee decides: `serverEat`): +10% speed for 8 s each, boosts add up to +50% max (`p.berryBoosts` = end times). Each berry regrows after 80 s, no countdown. Snapshot `berries` = true/false per berry.
+- **Premade decks (2026-11-10), tested:** 🔁 לְלַמֵּד (teach) + 5 new roots (ק־ר־א, ש־א־ל, ש־מ־ע, ר־א־ה, נ־ת־ן), each a 🌱 root deck and a 🔁 conjugation deck. New 🔁 decks are built from 2-line tables by `conjWords()` in `words.js`.
+- **Berries v2 (`BERRY` in `rules.js`, 2026-11-10), tested:** every berry has its own spot (`MAP.berries`, a spiral in each berry bush; 4 per bush, 12 in the two huge r170 bushes at the top of the middle). Touch a berry = eat it (referee decides: `serverEat`): boosts last 8 s each, up to 5 at once (`p.berryBoosts` = end times). Each berry regrows after 80 s, no countdown. Snapshot `berries` = true/false per berry.
+- **Berry speed v3 (2026-11-11, v 11-11d; Daniel tested the rest of that version, berries not singled out):** each berry ADDS 0.1 of normal speed (`berryBonus` in `game.js`): speed = PLAYER_SPEED × (ground + berries), ground = 1 / river 0.35 / bush 0.3 / boots 1; then flag ×0.7, speed box ×1.5. So berries help in bushes (5 berries in a bush = 0.8). Visible: pink `#berry-chip` ("🍒 Berries: +30% speed, 6s", time = until the last one ends) + little red berries circling the player (`drawPlayer`). The "In a bush — slow!" chip stays (Daniel: fine).
+- **Nikud:** Daniel says assume it's all good (2026-11-10). He'll flag anything he spots while testing.
+- **Step 1 of the shop plan (2026-11-10), tested ("feels good"):** "🗂️ Deck dashboard / אֵזוֹר הַחֲפִיסוֹת" rename (code names `teacher-button`, `teacherPickId` unchanged); river 35% (`MAP.waterSlowdown`; Daniel set it to 20% and bushes to 40% on 2026-11-12); swervy 7-point paths (layout check passed).
+
+- **Corner buttons (2026-11-10), tested:** sound, voice, leave, full screen = one row of small see-through buttons under the minimap (the toolbar covered them on sideways phones).
+- **Sound effects (2026-11-10), tested:** unlock on finished taps (`pointerup`/`touchend`/`click`, every time) + `navigator.audioSession.type = "playback"` for iPhones.
+- **Version tag (2026-11-10), tested:** `GAME_VERSION` in `rules.js` shown under Privacy on the home screen; `?v=` on every file in `index.html` so phones load new files. Now v 2026-11-11e.
+- **Step 2: new shop + toolbar (2026-11-10), tested on Daniel's phone (headless too: buying, wrong answers, switching, damage, heal, KO):**
+  - `ITEMS` in `rules.js` replaced `HAMMER`: stick (2 questions, 8 damage, 0.25 s cooldown, range 70, icon 🏑) and hammer (5, 34, 0.6 s, range 85). Shop and toolbar list them in `ITEMS` order.
+  - Paying: each right answer pays 1 question (`shopPaid` in `game.js`, kept if you close the quiz; cleared on KO and at game start). Wrong answers don't count. The phone sends `buy` when paid off; the referee trusts it (near the shop, not owned yet).
+  - Player fields: `p.items` (owned ids) + `p.held` (id or null) replaced `p.weapon`. Messages: `buy`, `hold`. KO = items gone.
+  - Toolbar (`#toolbar`, above the action buttons): ✋ + owned items; tap or keys 1–9. The phone trusts its own tap for 1 s (`myHeld`/`HELD_TRUST_MS`) so a late snapshot can't flip it back. The Hit button shows the held weapon's icon.
+  - `drawStick` in `draw.js`; a fast weapon's swing spin is shorter (min of `SWING_TIME` and 0.9 × cooldown).
+  - Berries heal `BERRY.heal` (15) each.
+  - Upright phones: messages moved up to `bottom: 176px` so they clear the toolbar.
+- **Step 3: throwing, tested by Daniel ("looks great"):**
+  - `kind: "throw"` items with `perBuy`, `speed`, `size`, `freezes`, `goesThrough`, `lands`. **Rock** (1 question, freezes, stops at first enemy, range 380, speed 380, 🪨) and **Ninja stars** (5, 4 per buy, 34 damage, through everyone + speed box, range 470, speed 470, ⭐). Ranges cut a little on 2026-11-11 (were 450/550).
+  - Referee: `p.ammo`, `server.shots` moved by `serverMoveShots` (line-vs-circle check), `serverThrow`, `serverFreeze`. Messages `throw` (angle), `unfreeze` (freezeId). Last one used = gone from items, empty hands. KO = ammo gone, unfrozen.
+  - Frozen: `p.frozen` + `p.freezeId` (`server.freezeCount`). `checkFrozen` opens a question with no ✕; a right answer sends `unfreeze` + remembers `answeredFreezeId`. `drawIce`.
+  - Phone: `#throw-button` = joystick (`aim`, `AIM_DEADZONE` 15 px), dashed `drawAimLine`, Space throws, `drawShots` slides shots between snapshots, ammo badges.
+  - Claude's choices, not objected to: no throwing while carrying a flag; rocks don't hurt the speed box; no ammo cap.
+- **Step 4 (2026-11-11), tested by Daniel:**
+  - **🥾 Forest boots** (`kind: "wear"`, 3 questions): full speed in bushes, brown feet, no toolbar button (`isHoldable()` in `rules.js`), bush chip hidden while worn. Daniel: overpowered, but OK since you lose them on KO; tune later.
+  - **🔱 Spear** (`kind: "spear"`, 4, after the hammer in the shop): no button. `serverCheckSpears` (every frame) checks `spearTip()`: `length` 58 past the body, `side` 8 to the right, `tipReach` 8, `cooldown` 0.8 s. Tip on an enemy = KO; tip on the speed box = smashed + boost (Daniel asked, v 11-11c). Body/side of the spear = nothing. Not while frozen or carrying a flag (then it's put away). `drawSpear` + a short jab.
+- **Step 5 (2026-11-11), tested by Daniel:**
+  - **💣 Pomegranate grenade** (`grenade`, throw with `lands: true`, 4 questions, range 260): flies over everyone, lands → `addMine`. `server.mines`; `serverUpdateMines`: enemy within `trigger` 45 (+ body) OR 20 s up (`hideTime`) → `explodeMine`: every enemy within `blast` 130 loses half of FULL health (`damageShare` 0.5 → 50, so 2 blasts = KO). Own team sees it faint (`drawMine`, countdown ring), enemies see nothing. Aim line shows the blast circle. `boom` effect + sound.
+  - **🌳 Pomegranate tree** (`kind: "plant"`, 8): Hit button becomes "🌳 Plant / לִשְׁתֹּל" (`holdingTree`), message `plant` → `serverPlant` (spot `plantAhead` 60 in front; `canPlantAt`: not river/base/near rock, log, tree, edge; else a toast). `serverUpdateTrees`: a hidden grenade every 30 s (4 total, 70–130 away), then `state: "log"` at 120 s. Phones add tree logs to the END of `MAP.logs` (`syncTreeLogs`, id order, `MAP_LOG_COUNT` = the map's own) so they're real hideable logs. New game clears them. All settings in `POMEGRANATE` (`rules.js`).
+  - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
+- **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
+
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-12p)
+- **Daniel tried it on v 12p: "its great!"** Steps 1–2 of 6 done (1 road + driving, 2 answer gates), plus 3 rounds of visual and gameplay changes. Still to do: 3 bots, 4 gift boxes (🍌 dropped behind, 🥭 thrown forward), 5 multiplayer polish, 6 polish (sounds, podium).
+- For 1+ players, no teams (`teams: false`). The lobby shows one racer list and a "Start the race!" button (`startText`). Lobby parts marked `data-modes="ctf"` / `"race"` show only for that game.
+- **The course:** one downhill ride from snowy Mt Hermon to the Kinneret, no laps, about 3 minutes.
+  - Curvy, with hills and dips (`RACE.hills`).
+  - Wide most of the way (`pathWidth`), very wide in places (`wideWidth`), now and then narrow (`narrowWidth`).
+  - 7 gates, about 23 s apart (`gateCount`, `gateGap`), each on a straight, wide stretch.
+  - Snow on the ground melts from 12% to 40% of the way down; the path stays snowy until the beach. The finish is on the beach.
+  - Trees: oaks, bushes, basalt rocks, olives, almonds in blossom, palms (no pines). Trees and rocks also stand on the path (`treesOnPath`).
+- **Answer gates:**
+  - The English word is on the sign, with a Hebrew answer over each of the 3 lanes. The lane you pass through is your answer.
+  - Right = boost, wrong = slowed, off the path = missed (not saved).
+  - Answers are saved through `recordAnswer` and `autoLevelAnswer`. A compact panel at the top repeats the question.
+- **Steering:**
+  - Hold the left or right half of the screen, OR tilt the phone (👆/📱 button; the choice is saved).
+  - Steering turns the sled (`turnSpeed`, `maxTurn`), and the view turns part of the way with it (`cameraTurn` 0.35; Daniel: 0.6 was "a little too much").
+  - Curves push you outward a little.
+- **The sled:** rustic wood, tipped nose-down (`nose` in `drawSled`; Daniel asked for it). The rider has a knitted kippah, a tallit-striped scarf, tzitzit, and an Israeli flag.
+- **Not tested yet:** tilt steering on a real phone (an iPhone asks permission), auto-sideways at race start, 2 phones racing each other, speed on an older phone (lower `drawDistance` if it's choppy).
+
+## Tested by Daniel on 2026-11-12
+- **Logs protect hiders + same log = see each other** (2 players): "really fun".
+- **Mastery % on the dashboard:** "looks good".
+- **Voice on the Pixel:** fixed by restarting the phone (not our code). The voice-problem message now suggests restarting.
+- **Auto-sideways (Android) + messages + moved controls (v 12b):** "PERFECT".
+- **Hand-written B levels (v 12d):** "great". Checkpoints are in; Daniel hasn't played one yet.
+
+## Built + uploaded, not yet tested on phones
+- **2026-11-12 step 1 (v 2026-11-12a):** spear breaks after one stab, an enemy OR the speed box (`breakSpear` in ctf-server.js, `oneUse`), and is longer (`length` 95, was 58); ninja stars 5 for 3 questions; grenades 2 for 3; own SVG pictures for stick + grenade (`ITEM_PICS` + `setItemIcon()` in rules.js, item field `pic`; the emoji is still used in text messages); voice-problem message says to restart the phone (that fixed Daniel's Pixel).
+- **2026-11-12 messages + controls (v 2026-11-12b):** messages stack (up to 3, newest at the bottom), stay 6 s, bigger text (`MESSAGES` in rules.js; `showToast` in game.js builds one `.toast` per message in `#toast-area`; the same message again just restarts its clock). Android full screen: `lockSideways()` turns the game sideways at game start; `unlockSideways()` on the home/play screens (the lobby stays sideways). Upright phone in a game → big `#rotate-tip` card for 10 s (tap closes; turning the phone hides it). Joystick resting spot moved in (120px from left, 100px from bottom); action buttons + toolbar moved in (right 56px).
+- **2026-11-12 step 2 (v 2026-11-12c):** level 17 `level-participles` ("Adjectives from verbs", פָּתוּחַ/סָגוּר/כָּתוּב… vs. action vs. passive; 8 short + 11 sentences). Root decks כ־ת־ב, ש־א־ל, ס־פ־ר got their describing words; new root decks `root-pth-sgr`, `root-shbr`, `root-lbsh-ahv`.
+- **2026-11-12 learning update (v 2026-11-12d), Daniel's request "B = real hand-written lists":**
+  - `levels-b.js` (new, loads before words.js): `LEVEL_B[level id]` = 13–14 hand-written items per level 2–20 combining that topic with earlier ones (~4–5 short + sentences). Playing B = that list + 5 random A words + 5 earlier words (`REVIEW_MIX`). B mastery = its own list. B names: "<topic> + earlier topics".
+  - Review checkpoints ✅1–✅5 after 5B, 10B, 13B, 17B, 20B (`CHECKPOINTS` in words.js): 30 questions (`CHECKPOINT_QUESTIONS`), at least 1 from every earlier level, rest random. Mastery = every earlier A+B word (word records are shared, so they also count toward each level).
+  - Levels 18–20 (`level-real-life`, `level-real-stories`, `level-real-plans`): "real sentences" combining everything.
+  - Premade decks `tense-past` ⏪ + `tense-future` ⏩ (48 each, 19 verbs, `kind: "tense"`, own dashboard heading).
+  - Content written by Claude helpers; all checked by script (no wrong = right, no same English with two Hebrew answers). A few too-correct wrong answers were replaced. Nikud not checked by a teacher. New (not taught before): לְ/אֶל + pronoun (מְחַכָּה לָנוּ, הִתְקַשְּׁרָה אֵלַי) in 18–20, used with אוֹתָנוּ/אוֹתִי as the trap.
+  - Known older nikud question: words.js writes "הַחָתוּל" in some wrong answers; standard is "הֶחָתוּל".
+- **2026-11-12 (v 2026-11-12e):** Daniel loves the auto-sideways + the B levels. Big tense decks moved right after the theme decks (dashboard order = TOPIC_DECKS order, a heading each time `kind` changes). Every root deck now has its describing words where the root has a common one (מְלֻמָּד, מְדֻבָּר, מְעֻבָּד, אָכִיל, שָׁתוּי, קָרִיא, נִשְׁמָע, נִרְאֶה/רָאוּי, נָתוּן/נְתוּנִים). ה־ל־ך + ב־ו־א and ח־כ־ה + ע־ז־ר have no common one, so none added.
+- **2026-11-12 (v 2026-11-12f):** Daniel: root decks needed much more practice + context. Every root deck now 53–62 questions (all present forms, describing words m/f/plural, more nouns, ~60% everyday sentences, ~30% short). "Big decks" renamed **Key concepts** (`מֻשָּׂגֵי מַפְתֵּחַ`): past 105, future 103. Written by 7 Claude helpers, script-checked (no repeats, no wrong = right); nikud not teacher-checked. Grandma spelled סַבְתָּא everywhere.
+- **2026-11-12 (v 2026-11-12g):** Daniel: root decks keep ONLY the main verb pattern (other patterns may get their own decks later). Removed 21: lend (הִפְעִיל), bring (הִפְעִיל), get dressed + see you/goodbye (הִתְפַּעֵל), it opened/closed/broke + is called (נִפְעַל), desert (מִדְבָּר). Kept the approved describing words (מְדֻבָּר, נִשְׁמָע, נִרְאֶה, מְאֹהָב…). Every root deck 51–62. Daniel changed map.js: `waterSlowdown` 0.2, `bushSlowdown` 0.4 (uploaded). Gotcha: VS Code saved an OLD open copy of words.js over the new one at 14:51; restored from the upload. Before editing, compare the project folder with the repo clone.
+- **2026-11-12 (v 2026-11-12h): root decks grouped by verb pattern.** Every root/conj deck has `pattern` ("paal" / "piel"; list `VERB_PATTERNS` in words.js). Dashboard + lobby: Themes → Key concepts → בִּנְיַן פָּעַל → בִּנְיַן פִּעֵל (`premadeSections()`, `sortPremadeDecks()`; lobby = one dropdown group per section). The 3 mixed decks were split: `root-lmd` (learn, פָּעַל) + `root-lmd-teach` (teach, פִּעֵל); `root-spr` (tell, פִּעֵל) + `root-spr-count` (count, book, פָּעַל); `root-hkh-azr` → `root-hkh` (wait, פִּעֵל) + `root-azr` (help, פָּעַל). A saved class pick of the old `root-hkh-azr` falls back to Auto.
+- **2026-11-12 (v 2026-11-12i):** the 6 split decks topped up to 50 questions each (130 new, by 3 Claude helpers; script-checked; Claude replaced 3 borderline לְ-instead-of-אֶת wrong answers and fixed סַבְתָּא). Not teacher-checked; helpers flagged עֲזַרְתֶּם, תַּעַזְרִי/יַעַזְרוּ, סְפֹר!/סִפְרִי!, בָּאֻלְפָּן, הַשָּׁנָה נִלְמַד (looks like נִפְעַל).
+- **2026-11-12 (v 2026-11-12j): Capture the Flag split out so more games can plug in.** `server.js` + `game.js` = shared; `ctf-server.js` + `ctf-game.js` + `ctf-draw.js` (was draw.js) = Capture the Flag. Shared code asks `serverGame()` / `phoneGame()` (see AGENTS.md for the questions). Headless: a scripted game (join, buy, KO, freeze, 3 points, winner, lobby, leave, home) gave IDENTICAL results on the old and new code. Fixed on the way: the loop now starts on `DOMContentLoaded` (it ran one frame before ctf-game.js loaded). Not yet played on 2 real phones.
+- Keep each level's mix of short and long questions (Daniel likes it).
+- **Step 6: logs protect hiders (2026-11-11, v 11-11d), tested (see above).** Headless-tested (17 checks). In `ctf-server.js`: `logOf`, `safeInLog`, `outThroughEnd`, `logAllowsHit`. A hider is safe from stick, hammer, spear, rock, stars (shots fly over; `shot.ownerLog`). Pomegranates still hit hiders. From inside: melee only reaches enemies/box past an open end; spear only if the tip is past an end; throws only within `LOG.throwAngle` (20°, Daniel's pick) of the log's line (`throwFitsLog` in `rules.js`), else a toast + red aim line. Same log = can fight each other.
+- **Same log = see each other:** `p.inLog` is a log number (1, 2, 3…; 0 = not hiding). `myLogNumber()` in `ctf-game.js`. Others in MY log are drawn faint and show on the minimap.
+- **Older iPhones:** `inset: 0` replaced with top/right/bottom/left in `style.css` (a friend's iPhone showed a question with no answers). Quiz answers are built BEFORE the voice starts. Not confirmed yet.
+- **`reportProblem()` (rules.js):** shows "⚠️ Problem: … (v …)" for unexpected errors (at most 3 different ones).
+- **Sturdier voice (`speech.js`):** prefers on-phone voices, cancels only when really talking, 250 ms wait after a real stop, 3 tries per line (chosen voice → phone's voice → normal speed + Hebrew without nikud), and one "🗣️ English/Hebrew voice problem: …" message per language.
+
+## Known problem
+- None right now. (The Pixel voice problem was fixed by restarting the phone, 2026-11-12.)
 
 ## Older items still waiting for Daniel
-- **Nikud of the older 🔁 decks' guttural/irregular forms:** תַּעַבְדִי, אֹכַל, שָׁתְתָה, חִכְּתָה, בָּאת.
 - **Privacy page line about MyMemory:** Daniel should read it.
-- **Nikud still needs Daniel's check:** the 27 pronoun sentences from 2026-11-07 and the new object-pronoun level.
 - **Not yet confirmed:** the iPhone 2× zoom fix, and full screen on Android.
 
 ## Key decisions
+- **Exactly 3 games** (Daniel, 2026-11-12): Capture the Flag (`ctf`), Mt Hermon Racing (`race`, for 1–2+ players, bots planned), and 1 more (not decided). Each plugs into the shared code through `SERVER_GAMES` / `PHONE_GAMES`; no general plugin system needed. The modes screen stays hand-written: turn a "Coming soon" button into the new game's button.
+- **Root decks: one verb pattern per deck**, grouped by pattern. Other patterns (נִפְעַל, הִפְעִיל, הִתְפַּעֵל) get their own decks + a line in `VERB_PATTERNS`.
+- **Claude uploads every tested change without asking** (Daniel: "always upload").
 - **PeerJS with the host as referee.** Free, no game server. If the host leaves, the room closes.
 - **GitHub Pages, uploaded by Claude with git (since 2026-11-10).** See Deploy in `AGENTS.md`.
 - **Supabase for logins and data.** The URL and publishable key in `account.js` are public by design. Never add the secret/service_role key.
@@ -70,6 +153,9 @@
 - MyMemory's free limit is about 5,000 letters a day per computer. Single words translate well; sentences are hit-and-miss. Single English words are lowercased (so "Jerusalem" would need fixing).
 - Sign-in links open in the phone's default browser.
 - Popups that can open over a screen need a z-index above 30.
+- Phones only allow sound (Web Audio and speech) after a FINISHED tap (`pointerup`, `touchend`, `click`), not `pointerdown`. iPhones mute Web Audio with the silent switch unless `navigator.audioSession.type = "playback"` (sound.js).
+- Older iPhones (before iOS 14.5) ignore `inset` in CSS: write `top: 0; right: 0; bottom: 0; left: 0;` instead. Avoid other new CSS/JS too (`??` is the newest thing the game uses, iOS 13.4).
+- Phones keep old saved copies of files: bump `GAME_VERSION` + the `?v=` tags on every upload (see Deploy in AGENTS.md).
 - iPhones ignore `hidden` on `<option>`/`<optgroup>`, so the deck list adds and removes whole groups instead.
 - Headless Edge testing:
   - For a test page, copy `index.html` with a `<base href="file:///…/battle-of-the-golan/">` and an extra `<script>` at the end, run it with `--dump-dom`, and capture the output directly. `Start-Process` redirection came back empty.
@@ -82,3 +168,12 @@
   - Screenshots: call `update()` + `render()` yourself in a `setInterval`, or you only see the first frame.
 - After changing the map, re-run a layout check: nothing within (radius + 25) of a path, (radius + 60) of a river, or inside a base. Only edit the LEFT half in `map.js`; the right half is mirrored.
 - Players inside a log: `myLog` (this phone) / `p.inLog` (from the referee). `resetTimers()` clears `myLog`.
+- `MAP.logs` grows during a game (tree logs). The map's own logs are always the first `MAP_LOG_COUNT`; never sort or reorder `MAP.logs`, because log numbers (`inLog`) are positions in it.
+- Headless tests that jump `server.time` forward must refresh every player's `lastSeen`, or the referee removes them as "silent" (this fooled a test on 2026-11-11). Team balancing can also put a 3rd test player on the wrong team: set `team` by hand.
+- No Python and no Node on this computer. Use PowerShell or Edit for scripted changes.
+- Race gotchas:
+  - A gate needs `segments[gate.index].gate = gate`, or it isn't drawn (this happened once: "bring back the physical gates").
+  - The camera must stay above the highest ground between it and the sled, or the screen goes white past a hilltop.
+  - Steep, short hills bring that back too: keep hills long (90+ segments).
+- Race test driver: `<scratchpad>/t/test.js` (a copy of the game + `test.js` after race-game.js). Hash options: `pre`, `frames`, `steer`, `aim=right|wrong`, `at=<0..1>`, `finish`, `post`, `mode`, `tilt=<deg>`, `sweep=1` (white-screen check down the whole course). Delete the `edge*` profiles before each run, or Edge serves old files.
+- Git Bash heredocs break on some quotes in JS ("unexpected EOF"). Write the code with the Write tool, then splice it in.

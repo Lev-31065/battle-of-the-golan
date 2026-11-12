@@ -1,23 +1,40 @@
 # Next session
 
-## Where we stopped (2026-11-10)
-- Big Capture-the-Flag upgrade, tested by Daniel ("everything is amazing"): always-visible joystick, players bounce off each other, new map look with a 3D feel, a bigger mirrored map, hollow logs to hide in, a river current, two kinds of bushes (both slow you down), speed box every 30 s.
-- **Built + uploaded, NOT tested yet:**
-  - Berries v2: touch each berry to eat it, +10% speed for 8 s each, adding up to +50%. Two huge berry bushes with 12 berries each.
-  - 11 new premade decks: 🔁 לְלַמֵּד + 🌱/🔁 for ק־ר־א, ש־א־ל, ש־מ־ע, ר־א־ה, נ־ת־ן.
-- Everything is uploaded. Claude now uploads with git (see Deploy in `AGENTS.md`).
+## Where we stopped (2026-11-12, night)
+- Live version: **v 2026-11-12p** (shown under Privacy on the home screen). Everything is uploaded.
+- This session: built game 2, **Mt Hermon Racing** 🛷 (details in STATE.md).
+  - One downhill sled ride from Mt Hermon to the Kinneret.
+  - Answer gates: an English word on the sign, Hebrew answers over 3 lanes.
+  - Curves, hills, trees on the path.
+  - Touch or tilt steering, and a view that turns with the sled.
+  - A rustic sled: kippah, tallit-striped scarf, tzitzit, Israeli flag.
+- Daniel on v 12p: **"its great!"**
+- **Not tested yet:**
+  - tilt steering on a real phone
+  - auto-sideways at race start (Android; iPhones get the "turn your phone" card)
+  - 2 phones racing each other
+  - speed on an older phone
 
-## Next steps
-1. Test berries v2 on phones. Is the +50% cap right? Are berries easy enough to touch? Settings: `BERRY` in `rules.js`.
-2. Test the new premade decks and check their nikud (list in `STATE.md`).
-3. Tune by feel if needed: `MAP.riverFlow` (current), `LOG.darkness`, `BUMP.bounceSpeed`.
-4. Design the 2 other game modes (the "coming soon" buttons).
+## Next steps (the race plan: steps 1–2 of 6 done)
+1. Ask how tilt steering and the sideways start felt on the phone. If it's choppy, lower `RACE.drawDistance`.
+2. **Step 3: bots.**
+   - Computer sleds that race too, so 1 player has someone to beat.
+   - They run on the referee (host) phone: they steer along the path, dodge trees and sometimes pick the right lane at gates.
+3. **Step 4: gift boxes.**
+   - Some gates give a mystery gift: 🍌 banana (dropped behind, makes a sled spin) and 🥭 mango (thrown forward at the sled ahead).
+   - Keep the names and art original.
+4. Then step 5 (multiplayer polish) and step 6 (sounds, a podium at the finish).
 
-## Open questions for Daniel
-- What are the other 2 game modes?
-- Should a player hiding in a log be safe from hammers? (Right now they can still be hit.)
-- Is the ground sharp enough on phones? (`GROUND_RES` 1.5; higher = sharper but uses more memory.)
-- When a teacher leaves a class game, should they land on the dashboard instead of the home screen?
-- Should "My decks" also show in normal rooms for a logged-in teacher? Should "📋 Copy & edit" work on the regular levels?
-- MyMemory is OK for simple words. Switch to Google Translate later (needs a billing card)?
-- When to add payments for the teacher dashboard? Domain + Resend for nicer login emails: when?
+## Questions for Daniel
+- How many bots, and should they get easier or harder by level?
+- What's the 3rd game?
+- Older questions:
+  - Levels 18–20 use לְ/אֶל + pronoun: keep, or give it its own level?
+  - More Key concepts decks?
+  - Decks for the other verb patterns?
+
+## Reminders for Claude
+- End every reply with a short "Next steps". Upload every tested change without asking.
+- Before editing, compare the project folder with the repo clone (`diff -q --strip-trailing-cr`): VS Code once saved an old open copy over a new file.
+- The repo clone lives in the session scratchpad; re-clone `Lev-31065/battle-of-the-golan` if it's gone. The race test copy (`<scratchpad>/t/`) is there too; rebuild it from `index.html` + `test.js` if it's gone (see the Gotchas in STATE.md).
+- In PowerShell, don't name a helper `R` or `rd` (built-in shortcuts; `rd` = delete).
