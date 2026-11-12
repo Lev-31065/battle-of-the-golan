@@ -301,6 +301,8 @@ button, select, input { touch-action: manipulation; }
 .team li { padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .team-blue { background: #dbeafe; }
 .team-red { background: #fee2e2; }
+.racers { grid-template-columns: 1fr; }  /* the race: one list, not two teams */
+.team-racers { background: #e0f2fe; }
 .secondary-button {
   width: 100%;
   margin-bottom: 10px;

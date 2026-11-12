@@ -992,6 +992,7 @@ function ctfOnPhase(phase) {
 }
 
 PHONE_GAMES.ctf = {
+  startText: { en: "Start the battle!", he: "מַתְחִילִים אֶת הַקְּרָב!" },
   resetTimers: ctfResetTimers,
   clear: ctfClear,
   onKey: ctfOnKey,

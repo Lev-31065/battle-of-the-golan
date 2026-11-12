@@ -39,6 +39,7 @@ const server = {
 //   handle(p, msg)      a message from a phone that isn't one of the shared ones
 //   update(dt)          one frame while playing
 //   snapshot(snap)      add the game's own things to the snapshot sent to phones
+// And one setting: teams: false = a game without blue and red teams (like the race).
 const SERVER_GAMES = {};
 
 // The game this room is playing.
@@ -119,7 +120,12 @@ function serverAddPlayer(id, name) {
   serverGame().newPlayer(p); // the game's own fields (position, health, items…)
   server.players[id] = p;
   const playerName = p.name;
-  toast(`👋 ${playerName} joined the ${TEAM_NAMES[team]} team`, `${playerName} הִצְטָרֵף/הִצְטָרְפָה ${TEAM_HE[team].toTeam}`);
+  if (serverGame().teams === false) {
+    // A game without teams (like the race): just "joined".
+    toast(`👋 ${playerName} joined the game`, `${playerName} הִצְטָרֵף/הִצְטָרְפָה לַמִּשְׂחָק`);
+  } else {
+    toast(`👋 ${playerName} joined the ${TEAM_NAMES[team]} team`, `${playerName} הִצְטָרֵף/הִצְטָרְפָה ${TEAM_HE[team].toTeam}`);
+  }
 }
 
 function serverRemovePlayer(id) {

@@ -47,6 +47,10 @@ const players = {};
 //   update(dt)           one frame: move my player
 //   render()             draw the screen
 //   updateHud(p)         the game's own buttons and labels on top of the map (p = me)
+// And two settings for the lobby:
+//   teams: false         no blue and red teams: the lobby shows one list of players
+//   startText            the host's Start button: { en: "Start the battle!", he: "…" }
+// (Anything in index.html marked data-modes="ctf race" only shows for those games.)
 const PHONE_GAMES = {};
 
 // The game this room is playing.
@@ -843,17 +847,27 @@ document.addEventListener("pointerdown", (event) => {
 function renderLobby(hostId) {
   document.getElementById("lobby-code").textContent = client.roomCode;
   renderDeckPicker();
-  for (const team of ["blue", "red"]) {
-    const list = document.getElementById(team + "-list");
+  const game = phoneGame();
+  // Show only the parts of the lobby that belong to this game (data-modes in index.html).
+  for (const el of lobbyEl.querySelectorAll("[data-modes]")) {
+    const show = el.dataset.modes.split(" ").includes(client.mode);
+    if (el.hidden === show) el.hidden = !show;
+  }
+  // The player lists: blue and red teams, or one list for a game without teams.
+  const lists = game.teams === false ? [["racer-list", () => true]]
+    : [["blue-list", (p) => p.team === "blue"], ["red-list", (p) => p.team === "red"]];
+  for (const [listId, belongs] of lists) {
+    const list = document.getElementById(listId);
     list.innerHTML = "";
     for (const p of Object.values(players)) {
-      if (p.team !== team) continue;
+      if (!belongs(p)) continue;
       const item = document.createElement("li");
       // textContent (not innerHTML) so a weird nickname can't break the page.
       item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " — you · אֲנִי" : "");
       list.appendChild(item);
     }
   }
+  if (game.startText) setBilingual(startButton, game.startText.en, game.startText.he);
   startButton.hidden = !client.isHost;
   lobbyWait.hidden = client.isHost;
 }

@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-12j">
+  <link rel="stylesheet" href="style.css?v=2026-11-12k">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -240,11 +240,11 @@
         <span class="mode-icon">🚩</span>
         <span class="mode-text"><b><span class="he" lang="he" dir="rtl">תְּפִיסַת הַדֶּגֶל</span><span class="en">Capture the Flag</span></b><small><span class="he" lang="he" dir="rtl">שְׁתֵּי קְבוּצוֹת, דֶּגֶל אֶחָד לְכָל קְבוּצָה</span><span class="en">Two teams, one flag each</span></small></span>
       </button>
-      <!-- Two more games are coming. They can't be picked yet. -->
-      <button class="mode-button" type="button" disabled>
-        <span class="mode-icon">🔒</span>
-        <span class="mode-text"><b><span class="he" lang="he" dir="rtl">בְּקָרוֹב</span><span class="en">Coming soon</span></b><small><span class="he" lang="he" dir="rtl">מִשְׂחָק חָדָשׁ בַּדֶּרֶךְ</span><span class="en">A new game is on the way</span></small></span>
+      <button class="mode-button" data-mode="race" type="button">
+        <span class="mode-icon">🛷</span>
+        <span class="mode-text"><b><span class="he" lang="he" dir="rtl">מֵרוֹץ הַחֶרְמוֹן</span><span class="en">Mt Hermon Racing</span></b><small><span class="he" lang="he" dir="rtl">מֵרוֹץ מִזְחָלוֹת עַל הַשֶּׁלֶג, גַּם לְבַד</span><span class="en">A sled race on the snow, even alone</span></small></span>
       </button>
+      <!-- One more game is coming. It can't be picked yet. -->
       <button class="mode-button" type="button" disabled>
         <span class="mode-icon">🔒</span>
         <span class="mode-text"><b><span class="he" lang="he" dir="rtl">בְּקָרוֹב</span><span class="en">Coming soon</span></b><small><span class="he" lang="he" dir="rtl">מִשְׂחָק חָדָשׁ בַּדֶּרֶךְ</span><span class="en">A new game is on the way</span></small></span>
@@ -273,14 +273,26 @@
         <p id="deck-progress" class="deck-progress"></p>
       </div>
       <button id="invite-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">שִׁתּוּף קִשּׁוּר הַזְמָנָה</span><span class="en">📋 Share invite link</span></button>
-      <div class="teams">
+      <!-- data-modes = which games show this part (game.js hides it for the others). -->
+      <div class="teams" data-modes="ctf">
         <div class="team team-blue"><h3><span class="he" lang="he" dir="rtl">כָּחֹל</span><span class="en">🔵 Blue</span></h3><ul id="blue-list"></ul></div>
         <div class="team team-red"><h3><span class="he" lang="he" dir="rtl">אָדֹם</span><span class="en">🔴 Red</span></h3><ul id="red-list"></ul></div>
       </div>
-      <button id="switch-team" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
+      <!-- The race has no teams: one list of everyone racing. -->
+      <div class="teams racers" data-modes="race" hidden>
+        <div class="team team-racers"><h3><span class="he" lang="he" dir="rtl">הַמִּתְחָרִים</span><span class="en">🛷 Racers</span></h3><ul id="racer-list"></ul></div>
+      </div>
+      <button id="switch-team" class="secondary-button" type="button" data-modes="ctf"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
       <button id="start-button" class="big-button" type="button" hidden><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span><span class="en">Start the battle!</span></button>
       <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל…</span><span class="en">Waiting for the host to start…</span></p>
-      <details class="how-to">
+      <details class="how-to" data-modes="race" hidden>
+        <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
+        <p><span class="he" lang="he" dir="rtl">הַמִּזְחֶלֶת נוֹסַעַת לְבַד. מַחֲזִיקִים אֶת <b>הַצַּד הַשְּׂמָאלִי</b> אוֹ <b>הַיְּמָנִי</b> שֶׁל הַמָּסָךְ כְּדֵי לִפְנוֹת.</span><span class="en">🛷 Your sled goes by itself. Hold the <b>left</b> or <b>right</b> side of the screen to steer.</span></p>
+        <p><span class="he" lang="he" dir="rtl">נִשְׁאָרִים בֵּין הַקַּוִּים הָאֲדֻמִּים: בַּשֶּׁלֶג הָעָמֹק נוֹסְעִים לְאַט, וְאַל תִּתְנַגְּשׁוּ בָּעֵצִים!</span><span class="en">❄️ Stay between the red lines: deep snow is slow, and don't crash into the trees!</span></p>
+        <p><span class="he" lang="he" dir="rtl">בַּסִּיבוּבִים מַחֲזִיקִים פְּנִימָה, אַחֶרֶת זוֹרְקִים אֶתְכֶם הַחוּצָה.</span><span class="en">↪️ In the curves, steer to the inside or you'll slide out.</span></p>
+        <p><span class="he" lang="he" dir="rtl">מִי שֶׁמְּסַיֵּם רִאשׁוֹן <b>3 הַקָּפוֹת</b> מְנַצֵּחַ!</span><span class="en">🏁 First to finish <b>3 laps</b> wins!</span></p>
+      </details>
+      <details class="how-to" data-modes="ctf">
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
         <p><span class="he" lang="he" dir="rtl">גּוֹרְרִים אֶת הָאֶצְבַּע <b>בַּצַּד הַשְּׂמָאלִי</b> שֶׁל הַמָּסָךְ כְּדֵי לָלֶכֶת.</span><span class="en">🕹️ Drag on the <b>left side</b> of the screen to walk.</span></p>
         <p><span class="he" lang="he" dir="rtl">הוֹלְכִים <b>לַמּוֹכֵר</b> וְעוֹנִים עַל שְׁאֵלוֹת בְּעִבְרִית כְּדֵי לִקְנוֹת <b>נֶשֶׁק</b>. לוֹחֲצִים עָלָיו בְּסַרְגֵּל הַכֵּלִים כְּדֵי לְהַחְזִיק אוֹתוֹ.</span><span class="en">🛒 Visit your <b>shopkeeper</b> and answer Hebrew questions to buy <b>weapons</b>. Tap one in your toolbar to hold it.</span></p>
@@ -349,7 +361,7 @@
       <h2 id="winner-title"></h2>
       <p id="winner-score" class="panel-sub"></p>
       <!-- After a few seconds, everyone goes back to the teams screen by themselves (server.js). -->
-      <p class="panel-sub"><span class="he" lang="he" dir="rtl">עוֹד רֶגַע חוֹזְרִים לַקְּבוּצוֹת…</span><span class="en">Back to the teams in a moment…</span></p>
+      <p class="panel-sub"><span class="he" lang="he" dir="rtl">עוֹד רֶגַע חוֹזְרִים לְחֶדֶר הַהַמְתָּנָה…</span><span class="en">Back to the lobby in a moment…</span></p>
     </div>
   </div>
 
@@ -374,21 +386,25 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-12j"></script>
-  <script src="rules.js?v=2026-11-12j"></script>
-  <script src="sound.js?v=2026-11-12j"></script>
-  <script src="speech.js?v=2026-11-12j"></script>
-  <script src="levels-b.js?v=2026-11-12j"></script>
-  <script src="words.js?v=2026-11-12j"></script>
-  <script src="progress.js?v=2026-11-12j"></script>
-  <script src="account.js?v=2026-11-12j"></script>
-  <script src="decks.js?v=2026-11-12j"></script>
-  <script src="quiz.js?v=2026-11-12j"></script>
-  <script src="ctf-draw.js?v=2026-11-12j"></script>
-  <script src="network.js?v=2026-11-12j"></script>
-  <script src="server.js?v=2026-11-12j"></script>
-  <script src="ctf-server.js?v=2026-11-12j"></script>
-  <script src="game.js?v=2026-11-12j"></script>
-  <script src="ctf-game.js?v=2026-11-12j"></script>
+  <script src="map.js?v=2026-11-12k"></script>
+  <script src="rules.js?v=2026-11-12k"></script>
+  <script src="sound.js?v=2026-11-12k"></script>
+  <script src="speech.js?v=2026-11-12k"></script>
+  <script src="levels-b.js?v=2026-11-12k"></script>
+  <script src="words.js?v=2026-11-12k"></script>
+  <script src="progress.js?v=2026-11-12k"></script>
+  <script src="account.js?v=2026-11-12k"></script>
+  <script src="decks.js?v=2026-11-12k"></script>
+  <script src="quiz.js?v=2026-11-12k"></script>
+  <script src="ctf-draw.js?v=2026-11-12k"></script>
+  <script src="race-track.js?v=2026-11-12k"></script>
+  <script src="race-draw.js?v=2026-11-12k"></script>
+  <script src="network.js?v=2026-11-12k"></script>
+  <script src="server.js?v=2026-11-12k"></script>
+  <script src="ctf-server.js?v=2026-11-12k"></script>
+  <script src="race-server.js?v=2026-11-12k"></script>
+  <script src="game.js?v=2026-11-12k"></script>
+  <script src="ctf-game.js?v=2026-11-12k"></script>
+  <script src="race-game.js?v=2026-11-12k"></script>
 </body>
 </html>
