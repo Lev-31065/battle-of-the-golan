@@ -47,9 +47,63 @@ for (const type of ["pointerup", "pointercancel"]) {
   window.addEventListener(type, (event) => steerFingers.delete(event.pointerId));
 }
 
+
+// ---------- Steering by tilting the phone ----------
+// The 📱 button switches between "touch" (hold the left or right half of the screen) and
+// "tilt" (tip the phone left or right, like a steering wheel). The choice is remembered.
+// iPhones ask "Allow motion?" the first time (they only allow asking right after a tap).
+let steerByTilt = false;
+let tiltSteer = 0; // -1 … 1, from the phone's tilt (0 = held level)
+try { steerByTilt = localStorage.getItem("golan-race-steer") === "tilt"; } catch {}
+const tiltButton = document.getElementById("tilt-button");
+
+// The screen's angle: 0 = upright, 90 or 270 (-90) = sideways.
+function screenAngle() {
+  const angle = screen.orientation && typeof screen.orientation.angle === "number" ? screen.orientation.angle : Number(window.orientation) || 0;
+  return ((angle % 360) + 360) % 360;
+}
+window.addEventListener("deviceorientation", (event) => {
+  if (event.beta === null || event.gamma === null) return;
+  // Upright, tipping left/right is "gamma". Sideways, it's "beta" (and which way round
+  // depends on which side the phone was turned to).
+  const angle = screenAngle();
+  const degrees = angle === 90 ? event.beta : angle === 270 ? -event.beta : angle === 180 ? -event.gamma : event.gamma;
+  // A little tip does nothing (so holding it "about level" goes straight); full turn at RACE.tiltFull degrees.
+  const dead = RACE.tiltDeadZone;
+  const amount = Math.abs(degrees) < dead ? 0 : (Math.abs(degrees) - dead) / (RACE.tiltFull - dead);
+  tiltSteer = Math.sign(degrees) * Math.min(1, amount);
+});
+
+function setSteerByTilt(on) {
+  steerByTilt = on;
+  tiltSteer = 0;
+  try { localStorage.setItem("golan-race-steer", on ? "tilt" : "touch"); } catch {}
+  tiltButton.textContent = on ? "📱" : "👆";
+  if (on) showToast("📱 Steering by tilting the phone", "📱 הִיגּוּי בְּהַטָּיַת הַטֵּלֵפוֹן");
+  else showToast("👆 Steering by touch", "👆 הִיגּוּי בִּנְגִיעָה");
+}
+tiltButton.textContent = steerByTilt ? "📱" : "👆";
+tiltButton.addEventListener("click", () => {
+  if (steerByTilt) { setSteerByTilt(false); return; }
+  // iPhones: ask for permission first.
+  const ask = window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission;
+  if (!ask) { setSteerByTilt(true); return; }
+  DeviceOrientationEvent.requestPermission().then((answer) => {
+    if (answer === "granted") setSteerByTilt(true);
+    else showToast("The phone said no to motion, so it's touch steering", "הַטֵּלֵפוֹן לֹא הִרְשָׁה, אָז מְהַגִּים בִּנְגִיעָה");
+  }).catch(() => showToast("Tilt steering isn't available here", "הִיגּוּי בְּהַטָּיָה לֹא זָמִין כָּאן"));
+});
+// iPhones forget the permission when the page reloads: ask again on the first tap.
+let tiltAsked = false;
+window.addEventListener("pointerdown", () => {
+  if (!steerByTilt || tiltAsked || !window.DeviceOrientationEvent || !DeviceOrientationEvent.requestPermission) return;
+  tiltAsked = true;
+  DeviceOrientationEvent.requestPermission().catch(() => {});
+});
+
 // -1 = full left, 0 = straight, 1 = full right.
 function steerInput() {
-  let steer = keyboardDirection().x;
+  let steer = keyboardDirection().x + (steerByTilt ? tiltSteer : 0);
   for (const side of steerFingers.values()) steer += side;
   return Math.max(-1, Math.min(1, steer));
 }
@@ -97,7 +151,8 @@ function raceUpdate(dt) {
     else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
 
     // Crashing into a tree, a snowman, a rock or a cabin.
-    if (inDeepSnow && gameTime - crashAt > 0.6) {
+    // (Trees and rocks stand beside the path, and a few right on it, so watch out!)
+    if (gameTime - crashAt > 0.6) {
       for (const sprite of segment.sprites) {
         const size = SPRITE_SIZES[sprite.type];
         if (!size.solid) continue;
@@ -105,7 +160,7 @@ function raceUpdate(dt) {
         if (Math.abs(me.x - sprite.offset) < reach) {
           mySpeed = Math.min(mySpeed, RACE.maxSpeed * RACE.crashSpeed);
           crashAt = gameTime;
-          me.x -= Math.sign(me.x) * 0.15; // bounce back toward the track
+          me.x += (me.x >= sprite.offset ? 1 : -1) * 0.15; // bounce off, away from it
           playSound("bump");
           break;
         }
@@ -270,12 +325,15 @@ function raceRender() {
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   const viewTurn = racing ? mySteer * RACE.maxTurn * RACE.cameraTurn : 0;
   drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate });
+  // Snow falling up high (it stops lower down, where the snow has melted).
+  drawSnowfall(ctx, w, h, gameTime, findSegment(myY).snow, racing ? mySpeed / RACE.maxSpeed : 0.5, -viewTurn * w);
   if (!racing) return;
   const boosting = gameTime < boostUntil;
   if (boosting) drawBoostLines(ctx, w, h, gameTime);
 
   // My sled, in the middle, where the track is under the camera. It bumps along in deep snow.
-  const size = SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2;
+  // (On a sideways phone the screen is wide but short, so the sled is kept from getting too big.)
+  const size = Math.min(SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2, h * 0.3);
   const fraction = mySpeed / RACE.maxSpeed;
   const bounce = inDeepSnow ? Math.sin(gameTime * 30) * size * 0.025 : Math.sin(gameTime * 18) * size * 0.006 * fraction;
   const bottom = h * (RACE.horizon + 0.5) + bounce;
@@ -307,6 +365,7 @@ function raceRender() {
     finishedPlace: myFinishedPlace,
     deepSnow: inDeepSnow,
     showArrows: !started || sinceStart < 4,
+    tilt: steerByTilt,
     gate: gateQuestion ? {
       english: gateQuestion.entry.english, choices: gateQuestion.choices, myLane: laneAt(me.x),
       // Fully shown until the gate is 40 segments away, then fading to almost nothing at 12.
@@ -405,6 +464,7 @@ function raceOnPhase(phase) {
 function raceUpdateHud(p, playing) {
   // The race draws its own info on the canvas, and steers without the joystick.
   hudEl.hidden = true;
+  tiltButton.hidden = !playing; // 👆 / 📱: touch or tilt steering
   joystickBase.hidden = true;
 }
 

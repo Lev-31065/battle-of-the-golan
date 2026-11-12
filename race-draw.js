@@ -254,6 +254,18 @@ function drawSegment(ctx, w, seg, mist) {
   polygon(ctx, a.x - a.w - rimA, a.y, a.x + a.w + rimA, a.y, b.x + b.w + rimB, b.y, b.x - b.w - rimB, b.y, fade(mixRgb(C.pathEdge, path, seg.sand)));
   polygon(ctx, a.x - a.w, a.y, a.x + a.w, a.y, b.x + b.w, b.y, b.x - b.w, b.y, fade(path));
 
+  // Grooves in the snow from sleds that went down before you: two wobbly pairs of runner tracks.
+  if (!seg.line && seg.sand < 0.5 && a.unit > 3) {
+    const groove = fade(mixRgb(path, C.pathEdge, 0.45));
+    const lineA = Math.max(0.6, a.unit / 70), lineB = Math.max(0.6, b.unit / 70);
+    for (const k of [-0.5, -0.36, 0.3, 0.44]) {
+      const offA = k * Math.min(seg.width, 1.2) + 0.1 * Math.sin(seg.index * 0.045 + k * 4);
+      const offB = k * Math.min(seg.width2, 1.2) + 0.1 * Math.sin((seg.index + 1) * 0.045 + k * 4);
+      const xA = a.x + offA * a.unit, xB = b.x + offB * b.unit;
+      polygon(ctx, xA - lineA, a.y, xA + lineA, a.y, xB + lineB, b.y, xB - lineB, b.y, groove);
+    }
+  }
+
   if (seg.line) {
     // The start and finish lines: black and white squares, two rows.
     const columns = 14;
@@ -299,6 +311,7 @@ function spritePicture(type) {
     oak: () => paintOak(g, W, H, false),
     oakSnow: () => paintOak(g, W, H, true),
     olive: () => paintOlive(g, W, H),
+    almond: () => paintAlmond(g, W, H),
     palm: () => paintPalm(g, W, H),
     rock: () => paintRock(g, W, H, false),
     rockSnow: () => paintRock(g, W, H, true),
@@ -323,42 +336,84 @@ function blob(g, W, H, circles, color) {
   }
 }
 
+// A leafy crown lit by the sun (up on the right): a dark shady layer underneath, the main
+// color on top of it, then bright sunlit bits, then little clumps of leaves for texture.
+function leafyCrown(g, W, H, circles, dark, mid, light, seed) {
+  blob(g, W, H, circles.map(([x, y, r]) => [x - 0.01, y + 0.02, r]), dark);
+  blob(g, W, H, circles.map(([x, y, r]) => [x + 0.02, y - 0.02, r * 0.82]), mid);
+  blob(g, W, H, circles.map(([x, y, r]) => [x + 0.05, y - 0.05, r * 0.42]), light);
+  for (let i = 0; i < 26; i++) {
+    const [x, y, r] = circles[i % circles.length];
+    const angle = hash(i, seed) * Math.PI * 2, reach = Math.sqrt(hash(seed, i)) * r * 0.9;
+    const px = x + Math.cos(angle) * reach * Math.min(W, H) / W, py = y + Math.sin(angle) * reach * Math.min(W, H) / H;
+    blob(g, W, H, [[px, py, r * 0.16]], Math.sin(angle) < -0.2 || Math.cos(angle) > 0.4 ? light : dark);
+  }
+}
+
+// A rough little trunk, darker on the shady (left) side.
+function trunk(g, W, H, points, color) {
+  g.fillStyle = color;
+  g.beginPath();
+  points.forEach(([x, y], i) => (i === 0 ? g.moveTo(x * W, y * H) : g.lineTo(x * W, y * H)));
+  g.fill();
+  g.fillStyle = "rgba(0, 0, 0, 0.25)";
+  g.fillRect(points[0][0] * W, H * 0.6, W * 0.03, H * 0.4);
+}
+
 function paintBush(g, W, H, snowy) {
-  const body = [[0.25, 0.68, 0.3], [0.5, 0.55, 0.38], [0.75, 0.68, 0.3], [0.5, 0.75, 0.32]];
-  blob(g, W, H, body, "#3f5a2c");
-  blob(g, W, H, body.map(([x, y, r]) => [x + 0.04, y - 0.03, r * 0.8]), "#56753a");
+  const body = [[0.25, 0.7, 0.28], [0.5, 0.58, 0.36], [0.75, 0.7, 0.28], [0.5, 0.78, 0.3]];
+  leafyCrown(g, W, H, body, "#2f4721", "#4a6a31", "#6f8f45", 3);
   if (snowy) {
-    // A thick cap of snow on top.
-    blob(g, W, H, [[0.3, 0.45, 0.2], [0.52, 0.32, 0.25], [0.72, 0.46, 0.19]], "#f4f8fc");
-    blob(g, W, H, [[0.42, 0.36, 0.12], [0.62, 0.38, 0.1]], "#ffffff");
+    // A thick cap of snow on top, with a blue shadow under its edge.
+    blob(g, W, H, [[0.3, 0.5, 0.2], [0.52, 0.37, 0.25], [0.72, 0.5, 0.19]], "#c9d8e8");
+    blob(g, W, H, [[0.31, 0.46, 0.19], [0.53, 0.33, 0.24], [0.71, 0.46, 0.18]], "#f4f8fc");
+    blob(g, W, H, [[0.45, 0.3, 0.12], [0.64, 0.38, 0.09]], "#ffffff");
   }
 }
 
 // A round oak tree (Mt Hermon has oaks, not pines).
 function paintOak(g, W, H, snowy) {
-  g.fillStyle = "#5b3f26";
-  g.beginPath();
-  g.moveTo(W * 0.45, H); g.lineTo(W * 0.47, H * 0.55); g.lineTo(W * 0.38, H * 0.42);
-  g.lineTo(W * 0.42, H * 0.4); g.lineTo(W * 0.5, H * 0.5); g.lineTo(W * 0.6, H * 0.38);
-  g.lineTo(W * 0.63, H * 0.41); g.lineTo(W * 0.54, H * 0.56); g.lineTo(W * 0.56, H);
-  g.fill();
-  const crown = [[0.3, 0.38, 0.2], [0.5, 0.26, 0.26], [0.72, 0.38, 0.2], [0.42, 0.45, 0.18], [0.62, 0.47, 0.17]];
-  blob(g, W, H, crown, "#35502a");
-  blob(g, W, H, crown.map(([x, y, r]) => [x + 0.03, y - 0.03, r * 0.75]), "#4c6c35");
-  if (snowy) blob(g, W, H, [[0.32, 0.27, 0.12], [0.5, 0.13, 0.15], [0.7, 0.27, 0.12]], "#f4f8fc");
+  trunk(g, W, H, [[0.45, 1], [0.47, 0.55], [0.36, 0.42], [0.41, 0.39], [0.5, 0.49], [0.61, 0.37], [0.65, 0.4], [0.55, 0.56], [0.57, 1]], "#5b3f26");
+  const crown = [[0.28, 0.4, 0.19], [0.5, 0.26, 0.25], [0.73, 0.39, 0.19], [0.4, 0.47, 0.17], [0.62, 0.48, 0.17], [0.5, 0.4, 0.2]];
+  leafyCrown(g, W, H, crown, "#26391d", "#3d5a2b", "#5f7f3c", 7);
+  if (snowy) {
+    blob(g, W, H, [[0.3, 0.3, 0.12], [0.5, 0.16, 0.15], [0.71, 0.3, 0.12]], "#cbd9e8");
+    blob(g, W, H, [[0.31, 0.27, 0.11], [0.51, 0.13, 0.14], [0.71, 0.27, 0.11]], "#f6f9fc");
+  }
 }
 
-// An olive tree: silvery green, with a twisty trunk.
+// An olive tree: silvery green, with a twisty, gnarled trunk.
 function paintOlive(g, W, H) {
-  g.strokeStyle = "#6b5a45"; g.lineCap = "round";
-  g.lineWidth = W * 0.09;
-  g.beginPath(); g.moveTo(W * 0.5, H); g.quadraticCurveTo(W * 0.38, H * 0.75, W * 0.5, H * 0.5); g.stroke();
-  g.lineWidth = W * 0.05;
+  g.strokeStyle = "#5e4e3b"; g.lineCap = "round";
+  g.lineWidth = W * 0.1;
+  g.beginPath(); g.moveTo(W * 0.52, H); g.quadraticCurveTo(W * 0.36, H * 0.75, W * 0.5, H * 0.5); g.stroke();
+  g.strokeStyle = "#7a6650"; g.lineWidth = W * 0.035;
+  g.beginPath(); g.moveTo(W * 0.56, H); g.quadraticCurveTo(W * 0.42, H * 0.75, W * 0.54, H * 0.52); g.stroke();
+  g.strokeStyle = "#5e4e3b"; g.lineWidth = W * 0.05;
   g.beginPath(); g.moveTo(W * 0.48, H * 0.6); g.lineTo(W * 0.28, H * 0.45); g.stroke();
   g.beginPath(); g.moveTo(W * 0.5, H * 0.55); g.lineTo(W * 0.72, H * 0.42); g.stroke();
-  const crown = [[0.25, 0.4, 0.18], [0.45, 0.3, 0.22], [0.68, 0.35, 0.2], [0.55, 0.45, 0.17], [0.35, 0.48, 0.14]];
-  blob(g, W, H, crown, "#6f7f55");
-  blob(g, W, H, crown.map(([x, y, r]) => [x + 0.03, y - 0.03, r * 0.7]), "#8c9c6f");
+  const crown = [[0.25, 0.4, 0.17], [0.45, 0.3, 0.21], [0.68, 0.35, 0.19], [0.55, 0.45, 0.16], [0.35, 0.48, 0.13]];
+  leafyCrown(g, W, H, crown, "#56653f", "#76875a", "#a3b38a", 11);
+}
+
+// An almond tree in blossom: a dark twiggy tree covered in white-pink flowers
+// (almond trees flower in the middle of winter in Israel, around Tu BiShvat).
+function paintAlmond(g, W, H) {
+  g.strokeStyle = "#4a3426"; g.lineCap = "round";
+  g.lineWidth = W * 0.07;
+  g.beginPath(); g.moveTo(W * 0.5, H); g.lineTo(W * 0.5, H * 0.55); g.stroke();
+  g.lineWidth = W * 0.035;
+  for (const [x, y] of [[0.22, 0.3], [0.38, 0.18], [0.62, 0.16], [0.8, 0.32], [0.5, 0.12]]) {
+    g.beginPath(); g.moveTo(W * 0.5, H * 0.6); g.quadraticCurveTo(W * (0.5 + (x - 0.5) * 0.4), H * 0.4, W * x, H * y); g.stroke();
+  }
+  const crown = [[0.27, 0.36, 0.17], [0.45, 0.25, 0.2], [0.65, 0.27, 0.19], [0.75, 0.4, 0.14], [0.5, 0.42, 0.17]];
+  leafyCrown(g, W, H, crown, "#e9b9c8", "#f6d6df", "#fff4f7", 13);
+  // A few darker pink buds.
+  for (let i = 0; i < 18; i++) {
+    const [x, y, r] = crown[i % crown.length];
+    const angle = hash(i, 17) * Math.PI * 2, reach = hash(17, i) * r * 0.9;
+    blob(g, W, H, [[x + Math.cos(angle) * reach, y + Math.sin(angle) * reach, 0.018]], "#d9879f");
+  }
 }
 
 function paintPalm(g, W, H) {
@@ -383,6 +438,10 @@ function paintRock(g, W, H, snowy) {
   g.lineTo(W * 0.94, H * 0.5); g.lineTo(W, H); g.closePath(); g.fill();
   g.fillStyle = "#57534e";
   g.beginPath(); g.moveTo(W * 0.3, H * 0.15); g.lineTo(W * 0.66, H * 0.12); g.lineTo(W * 0.6, H * 0.6); g.lineTo(W * 0.2, H * 0.55); g.fill();
+  g.fillStyle = "#6e6a64"; // the sunny side (the sun is on the right)
+  g.beginPath(); g.moveTo(W * 0.66, H * 0.12); g.lineTo(W * 0.94, H * 0.5); g.lineTo(W, H); g.lineTo(W * 0.62, H); g.lineTo(W * 0.6, H * 0.6); g.fill();
+  g.fillStyle = "rgba(0, 0, 0, 0.3)"; // little holes in the basalt
+  for (let i = 0; i < 14; i++) { g.beginPath(); g.arc(W * (0.12 + hash(i, 5) * 0.76), H * (0.3 + hash(5, i) * 0.6), W * 0.012, 0, Math.PI * 2); g.fill(); }
   if (snowy) {
     g.fillStyle = "#f4f8fc";
     g.beginPath(); g.moveTo(W * 0.1, H * 0.45); g.lineTo(W * 0.3, H * 0.12); g.lineTo(W * 0.66, H * 0.09); g.lineTo(W * 0.9, H * 0.45);
@@ -487,7 +546,12 @@ function drawRaceScene(ctx, w, h, scene) {
   const mySpot = cameraZ + raceCamera.playerZ;
   const mySegment = findSegment(mySpot);
   const height = lerp(mySegment.p1.world.y, mySegment.p2.world.y, clamp01((mySpot - mySegment.p1.world.z) / L));
-  const cameraY = height + RACE.cameraHeight;
+  // …but never inside a hill: going down the far side of a hilltop, the top can be right
+  // behind my sled, higher than me. So the camera also stays above the highest ground
+  // between it and my sled (otherwise the snow right in front of the lens fills the screen).
+  let highest = -Infinity;
+  for (let i = base.index; i <= mySegment.index; i++) highest = Math.max(highest, segments[i].p1.world.y, segments[i].p2.world.y);
+  const cameraY = Math.max(height + RACE.cameraHeight, highest + RACE.cameraHeight * 0.75);
 
   // Turning the view: when my sled points right, the camera swings round behind it, so
   // everything far away slides LEFT across the screen (the world turns around me), while
@@ -552,6 +616,11 @@ function drawRaceScene(ctx, w, h, scene) {
       if (width < 0.8) continue;
       const sx = a.x + sprite.offset * a.unit;
       if (sx + width / 2 < 0 || sx - width / 2 > w) continue;
+      if (size.solid && width > 3) {
+        // A soft blue shadow on the ground (the sun is up on the right, so it falls a bit to the left).
+        ctx.fillStyle = "rgba(40, 60, 100, 0.2)";
+        ctx.beginPath(); ctx.ellipse(sx - width * 0.15, a.y, width * 0.55, Math.max(1, width * 0.1), 0, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.drawImage(spritePicture(sprite.type), sx - width / 2, a.y - tall, width, tall);
     }
     if (seg.line === "start") drawBanner(ctx, w, seg, "מֵרוֹץ הַחֶרְמוֹן · MT HERMON RACING", "#1d4ed8");
@@ -972,8 +1041,12 @@ function drawRaceHud(ctx, w, h, info) {
   if (info.showArrows) {
     // Where to tap to steer.
     ctx.globalAlpha = 0.55;
-    drawBilingualText(ctx, "◀ שְׂמֹאלָה", "Hold to steer left", w * 0.2, h * 0.66, size * 0.9);
-    drawBilingualText(ctx, "יָמִינָה ▶", "Hold to steer right", w * 0.8, h * 0.66, size * 0.9);
+    if (info.tilt) {
+      drawBilingualText(ctx, "📱 הַטּוּ אֶת הַטֵּלֵפוֹן יָמִינָה וּשְׂמֹאלָה", "Tilt the phone to steer", w / 2, h * 0.9, size * 0.8);
+    } else {
+      drawBilingualText(ctx, "◀ שְׂמֹאלָה", "Hold to steer left", w * 0.2, h * 0.66, size * 0.9);
+      drawBilingualText(ctx, "יָמִינָה ▶", "Hold to steer right", w * 0.8, h * 0.66, size * 0.9);
+    }
     ctx.globalAlpha = 1;
   }
   if (info.countdown !== null) {
@@ -1028,4 +1101,22 @@ function drawBoostLines(ctx, w, h, time) {
     ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
     ctx.stroke();
   }
+}
+
+// Snowflakes drifting down past the camera, up high on the mountain. amount = 0 (none) … 1 (the top).
+// speed = how fast I'm going (0 … 1): the flakes rush toward me a bit when I'm fast.
+// Each flake's path comes from `hash`, so nothing has to be stored.
+function drawSnowfall(ctx, w, h, time, amount, speed, pan) {
+  if (amount <= 0.02) return;
+  ctx.fillStyle = "#ffffff";
+  const count = Math.round(70 * amount);
+  for (let i = 0; i < count; i++) {
+    const fall = 0.06 + hash(i, 21) * 0.08 + speed * 0.12;   // how fast it falls (screens per second)
+    const t = (time * fall + hash(i, 22)) % 1;               // 0 = top of the screen, 1 = bottom
+    const size = 1 + hash(i, 23) * 2.5 * (0.6 + t);          // near the bottom = closer = bigger
+    const x = ((hash(i, 24) * w + Math.sin(time * (0.8 + hash(i, 25)) + i) * 18 + pan * 0.4) % w + w) % w;
+    ctx.globalAlpha = 0.85 * amount * Math.min(1, t * 6);
+    ctx.beginPath(); ctx.arc(x, t * h, size, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }

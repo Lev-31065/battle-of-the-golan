@@ -478,6 +478,7 @@ button, select, input { touch-action: manipulation; }
 .voice-button { right: 48px; }
 .leave-button { right: 86px; }
 .fullscreen-button { right: 124px; }
+.tilt-button { right: 162px; } /* (the race only) */
 
 /* "Leave the game?" popup */
 .leave-panel { text-align: center; }

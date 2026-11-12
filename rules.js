@@ -332,7 +332,10 @@ const RACE = {
   turnSpeed: 4,           // how quickly the sled swings round when you steer (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
   cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
-  curvePush: 0.1,         // how hard curves push you toward the outside
+  tiltFull: 25,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way
+  tiltDeadZone: 3,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
+  treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
+  curvePush: 0.1,        // how hard curves push you toward the outside
   maxSide: 4,         // the farthest from the middle any sled can be (the referee checks this)
   crashSpeed: 0.2,        // hitting a tree, bush or rock drops you to 20% speed
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
@@ -359,7 +362,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12o";
+const GAME_VERSION = "2026-11-12p";
 
 // ---------- Helpers ----------
 

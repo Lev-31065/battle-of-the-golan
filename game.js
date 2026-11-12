@@ -108,13 +108,26 @@ function exitFullscreen() {
 // ---------- Sideways (landscape) ----------
 // Android lets a full-screen page turn itself sideways (screen.orientation.lock). iPhones
 // don't allow it, so there an upright phone gets a big "turn your phone sideways" card.
+// (Not full screen any more? It asks for full screen first, then turns sideways.)
 function lockSideways() {
   try {
-    if (!isFullscreen() || !screen.orientation || !screen.orientation.lock) return;
-    const result = screen.orientation.lock("landscape");
-    if (result && result.catch) result.catch(() => {}); // the phone said no: the card will show
+    if (!screen.orientation || !screen.orientation.lock) return;
+    const lock = () => {
+      const result = screen.orientation.lock("landscape");
+      if (result && result.catch) result.catch(() => {}); // the phone said no: the card will show
+    };
+    if (isFullscreen()) { lock(); return; }
+    if (!canFullscreen) return;
+    const result = (page.requestFullscreen || page.webkitRequestFullscreen).call(page);
+    if (result && result.then) result.then(lock, () => {});
   } catch {}
 }
+// Phones only allow this right after a tap. So any tap while the game is on and the phone
+// is still upright tries again, and so does the host's tap on "Start".
+window.addEventListener("pointerdown", (event) => {
+  if (window.innerHeight <= window.innerWidth) return;
+  if (client.phase === "playing" || event.target.closest("#start-button")) lockSideways();
+}, true);
 function unlockSideways() {
   try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
 }
@@ -1045,6 +1058,10 @@ function updateHud(p) {
     setBilingual(levelTag, `Level ${deck.number}`, `רָמָה ${deck.numberHe}`);
     // The room code, so you can tell a friend who closed the game by accident.
     setBilingual(roomTag, `Room ${client.roomCode}`, `חֶדֶר ${client.roomCode}`);
+  }
+  // Buttons that belong to one game only (data-game-button="race") hide in the others.
+  for (const button of document.querySelectorAll("[data-game-button]")) {
+    if (button.dataset.gameButton !== client.mode) button.hidden = true;
   }
   phoneGame().updateHud(p, Boolean(playing)); // the game's own buttons and labels
 }

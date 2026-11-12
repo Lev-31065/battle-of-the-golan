@@ -33,6 +33,7 @@ const SPRITE_SIZES = {
   oak:      { w: 1400, h: 1500, solid: true },
   oakSnow:  { w: 1400, h: 1500, solid: true },
   olive:    { w: 1300, h: 1100, solid: true },
+  almond:   { w: 1300, h: 1300, solid: true }, // an almond tree in blossom (they flower in winter, around Tu BiShvat)
   palm:     { w: 1000, h: 2300, solid: true },
   rock:     { w: 700,  h: 400,  solid: true },
   rockSnow: { w: 700,  h: 430,  solid: true },
@@ -162,10 +163,10 @@ function trackProgress(z) {
   // Each hill is a smooth bump up (or a dip down), kept away from the gates, the start and the finish.
   const bump = new Array(segments.length + 1).fill(0);
   for (let at = 130; at < finishIndex - 260;) {
-    const length = 50 + Math.floor(random() * 70);
+    const length = 90 + Math.floor(random() * 90); // (long and smooth, so the slopes are never too steep)
     const nearGate = TRACK.gates.some((gate) => at + length > gate.index - RACE.gateZone / 2 - 15 && at < gate.index + RACE.gateZone / 2 + 15);
     if (!nearGate) {
-      const amount = (random() < 0.65 ? 1 : -1) * (8 + random() * 16) * L * RACE.hills;
+      const amount = (random() < 0.65 ? 1 : -1) * (7 + random() * 13) * L * RACE.hills;
       for (let k = 0; k <= length; k++) bump[at + k] += amount * (1 - Math.cos(2 * Math.PI * k / length)) / 2;
       at += length + 20 + Math.floor(random() * 80);
     } else {
@@ -214,8 +215,10 @@ function trackProgress(z) {
     if (progress < 0.72) {
       if (r < 0.4) return seg.snow > 0.25 ? "bushSnow" : "bush";
       if (r < 0.65) return seg.snow > 0.25 ? "rockSnow" : "rock";
+      if (r < 0.75 && seg.snow < 0.15) return "almond";
       return seg.snow > 0.3 ? "oakSnow" : "oak";
     }
+    if (r < 0.12 && progress < 0.85) return "almond";
     return r < 0.35 ? "olive" : r < 0.6 ? "bush" : r < 0.75 ? "rock" : progress > 0.9 ? "palm" : "olive";
   }
 
@@ -239,6 +242,22 @@ function trackProgress(z) {
   add(startIndex + 30, "cabin", -(RACE.startWidth + 1.3));
   // A wooden sign pointing to the Kinneret, shortly before the beach.
   add(finishIndex - 160, "sign", RACE.pathWidth + 0.9);
+
+  // Trees and rocks right ON the path, to steer around (only where it's wide enough to get
+  // past, never near a gate, the start or the finish). In the very wide places, sometimes two.
+  const clearOfGates = (n) => TRACK.gates.every((gate) => Math.abs(n - gate.index) > RACE.gateZone / 2 + 45);
+  for (let n = 220; n < finishIndex - 260; n += 30 + Math.floor(random() * 50)) {
+    const seg = segments[n];
+    if (random() > RACE.treesOnPath || seg.width < 0.9 || !clearOfGates(n)) continue;
+    const progress = trackProgress(seg.p1.world.z);
+    const type = seg.snow > 0.6 ? (random() < 0.6 ? "oakSnow" : "rockSnow")
+      : progress < 0.72 ? (random() < 0.5 ? "oak" : random() < 0.5 ? "almond" : "rock")
+      : (random() < 0.7 ? "olive" : "rock");
+    const room = seg.width - 0.45; // how far from the middle it can stand (so there's always a way past)
+    const spot = (random() * 2 - 1) * room;
+    add(n, type, spot);
+    if (seg.width > 1.5 && random() < 0.5) add(n + 8, random() < 0.5 ? "bush" : seg.snow > 0.5 ? "bushSnow" : "rock", spot > 0 ? spot - 1.3 : spot + 1.3);
+  }
 
   // Keep the gates clear, so their poles are easy to see.
   for (const gate of TRACK.gates) {
