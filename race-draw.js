@@ -612,9 +612,12 @@ function drawSled(ctx, cx, bottom, size, color, turn, time, name) {
   const u = size / 100;
   const cos = Math.cos(turn), sin = Math.sin(turn);
   const tilt = 0.42; // how much of the top we see (the camera looks down a little)
+  const nose = 0.2;  // the sled tips forward, nose down, like it's heading down the slope (radians)
+  const noseCos = Math.cos(nose), noseSin = Math.sin(nose);
   const at = (x, y, z) => {
     const X = x * cos + z * sin, Z = -x * sin + z * cos;
-    return [cx + X * u, bottom - (y + Z * tilt) * u];
+    const Y = y * noseCos - Z * noseSin, Zn = Z * noseCos + y * noseSin; // (tipped nose down)
+    return [cx + X * u, bottom - (Y + Zn * tilt) * u];
   };
   const trace = (points) => {
     ctx.beginPath();
@@ -662,6 +665,7 @@ function drawSled(ctx, cx, bottom, size, color, turn, time, name) {
   const [hx, hy] = at(0, 17, 40);
   const r = u;
   ctx.translate(hx, hy);
+  ctx.scale(1, 0.9); // (leaning forward a little, so we see a bit less of their back)
   // Tzitzit: white strings hanging down at both sides, swinging.
   ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = r * 1.4; ctx.lineCap = "round";
   for (const s of [-1, 1]) {
@@ -721,6 +725,7 @@ function drawSled(ctx, cx, bottom, size, color, turn, time, name) {
   ctx.setLineDash([r * 1.6, r * 1.2]);
   ctx.beginPath(); ctx.ellipse(0, -r * 77, r * 7, r * 3.8, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.setLineDash([]);
+  ctx.scale(1, 1 / 0.9);
   ctx.translate(-hx, -hy);
 
   // A little Israeli flag on a stick at the back corner, waving in the wind.
