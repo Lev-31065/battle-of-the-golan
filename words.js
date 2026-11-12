@@ -441,64 +441,206 @@ const LEVELS = [
       { english: "the windows were open all night", hint: "לִפְתֹּחַ", hebrew: "הַחַלּוֹנוֹת הָיוּ פְּתוּחִים כָּל הַלַּיְלָה", wrong: ["הַחַלּוֹנוֹת הָיוּ פְּתוּחוֹת כָּל הַלַּיְלָה", "הַחַלּוֹנוֹת הָיוּ פּוֹתְחִים כָּל הַלַּיְלָה", "הַחַלּוֹנוֹת נִפְתְּחוּ כָּל הַלַּיְלָה"] },
     ],
   },
+  // Level 18 (2026-11-12): real sentences that combine everything so far.
+  {
+    id: "level-real-life", english: "Real sentences: everyday life", hebrew: "מִשְׁפָּטִים אֲמִתִּיִּים: חַיֵּי יוֹם־יוֹם",
+    words: [
+      // Short ones
+      { english: "when I come home", hint: "לַחֲזֹר", hebrew: "כְּשֶׁאֲנִי חוֹזֵר הַבַּיְתָה", wrong: ["שֶׁאֲנִי חוֹזֵר הַבַּיְתָה", "כְּשֶׁאֲנִי חוֹזֶרֶת הַבַּיְתָה", "כְּשֶׁאֲנִי חוֹזֵר בַּבַּיִת"], f: { hebrew: "כְּשֶׁאֲנִי חוֹזֶרֶת הַבַּיְתָה", wrong: ["שֶׁאֲנִי חוֹזֶרֶת הַבַּיְתָה", "כְּשֶׁאֲנִי חוֹזֵר הַבַּיְתָה", "כְּשֶׁאֲנִי חוֹזֶרֶת בַּבַּיִת"] } },
+      { english: "the store is open", hint: "לִפְתֹּחַ", hebrew: "הַחֲנוּת פְּתוּחָה", wrong: ["הַחֲנוּת פּוֹתַחַת", "הַחֲנוּת פָּתוּחַ", "הַחֲנוּת נִפְתְּחָה"] },
+      { english: "with my friends", hebrew: "עִם הַחֲבֵרִים שֶׁלִּי", wrong: ["עִם הַחֲבֵרִים שֶׁלָּנוּ", "עִם הַחֲבֵרִים שֶׁלּוֹ", "לַחֲבֵרִים שֶׁלִּי"] },
+      { english: "I know him", hint: "לְהַכִּיר", hebrew: "אֲנִי מַכִּיר אוֹתוֹ", wrong: ["אֲנִי מַכִּיר הוּא", "אֲנִי מַכִּיר אוֹתָהּ", "אֲנִי מַכִּירָה אוֹתוֹ"], f: { hebrew: "אֲנִי מַכִּירָה אוֹתוֹ", wrong: ["אֲנִי מַכִּירָה הוּא", "אֲנִי מַכִּירָה אוֹתָהּ", "אֲנִי מַכִּיר אוֹתוֹ"] } },
+      { english: "on the weekend", hebrew: "בְּסוֹף הַשָּׁבוּעַ", wrong: ["לְסוֹף הַשָּׁבוּעַ", "מִסּוֹף הַשָּׁבוּעַ", "בַּסּוֹף הַשָּׁבוּעַ"] },
+      // Full sentences
+      { english: "I want to eat pizza tonight", hebrew: "אֲנִי רוֹצֶה לֶאֱכֹל פִּיצָה הָעֶרֶב", wrong: ["אֲנִי רוֹצָה לֶאֱכֹל פִּיצָה הָעֶרֶב", "אֲנִי רוֹצֶה אוֹכֵל פִּיצָה הָעֶרֶב", "אֲנִי רוֹצֶה לֶאֱכֹל אֶת פִּיצָה הָעֶרֶב"], f: { hebrew: "אֲנִי רוֹצָה לֶאֱכֹל פִּיצָה הָעֶרֶב", wrong: ["אֲנִי רוֹצֶה לֶאֱכֹל פִּיצָה הָעֶרֶב", "אֲנִי רוֹצָה אוֹכֶלֶת פִּיצָה הָעֶרֶב", "אֲנִי רוֹצָה לֶאֱכֹל אֶת פִּיצָה הָעֶרֶב"] } },
+      { english: "my mom is cooking dinner in the kitchen", hint: "לְבַשֵּׁל", hebrew: "אִמָּא שֶׁלִּי מְבַשֶּׁלֶת אֲרוּחַת עֶרֶב בַּמִּטְבָּח", wrong: ["אִמָּא שֶׁלִּי מְבַשֵּׁל אֲרוּחַת עֶרֶב בַּמִּטְבָּח", "אִמָּא שֶׁלִּי מְבַשֶּׁלֶת אֲרוּחַת עֶרֶב לַמִּטְבָּח", "אִמָּא שֶׁלִּי בִּשְּׁלָה אֲרוּחַת עֶרֶב בַּמִּטְבָּח"] },
+      { english: "we go to school by bus", hint: "לִנְסֹעַ", hebrew: "אֲנַחְנוּ נוֹסְעִים לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", wrong: ["אֲנַחְנוּ נוֹסֵעַ לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", "אֲנַחְנוּ נוֹסְעִים בְּבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", "אֲנַחְנוּ לִנְסֹעַ לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס"], f: { hebrew: "אֲנַחְנוּ נוֹסְעוֹת לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", wrong: ["אֲנַחְנוּ נוֹסַעַת לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", "אֲנַחְנוּ נוֹסְעוֹת בְּבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס", "אֲנַחְנוּ לִנְסֹעַ לְבֵית הַסֵּפֶר בְּאוֹטוֹבּוּס"] } },
+      { english: "my brother likes to play soccer after school", hebrew: "אָחִי אוֹהֵב לְשַׂחֵק כַּדּוּרֶגֶל אַחֲרֵי בֵּית הַסֵּפֶר", wrong: ["אָחִי אוֹהֶבֶת לְשַׂחֵק כַּדּוּרֶגֶל אַחֲרֵי בֵּית הַסֵּפֶר", "אָחִי אוֹהֵב מְשַׂחֵק כַּדּוּרֶגֶל אַחֲרֵי בֵּית הַסֵּפֶר", "אָחִי רוֹצֶה לְשַׂחֵק כַּדּוּרֶגֶל אַחֲרֵי בֵּית הַסֵּפֶר"] },
+      { english: "the kids who live here are my friends", hint: "לָגוּר", hebrew: "הַיְלָדִים שֶׁגָּרִים כָּאן הֵם הַחֲבֵרִים שֶׁלִּי", wrong: ["הַיְלָדִים גָּרִים כָּאן הֵם הַחֲבֵרִים שֶׁלִּי", "הַיְלָדִים שֶׁגָּר כָּאן הֵם הַחֲבֵרִים שֶׁלִּי", "הַיְלָדִים כְּשֶׁגָּרִים כָּאן הֵם הַחֲבֵרִים שֶׁלִּי"] },
+      { english: "when I'm tired, I go to sleep early", hint: "לָלֶכֶת", hebrew: "כְּשֶׁאֲנִי עָיֵף, אֲנִי הוֹלֵךְ לִישֹׁן מֻקְדָּם", wrong: ["כְּשֶׁאֲנִי עָיֵף, אֲנִי הוֹלֵךְ יָשֵׁן מֻקְדָּם", "שֶׁאֲנִי עָיֵף, אֲנִי הוֹלֵךְ לִישֹׁן מֻקְדָּם", "כְּשֶׁאֲנִי עָיֵף, אֲנִי הָלַכְתִּי לִישֹׁן מֻקְדָּם"], f: { hebrew: "כְּשֶׁאֲנִי עֲיֵפָה, אֲנִי הוֹלֶכֶת לִישֹׁן מֻקְדָּם", wrong: ["כְּשֶׁאֲנִי עֲיֵפָה, אֲנִי הוֹלֶכֶת יְשֵׁנָה מֻקְדָּם", "שֶׁאֲנִי עֲיֵפָה, אֲנִי הוֹלֶכֶת לִישֹׁן מֻקְדָּם", "כְּשֶׁאֲנִי עֲיֵפָה, אֲנִי הָלַכְתִּי לִישֹׁן מֻקְדָּם"] } },
+      { english: "Grandma invites us every Friday", hint: "לְהַזְמִין", hebrew: "סַבְתָּא מַזְמִינָה אוֹתָנוּ כָּל יוֹם שִׁשִּׁי", wrong: ["סַבְתָּא מַזְמִינָה אֲנַחְנוּ כָּל יוֹם שִׁשִּׁי", "סַבְתָּא מַזְמִין אוֹתָנוּ כָּל יוֹם שִׁשִּׁי", "סַבְתָּא מַזְמִינָה אוֹתָם כָּל יוֹם שִׁשִּׁי"] },
+      { english: "do you (m.) want to come with us to the beach?", hebrew: "אַתָּה רוֹצֶה לָבוֹא אִתָּנוּ לַיָּם?", wrong: ["אַתְּ רוֹצָה לָבוֹא אִתָּנוּ לַיָּם?", "אַתָּה רוֹצֶה בָּא אִתָּנוּ לַיָּם?", "אַתָּה רוֹצֶה לָבוֹא אִתָּנוּ בַּיָּם?"] },
+      { english: "the homework is written on the board", hint: "לִכְתֹּב", hebrew: "שִׁעוּרֵי הַבַּיִת כְּתוּבִים עַל הַלּוּחַ", wrong: ["שִׁעוּרֵי הַבַּיִת כָּתוּב עַל הַלּוּחַ", "שִׁעוּרֵי הַבַּיִת כּוֹתְבִים עַל הַלּוּחַ", "שִׁעוּרֵי הַבַּיִת כְּתוּבִים לַלּוּחַ"] },
+      { english: "I don't like to get up early on Saturday", hebrew: "אֲנִי לֹא אוֹהֵב לָקוּם מֻקְדָּם בְּשַׁבָּת", wrong: ["אֲנִי לֹא אוֹהֶבֶת לָקוּם מֻקְדָּם בְּשַׁבָּת", "אֲנִי לֹא אוֹהֵב קָם מֻקְדָּם בְּשַׁבָּת", "לֹא אֲנִי אוֹהֵב לָקוּם מֻקְדָּם בְּשַׁבָּת"], f: { hebrew: "אֲנִי לֹא אוֹהֶבֶת לָקוּם מֻקְדָּם בְּשַׁבָּת", wrong: ["אֲנִי לֹא אוֹהֵב לָקוּם מֻקְדָּם בְּשַׁבָּת", "אֲנִי לֹא אוֹהֶבֶת קָמָה מֻקְדָּם בְּשַׁבָּת", "לֹא אֲנִי אוֹהֶבֶת לָקוּם מֻקְדָּם בְּשַׁבָּת"] } },
+      { english: "we eat dinner together when Dad comes home", hint: "לֶאֱכֹל", hebrew: "אֲנַחְנוּ אוֹכְלִים אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֵר הַבַּיְתָה", wrong: ["אֲנַחְנוּ אוֹכְלִים אֲרוּחַת עֶרֶב בְּיַחַד שֶׁאַבָּא חוֹזֵר הַבַּיְתָה", "אֲנַחְנוּ אוֹכֵל אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֵר הַבַּיְתָה", "אֲנַחְנוּ אוֹכְלִים אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֶרֶת הַבַּיְתָה"], f: { hebrew: "אֲנַחְנוּ אוֹכְלוֹת אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֵר הַבַּיְתָה", wrong: ["אֲנַחְנוּ אוֹכְלוֹת אֲרוּחַת עֶרֶב בְּיַחַד שֶׁאַבָּא חוֹזֵר הַבַּיְתָה", "אֲנַחְנוּ אוֹכֶלֶת אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֵר הַבַּיְתָה", "אֲנַחְנוּ אוֹכְלוֹת אֲרוּחַת עֶרֶב בְּיַחַד כְּשֶׁאַבָּא חוֹזֶרֶת הַבַּיְתָה"] } },
+      { english: "I can't find my phone", hint: "לִמְצֹא", hebrew: "אֲנִי לֹא מוֹצֵא אֶת הַטֶּלֶפוֹן שֶׁלִּי", wrong: ["אֲנִי לֹא מוֹצֵא הַטֶּלֶפוֹן שֶׁלִּי", "אֲנִי לֹא מוֹצֵאת אֶת הַטֶּלֶפוֹן שֶׁלִּי", "אֲנִי לֹא מוֹצֵא אֶת הַטֶּלֶפוֹן שֶׁלּוֹ"], f: { hebrew: "אֲנִי לֹא מוֹצֵאת אֶת הַטֶּלֶפוֹן שֶׁלִּי", wrong: ["אֲנִי לֹא מוֹצֵאת הַטֶּלֶפוֹן שֶׁלִּי", "אֲנִי לֹא מוֹצֵא אֶת הַטֶּלֶפוֹן שֶׁלִּי", "אֲנִי לֹא מוֹצֵאת אֶת הַטֶּלֶפוֹן שֶׁלָּהּ"] } },
+      { english: "we have a test tomorrow, so I'm studying", hint: "לִלְמֹד", hebrew: "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לוֹמֵד", wrong: ["יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לוֹמֶדֶת", "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לִלְמֹד", "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לָמַדְתִּי"], f: { hebrew: "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לוֹמֶדֶת", wrong: ["יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לוֹמֵד", "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לִלְמֹד", "יֵשׁ לָנוּ מִבְחָן מָחָר, אָז אֲנִי לָמַדְתִּי"] } },
+    ],
+  },
+  // Level 19 (2026-11-12): real sentences: telling what happened (past mixed with everything else).
+  {
+    id: "level-real-stories", english: "Real sentences: telling what happened", hebrew: "מִשְׁפָּטִים אֲמִתִּיִּים: מָה קָרָה",
+    words: [
+      // Short ones
+      { english: "when I came home", hint: "לַחֲזֹר", hebrew: "כְּשֶׁחָזַרְתִּי הַבַּיְתָה", wrong: ["שֶׁחָזַרְתִּי הַבַּיְתָה", "כְּשֶׁאֲנִי חוֹזֵר הַבַּיְתָה", "כְּשֶׁחָזַרְנוּ הַבַּיְתָה"] },
+      { english: "I told him", hint: "לוֹמַר", hebrew: "אָמַרְתִּי לוֹ", wrong: ["אָמַרְתִּי אוֹתוֹ", "אָמַרְתִּי לָהּ", "הוּא אָמַר לִי"] },
+      { english: "the door was locked", hint: "לִנְעֹל", hebrew: "הַדֶּלֶת הָיְתָה נְעוּלָה", wrong: ["הַדֶּלֶת הָיְתָה נוֹעֶלֶת", "הַדֶּלֶת הָיְתָה נָעוּל", "הַדֶּלֶת נְעוּלָה"] },
+      { english: "he didn't see me", hint: "לִרְאוֹת", hebrew: "הוּא לֹא רָאָה אוֹתִי", wrong: ["הוּא לֹא רָאָה אֲנִי", "הוּא לֹא רָאָה אוֹתוֹ", "הוּא לֹא רוֹאֶה אוֹתִי"] },
+      { english: "the window broke", hint: "לִשְׁבֹּר", hebrew: "הַחַלּוֹן נִשְׁבַּר", wrong: ["הַחַלּוֹן שָׁבַר", "הַחַלּוֹן שָׁבוּר", "הַחַלּוֹן נִשְׁבְּרָה"] },
+      // Full sentences
+      { english: "when I came home, the door was open", hint: "לַחֲזֹר", hebrew: "כְּשֶׁחָזַרְתִּי הַבַּיְתָה, הַדֶּלֶת הָיְתָה פְּתוּחָה", wrong: ["כְּשֶׁחָזַרְתִּי הַבַּיְתָה, הַדֶּלֶת הָיְתָה פּוֹתַחַת", "שֶׁחָזַרְתִּי הַבַּיְתָה, הַדֶּלֶת הָיְתָה פְּתוּחָה", "כְּשֶׁחָזַרְתִּי הַבַּיְתָה, הַדֶּלֶת הָיְתָה פָּתוּחַ"] },
+      { english: "yesterday I met Dana at the mall", hint: "לִפְגֹּשׁ", hebrew: "אֶתְמוֹל פָּגַשְׁתִּי אֶת דָּנָה בַּקַּנְיוֹן", wrong: ["אֶתְמוֹל פָּגַשְׁתִּי דָּנָה בַּקַּנְיוֹן", "אֶתְמוֹל אֶפְגֹּשׁ אֶת דָּנָה בַּקַּנְיוֹן", "אֶתְמוֹל פָּגַשְׁתִּי אֶת דָּנָה לַקַּנְיוֹן"] },
+      { english: "she told me that she is moving to Haifa", hint: "לוֹמַר", hebrew: "הִיא אָמְרָה לִי שֶׁהִיא עוֹבֶרֶת לְחֵיפָה", wrong: ["הִיא אָמְרָה אוֹתִי שֶׁהִיא עוֹבֶרֶת לְחֵיפָה", "הִיא אָמַר לִי שֶׁהִיא עוֹבֶרֶת לְחֵיפָה", "הִיא אָמְרָה לִי שֶׁהִיא עוֹבֶרֶת בְּחֵיפָה"] },
+      { english: "we saw the movie that everyone is talking about", hint: "לִרְאוֹת", hebrew: "רָאִינוּ אֶת הַסֶּרֶט שֶׁכֻּלָּם מְדַבְּרִים עָלָיו", wrong: ["רָאִינוּ הַסֶּרֶט שֶׁכֻּלָּם מְדַבְּרִים עָלָיו", "רָאִינוּ אֶת הַסֶּרֶט כֻּלָּם מְדַבְּרִים עָלָיו", "רָאִינוּ אֶת הַסֶּרֶט שֶׁכֻּלָּם מְדַבְּרִים עָלֶיהָ"] },
+      { english: "the house was built by my grandfather", hint: "לִבְנוֹת", hebrew: "הַבַּיִת נִבְנָה עַל יְדֵי סַבָּא שֶׁלִּי", wrong: ["הַבַּיִת בָּנָה עַל יְדֵי סַבָּא שֶׁלִּי", "הַבַּיִת נִבְנְתָה עַל יְדֵי סַבָּא שֶׁלִּי", "הַבַּיִת יִבָּנֶה עַל יְדֵי סַבָּא שֶׁלִּי"] },
+      { english: "when it started to rain, we went home", hint: "לָלֶכֶת", hebrew: "כְּשֶׁהִתְחִיל לָרֶדֶת גֶּשֶׁם, הָלַכְנוּ הַבַּיְתָה", wrong: ["כְּשֶׁהִתְחִיל לָרֶדֶת גֶּשֶׁם, הָלַכְנוּ בַּבַּיִת", "כְּשֶׁהִתְחִיל יוֹרֵד גֶּשֶׁם, הָלַכְנוּ הַבַּיְתָה", "כְּשֶׁהִתְחִיל לָרֶדֶת גֶּשֶׁם, נֵלֵךְ הַבַּיְתָה"] },
+      { english: "the teacher (f.) asked me why I didn't come", hint: "לִשְׁאֹל", hebrew: "הַמּוֹרָה שָׁאֲלָה אוֹתִי לָמָּה לֹא בָּאתִי", wrong: ["הַמּוֹרָה שָׁאֲלָה אֲנִי לָמָּה לֹא בָּאתִי", "הַמּוֹרָה שָׁאַל אוֹתִי לָמָּה לֹא בָּאתִי", "הַמּוֹרָה שָׁאֲלָה אוֹתִי לָמָּה לֹא אָבוֹא"] },
+      { english: "I lost the book that you (m.) gave me", hint: "לְאַבֵּד", hebrew: "אִבַּדְתִּי אֶת הַסֵּפֶר שֶׁנָּתַתָּ לִי", wrong: ["אִבַּדְתִּי הַסֵּפֶר שֶׁנָּתַתָּ לִי", "אִבַּדְתִּי אֶת הַסֵּפֶר שֶׁנָּתַתְּ לִי", "אִבַּדְתִּי אֶת הַסֵּפֶר כְּשֶׁנָּתַתָּ לִי"] },
+      { english: "my phone fell and the screen broke", hint: "לִפֹּל", hebrew: "הַטֶּלֶפוֹן שֶׁלִּי נָפַל וְהַמָּסָךְ נִשְׁבַּר", wrong: ["הַטֶּלֶפוֹן שֶׁלִּי נָפַל וְהַמָּסָךְ שָׁבַר", "הַטֶּלֶפוֹן שֶׁלִּי נָפְלָה וְהַמָּסָךְ נִשְׁבַּר", "הַטֶּלֶפוֹן שֶׁלִּי נָפַל וְהַמָּסָךְ נִשְׁבְּרָה"] },
+      { english: "everyone was already sitting when we arrived", hint: "לְהַגִּיעַ", hebrew: "כֻּלָּם כְּבָר יָשְׁבוּ כְּשֶׁהִגַּעְנוּ", wrong: ["כֻּלָּם כְּבָר יָשְׁבוּ שֶׁהִגַּעְנוּ", "כֻּלָּם כְּבָר יָשְׁבוּ כְּשֶׁנַּגִּיעַ", "כֻּלָּם כְּבָר יָשַׁב כְּשֶׁהִגַּעְנוּ"] },
+      { english: "we ate the cake that Mom baked", hint: "לֶאֱכֹל", hebrew: "אָכַלְנוּ אֶת הָעוּגָה שֶׁאִמָּא אָפְתָה", wrong: ["אָכַלְנוּ הָעוּגָה שֶׁאִמָּא אָפְתָה", "אָכַלְנוּ אֶת הָעוּגָה שֶׁאִמָּא אָפָה", "אָכַלְנוּ אֶת הָעוּגָה שֶׁאִמָּא אוֹפָה"] },
+      { english: "he invited me to his party, but I didn't go", hint: "לְהַזְמִין", hebrew: "הוּא הִזְמִין אוֹתִי לַמְּסִבָּה שֶׁלּוֹ, אֲבָל לֹא הָלַכְתִּי", wrong: ["הוּא הִזְמִין אֲנִי לַמְּסִבָּה שֶׁלּוֹ, אֲבָל לֹא הָלַכְתִּי", "הוּא הִזְמִין אוֹתִי לַמְּסִבָּה שֶׁלּוֹ, אֲבָל לֹא אֵלֵךְ", "הוּא הִזְמִין אוֹתִי בַּמְּסִבָּה שֶׁלּוֹ, אֲבָל לֹא הָלַכְתִּי"] },
+    ],
+  },
+  // Level 20 (2026-11-12): real sentences: plans and opinions (future, want + infinitive, I think that..., participles).
+  {
+    id: "level-real-plans", english: "Real sentences: plans and opinions", hebrew: "מִשְׁפָּטִים אֲמִתִּיִּים: תָּכְנִיּוֹת וְדֵעוֹת",
+    words: [
+      // Short ones
+      { english: "I think so", hint: "לַחְשֹׁב", hebrew: "אֲנִי חוֹשֵׁב שֶׁכֵּן", wrong: ["אֲנִי חוֹשֶׁבֶת שֶׁכֵּן", "אֲנִי חוֹשֵׁב שֶׁלֹּא", "חָשַׁבְתִּי שֶׁכֵּן"], f: { hebrew: "אֲנִי חוֹשֶׁבֶת שֶׁכֵּן", wrong: ["אֲנִי חוֹשֵׁב שֶׁכֵּן", "אֲנִי חוֹשֶׁבֶת שֶׁלֹּא", "חָשַׁבְתִּי שֶׁכֵּן"] } },
+      { english: "we'll see", hint: "לִרְאוֹת", hebrew: "נִרְאֶה", wrong: ["רָאִינוּ", "אֶרְאֶה", "רוֹאִים"] },
+      { english: "I'll tell her", hint: "לְהַגִּיד", hebrew: "אַגִּיד לָהּ", wrong: ["אַגִּיד אוֹתָהּ", "אַגִּיד לוֹ", "אָמַרְתִּי לָהּ"] },
+      { english: "I'll see you (f.) there", hint: "לִרְאוֹת", hebrew: "אֶרְאֶה אוֹתָךְ שָׁם", wrong: ["אֶרְאֶה אַתְּ שָׁם", "אֶרְאֶה אוֹתְךָ שָׁם", "רָאִיתִי אוֹתָךְ שָׁם"] },
+      { english: "everything is ready", hebrew: "הַכֹּל מוּכָן", wrong: ["הַכֹּל מוּכָנָה", "הַכֹּל מוּכָנִים", "הַכֹּל יִהְיֶה מוּכָן"] },
+      // Full sentences
+      { english: "tomorrow we will go to the beach with our friends", hint: "לָלֶכֶת", hebrew: "מָחָר נֵלֵךְ לַיָּם עִם הַחֲבֵרִים שֶׁלָּנוּ", wrong: ["מָחָר הָלַכְנוּ לַיָּם עִם הַחֲבֵרִים שֶׁלָּנוּ", "מָחָר אֵלֵךְ לַיָּם עִם הַחֲבֵרִים שֶׁלָּנוּ", "מָחָר נֵלֵךְ בַּיָּם עִם הַחֲבֵרִים שֶׁלָּנוּ"] },
+      { english: "I think that the movie will be great", hint: "לַחְשֹׁב", hebrew: "אֲנִי חוֹשֵׁב שֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה", wrong: ["אֲנִי חוֹשֵׁב כְּשֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה", "אֲנִי חוֹשֵׁב שֶׁהַסֶּרֶט הָיָה מְעֻלֶּה", "אֲנִי חוֹשֶׁבֶת שֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה"], f: { hebrew: "אֲנִי חוֹשֶׁבֶת שֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה", wrong: ["אֲנִי חוֹשֶׁבֶת כְּשֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה", "אֲנִי חוֹשֶׁבֶת שֶׁהַסֶּרֶט הָיָה מְעֻלֶּה", "אֲנִי חוֹשֵׁב שֶׁהַסֶּרֶט יִהְיֶה מְעֻלֶּה"] } },
+      { english: "she says that the test is easy", hint: "לוֹמַר", hebrew: "הִיא אוֹמֶרֶת שֶׁהַמִּבְחָן קַל", wrong: ["הִיא אוֹמֵר שֶׁהַמִּבְחָן קַל", "הִיא אוֹמֶרֶת כְּשֶׁהַמִּבְחָן קַל", "הִיא אוֹמֶרֶת שֶׁהַמִּבְחָן קַלָּה"] },
+      { english: "when I grow up, I want to be a doctor", hebrew: "כְּשֶׁאֶהְיֶה גָּדוֹל, אֲנִי רוֹצֶה לִהְיוֹת רוֹפֵא", wrong: ["כְּשֶׁהָיִיתִי גָּדוֹל, אֲנִי רוֹצֶה לִהְיוֹת רוֹפֵא", "כְּשֶׁאֶהְיֶה גָּדוֹל, אֲנִי רוֹצֶה אֶהְיֶה רוֹפֵא", "שֶׁאֶהְיֶה גָּדוֹל, אֲנִי רוֹצֶה לִהְיוֹת רוֹפֵא"], f: { hebrew: "כְּשֶׁאֶהְיֶה גְּדוֹלָה, אֲנִי רוֹצָה לִהְיוֹת רוֹפְאָה", wrong: ["כְּשֶׁהָיִיתִי גְּדוֹלָה, אֲנִי רוֹצָה לִהְיוֹת רוֹפְאָה", "כְּשֶׁאֶהְיֶה גְּדוֹלָה, אֲנִי רוֹצָה אֶהְיֶה רוֹפְאָה", "שֶׁאֶהְיֶה גְּדוֹלָה, אֲנִי רוֹצָה לִהְיוֹת רוֹפְאָה"] } },
+      { english: "we will buy her a present", hint: "לִקְנוֹת", hebrew: "נִקְנֶה לָהּ מַתָּנָה", wrong: ["נִקְנֶה אוֹתָהּ מַתָּנָה", "קָנִינוּ לָהּ מַתָּנָה", "נִקְנֶה לוֹ מַתָּנָה"] },
+      { english: "do you (f.) want to watch a movie with me tonight?", hebrew: "אַתְּ רוֹצָה לִרְאוֹת אִתִּי סֶרֶט הָעֶרֶב?", wrong: ["אַתְּ רוֹצָה לִרְאוֹת אוֹתִי סֶרֶט הָעֶרֶב?", "אַתְּ רוֹצֶה לִרְאוֹת אִתִּי סֶרֶט הָעֶרֶב?", "אַתְּ רוֹצָה רוֹאָה אִתִּי סֶרֶט הָעֶרֶב?"] },
+      { english: "if it rains, we'll stay home", hint: "לְהִשָּׁאֵר", hebrew: "אִם יֵרֵד גֶּשֶׁם, נִשָּׁאֵר בַּבַּיִת", wrong: ["אִם יֵרֵד גֶּשֶׁם, נִשְׁאַרְנוּ בַּבַּיִת", "אִם יֵרֵד גֶּשֶׁם, נִשָּׁאֵר לַבַּיִת", "אִם יֵרֵד גֶּשֶׁם, אֶשָּׁאֵר בַּבַּיִת"] },
+      { english: "I hope that you (m.) will come to the party", hint: "לְקַוּוֹת", hebrew: "אֲנִי מְקַוֶּה שֶׁתָּבוֹא לַמְּסִבָּה", wrong: ["אֲנִי מְקַוֶּה שֶׁתָּבוֹאִי לַמְּסִבָּה", "אֲנִי מְקַוֶּה שֶׁבָּאתָ לַמְּסִבָּה", "אֲנִי מְקַוָּה שֶׁתָּבוֹא לַמְּסִבָּה"], f: { hebrew: "אֲנִי מְקַוָּה שֶׁתָּבוֹא לַמְּסִבָּה", wrong: ["אֲנִי מְקַוָּה שֶׁתָּבוֹאִי לַמְּסִבָּה", "אֲנִי מְקַוָּה שֶׁבָּאתָ לַמְּסִבָּה", "אֲנִי מְקַוֶּה שֶׁתָּבוֹא לַמְּסִבָּה"] } },
+      { english: "the museum is closed, so we'll go tomorrow", hint: "לָלֶכֶת", hebrew: "הַמּוּזֵאוֹן סָגוּר, אָז נֵלֵךְ מָחָר", wrong: ["הַמּוּזֵאוֹן סָגוּר, אָז אֵלֵךְ מָחָר", "הַמּוּזֵאוֹן סְגוּרָה, אָז נֵלֵךְ מָחָר", "הַמּוּזֵאוֹן סָגוּר, אָז הָלַכְנוּ מָחָר"] },
+      { english: "in my opinion, the new book is better", hebrew: "לְדַעְתִּי, הַסֵּפֶר הֶחָדָשׁ יוֹתֵר טוֹב", wrong: ["לְדַעְתִּי, הַסֵּפֶר חָדָשׁ יוֹתֵר טוֹב", "לְדַעְתִּי, הַסֵּפֶר הֶחָדָשׁ יוֹתֵר טוֹבָה", "לְדַעְתּוֹ, הַסֵּפֶר הֶחָדָשׁ יוֹתֵר טוֹב"] },
+      { english: "we will finish the project and send it to the teacher (f.)", hint: "לְסַיֵּם", hebrew: "נְסַיֵּם אֶת הַפְּרוֹיֶקְט וְנִשְׁלַח אוֹתוֹ לַמּוֹרָה", wrong: ["נְסַיֵּם הַפְּרוֹיֶקְט וְנִשְׁלַח אוֹתוֹ לַמּוֹרָה", "נְסַיֵּם אֶת הַפְּרוֹיֶקְט וְנִשְׁלַח אוֹתָהּ לַמּוֹרָה", "נְסַיֵּם אֶת הַפְּרוֹיֶקְט וְנִשְׁלַח אוֹתוֹ בַּמּוֹרָה"] },
+      { english: "it's important to me that you (m.) understand me", hint: "לְהָבִין", hebrew: "חָשׁוּב לִי שֶׁתָּבִין אוֹתִי", wrong: ["חָשׁוּב לִי שֶׁתָּבִין אֲנִי", "חָשׁוּב לִי שֶׁתָּבִינִי אוֹתִי", "חָשׁוּב לִי שֶׁתָּבִין אוֹתְךָ"] },
+    ],
+  },
 ];
 
 // ---------- Level names: A and B ----------
-// Every level has an A part (its new words) and, from level 2 on, a B part
-// (review: its words mixed with earlier ones). So the order is 1, 2A, 2B, 3A, 3B ... 16B.
+// Every level has an A part (its new words) and, from level 2 on, a B part.
+// So the order is 1, 2A, 2B, 3A, 3B ... with review checkpoints (✅) in between.
 // The numbers come from each level's place in the LEVELS list, so you can add a level
 // in the middle and everything after it moves up by one by itself.
 // Level 1 is just "1", because it has no B part.
 // In Hebrew they're written with Hebrew letters: 3א, 3ב.
 //
-// ---------- Review levels (2B, 3B ... 16B) ----------
-// These are built automatically, so nobody has to write them by hand.
-// Level 12B = the words of level 12 + the same number of random words from levels 1–11.
-// (There's no 1B, because there's nothing before level 1 to review.)
-// The random half is picked again each time the review level is chosen.
+// ---------- B levels (2B, 3B ...) ----------
+// Each B level has its OWN hand-written list in levels-b.js (LEVEL_B): sentences that
+// combine that level's topic with earlier topics. When you play a B level, you get that
+// whole list, plus a few random words from the level's A part and a few from earlier
+// levels (how many: REVIEW_MIX in rules.js). The random part is picked again each time.
+// (There's no 1B, because there's nothing before level 1 to combine with.)
+//
+// ---------- Review checkpoints (✅1, ✅2 ...) ----------
+// Not real levels: they ask questions from EVERY level before them (A and B), spread
+// evenly. Mastery is counted per word, so right answers in a checkpoint also count
+// toward the mastery of the levels those words came from. Where they go: CHECKPOINTS below.
 
 // Remember which level each word comes from (quiz.js uses this to borrow
 // wrong answers from the word's OWN level, so a single word isn't next to sentences).
 const homeLevelOf = new Map();
+function rememberHome(words, home) {
+  for (const word of words) {
+    homeLevelOf.set(word, home);
+    // A word with an f: part gets a ready-made feminine copy (same English and hint).
+    if (word.f) {
+      word.feminine = { ...word, ...word.f };
+      homeLevelOf.set(word.feminine, home);
+    }
+  }
+}
 LEVELS.forEach((level, index) => {
   // Level 1 is just "1" (there's no 1B, so the "A" would be confusing).
   level.number = index === 0 ? "1" : (index + 1) + "A";     // shown in English, like "3A"
   level.numberHe = index === 0 ? "1" : (index + 1) + "א";   // shown in Hebrew, like "3א"
-  for (const word of level.words) {
-    homeLevelOf.set(word, level);
-    // A word with an f: part gets a ready-made feminine copy (same English and hint).
-    if (word.f) {
-      word.feminine = { ...word, ...word.f };
-      homeLevelOf.set(word.feminine, level);
-    }
+  rememberHome(level.words, level);
+});
+
+// The review checkpoints: each one comes right after the B part of this level.
+const CHECKPOINTS = ["level-5", "level-10", "level-12", "level-participles", "level-real-plans"];
+
+// DECKS = every level in order: 1, 2A, 2B, 3A, 3B ... with the checkpoints in between.
+const DECKS = [];
+const wordsSoFar = []; // one list per level so far (its A + B words), for the checkpoints
+LEVELS.forEach((level, index) => {
+  DECKS.push(level);
+  const upTo = index + 1;
+  let ownB = [];
+  if (index > 0) {
+    ownB = (typeof LEVEL_B !== "undefined" && LEVEL_B[level.id]) || [];
+    const deckB = {
+      // Named after its level's id ("level-11" → "review-11"), not its number, so the ids
+      // never change when a level is added in the middle. (Saved Auto levels use these ids.)
+      id: level.id.replace("level-", "review-"),
+      number: upTo + "B",
+      numberHe: upTo + "ב",
+      english: `${level.english} + earlier topics`,
+      hebrew: `${level.hebrew} + נוֹשְׂאִים קוֹדְמִים`,
+      review: true,
+      newLevel: level,                              // its A part (a few random A words get mixed in)
+      earlier: wordsSoFar.flat(),                   // everything before it (a few get mixed in)
+      // Its own sentences (for mastery). A level with no B list yet falls back to its A words.
+      words: ownB.length ? ownB : level.words,
+    };
+    rememberHome(ownB, deckB);
+    DECKS.push(deckB);
+  }
+  wordsSoFar.push([...level.words, ...ownB]);
+
+  const checkpointNumber = CHECKPOINTS.indexOf(level.id) + 1; // 0 = no checkpoint here
+  if (checkpointNumber > 0) {
+    DECKS.push({
+      id: "checkpoint-" + level.id.replace("level-", ""),
+      number: "✅" + checkpointNumber,
+      numberHe: "✅" + checkpointNumber,
+      english: `Review checkpoint: levels 1–${upTo}`,
+      hebrew: `נְקֻדַּת חֲזָרָה: רָמוֹת 1–${upTo}`,
+      checkpoint: true,
+      parts: wordsSoFar.map((part) => part),        // each earlier level's words, kept apart
+      words: wordsSoFar.flat(),                     // all of them (for mastery)
+    });
   }
 });
 
-// DECKS = every level in order: 1, 2A, 2B, 3A, 3B ... 16A, 16B.
-const DECKS = [];
-LEVELS.forEach((level, index) => {
-  DECKS.push(level);
-  if (index === 0) return;
-  const upTo = index + 1;
-  DECKS.push({
-    // Named after its level's id ("level-11" → "review-11"), not its number, so the ids
-    // never change when a level is added in the middle. (Saved Auto levels use these ids.)
-    id: level.id.replace("level-", "review-"),
-    number: upTo + "B",
-    numberHe: upTo + "ב",
-    english: `Review: levels 1–${upTo}`,
-    hebrew: `חֲזָרָה: רָמוֹת 1–${upTo}`,
-    review: true,
-    newLevel: level,                      // the level being reviewed (half the questions)
-    earlier: LEVELS.slice(0, index).flatMap((l) => l.words), // everything before it
-    words: LEVELS.slice(0, upTo).flatMap((l) => l.words),    // all of it (for "you know X of Y")
-  });
-});
+// Shuffle a copy of a list (the original stays as it is).
+function shuffled(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
-// Make the question list for a review level: the newest level + an equal number of earlier words.
+// The questions for a B level: its own list + a few A words + a few earlier words.
 function mixReviewWords(deck) {
-  const earlier = [...deck.earlier].sort(() => Math.random() - 0.5);
-  return [...deck.newLevel.words, ...earlier.slice(0, deck.newLevel.words.length)];
+  if (deck.words === deck.newLevel.words) {
+    // (No hand-written list: the old way, A words + the same number of earlier words.)
+    return [...deck.newLevel.words, ...shuffled(deck.earlier).slice(0, deck.newLevel.words.length)];
+  }
+  return [
+    ...deck.words,
+    ...shuffled(deck.newLevel.words).slice(0, REVIEW_MIX.fromThisLevel),
+    ...shuffled(deck.earlier).slice(0, REVIEW_MIX.fromEarlier),
+  ];
+}
+
+// The questions for a review checkpoint: CHECKPOINT_QUESTIONS words. Every level before it
+// gets the same share (at least 1), and any spots left over are filled with random words.
+function mixCheckpointWords(deck) {
+  const each = Math.max(1, Math.floor(CHECKPOINT_QUESTIONS / deck.parts.length));
+  const picked = [];
+  const leftOver = [];
+  for (const part of deck.parts) {
+    const mixed = shuffled(part);
+    picked.push(...mixed.slice(0, each));
+    leftOver.push(...mixed.slice(each));
+  }
+  const missing = Math.max(0, CHECKPOINT_QUESTIONS - picked.length);
+  return [...picked, ...shuffled(leftOver).slice(0, missing)];
 }
 
 // ---------- Premade decks (TOPIC_DECKS) ----------
@@ -1297,6 +1439,113 @@ const TOPIC_DECKS = [
       { english: "tomorrow I will give the book to Dana", hint: "לָתֵת", hebrew: "מָחָר אֶתֵּן אֶת הַסֵּפֶר לְדָנָה", wrong: ["מָחָר נָתַתִּי אֶת הַסֵּפֶר לְדָנָה", "מָחָר אֶתֵּן אֶת הַסֵּפֶר אֶת דָּנָה", "מָחָר נִתֵּן אֶת הַסֵּפֶר לְדָנָה"] },
     ],
   },
+  // ===== Big tense decks (2026-11-12): many verbs, one tense =====
+  {
+    id: "tense-past", kind: "tense", icon: "⏪", english: "Big deck: past tense", hebrew: "חֲפִיסָה גְּדוֹלָה: עָבָר",
+    words: [
+      { english: "I wrote", hint: "לִכְתֹּב", hebrew: "אֲנִי כָּתַבְתִּי", wrong: ["אֲנִי אֶכְתֹּב", "אֲנִי כָּתַבְנוּ", "אֲנִי כָּתַב"] },
+      { english: "you (m.) ate", hint: "לֶאֱכֹל", hebrew: "אַתָּה אָכַלְתָּ", wrong: ["אַתָּה תֹּאכַל", "אַתָּה אָכַלְתְּ", "אַתָּה אָכַלְתִּי"] },
+      { english: "you (f.) spoke", hint: "לְדַבֵּר", hebrew: "אַתְּ דִּבַּרְתְּ", wrong: ["אַתְּ תְּדַבְּרִי", "אַתְּ דִּבַּרְתָּ", "אַתְּ דִּבַּרְנוּ"] },
+      { english: "he started", hint: "לְהַתְחִיל", hebrew: "הוּא הִתְחִיל", wrong: ["הוּא יַתְחִיל", "הוּא הִתְחִילָה", "הוּא הִתְחַלְתִּי"] },
+      { english: "she bought", hint: "לִקְנוֹת", hebrew: "הִיא קָנְתָה", wrong: ["הִיא תִּקְנֶה", "הִיא קָנָה", "הִיא קָנִית"] },
+      { english: "we got dressed", hint: "לְהִתְלַבֵּשׁ", hebrew: "אֲנַחְנוּ הִתְלַבַּשְׁנוּ", wrong: ["אֲנַחְנוּ נִתְלַבֵּשׁ", "אֲנַחְנוּ הִתְלַבַּשְׁתִּי", "אֲנַחְנוּ הִתְלַבְּשׁוּ"] },
+      { english: "you all (m.) traveled", hint: "לִנְסֹעַ", hebrew: "אַתֶּם נְסַעְתֶּם", wrong: ["אַתֶּם תִּסְעוּ", "אַתֶּם נָסְעוּ", "אַתֶּם נָסַעְתָּ"] },
+      { english: "they (m.) sang", hint: "לָשִׁיר", hebrew: "הֵם שָׁרוּ", wrong: ["הֵם יָשִׁירוּ", "הֵם שַׁרְתֶּם", "הֵם שָׁר"] },
+      { english: "I got up", hint: "לָקוּם", hebrew: "אֲנִי קַמְתִּי", wrong: ["אֲנִי אָקוּם", "אֲנִי קַמְנוּ", "אֲנִי קָם"] },
+      { english: "you (m.) understood", hint: "לְהָבִין", hebrew: "אַתָּה הֵבַנְתָּ", wrong: ["אַתָּה תָּבִין", "אַתָּה הֵבַנְתְּ", "אַתָּה הֵבַנְתִּי"] },
+      { english: "you (f.) invited", hint: "לְהַזְמִין", hebrew: "אַתְּ הִזְמַנְתְּ", wrong: ["אַתְּ תַּזְמִינִי", "אַתְּ הִזְמַנְתָּ", "אַתְּ הִזְמִינָה"] },
+      { english: "he gave", hint: "לָתֵת", hebrew: "הוּא נָתַן", wrong: ["הוּא יִתֵּן", "הוּא נָתְנָה", "הוּא נָתַתִּי"] },
+      { english: "she played", hint: "לְשַׂחֵק", hebrew: "הִיא שִׂחֲקָה", wrong: ["הִיא תְּשַׂחֵק", "הִיא שִׂחֵק", "הִיא שִׂחַקְתְּ"] },
+      { english: "we came", hint: "לָבוֹא", hebrew: "אֲנַחְנוּ בָּאנוּ", wrong: ["אֲנַחְנוּ נָבוֹא", "אֲנַחְנוּ בָּאתִי", "אֲנַחְנוּ בָּאוּ"] },
+      { english: "you all (m.) said", hint: "לְהַגִּיד", hebrew: "אַתֶּם אֲמַרְתֶּם", wrong: ["אַתֶּם תַּגִּידוּ", "אַתֶּם אָמְרוּ", "אַתֶּם אָמַרְתָּ"] },
+      { english: "they (f.) saw", hint: "לִרְאוֹת", hebrew: "הֵן רָאוּ", wrong: ["הֵן יִרְאוּ", "הֵן רָאֲתָה", "הֵן רָאִינוּ"] },
+      { english: "she told", hint: "לְסַפֵּר", hebrew: "הִיא סִפְּרָה", wrong: ["הִיא תְּסַפֵּר", "הִיא סִפֵּר", "הִיא סִפַּרְתְּ"] },
+      { english: "you (f.) drank", hint: "לִשְׁתּוֹת", hebrew: "אַתְּ שָׁתִית", wrong: ["אַתְּ תִּשְׁתִּי", "אַתְּ שָׁתִיתָ", "אַתְּ שָׁתִינוּ"] },
+      { english: "I wrote a letter to Dana", hint: "לִכְתֹּב", hebrew: "כָּתַבְתִּי מִכְתָּב לְדָנָה", wrong: ["אֶכְתֹּב מִכְתָּב לְדָנָה", "כָּתַבְתִּי אֶת מִכְתָּב לְדָנָה", "כָּתַבְנוּ מִכְתָּב לְדָנָה"] },
+      { english: "yesterday we ate the pizza", hint: "לֶאֱכֹל", hebrew: "אֶתְמוֹל אָכַלְנוּ אֶת הַפִּיצָה", wrong: ["אֶתְמוֹל נֹאכַל אֶת הַפִּיצָה", "אֶתְמוֹל אָכַלְנוּ הַפִּיצָה", "אֶתְמוֹל אָכְלוּ אֶת הַפִּיצָה"] },
+      { english: "she spoke with her mother", hint: "לְדַבֵּר", hebrew: "הִיא דִּבְּרָה עִם אִמָּא שֶׁלָּהּ", wrong: ["הִיא תְּדַבֵּר עִם אִמָּא שֶׁלָּהּ", "הִיא דִּבֵּר עִם אִמָּא שֶׁלָּהּ", "הִיא דִּבְּרָה אֶת אִמָּא שֶׁלָּהּ"] },
+      { english: "he told me a story", hint: "לְסַפֵּר", hebrew: "הוּא סִפֵּר לִי סִפּוּר", wrong: ["הוּא יְסַפֵּר לִי סִפּוּר", "הוּא סִפֵּר אוֹתִי סִפּוּר", "הוּא סִפְּרָה לִי סִפּוּר"] },
+      { english: "you (m.) said thank you", hint: "לְהַגִּיד", hebrew: "אַתָּה אָמַרְתָּ תּוֹדָה", wrong: ["אַתָּה תַּגִּיד תּוֹדָה", "אַתָּה אָמַרְתְּ תּוֹדָה", "אַתָּה אָמַר תּוֹדָה"] },
+      { english: "what did you (f.) say?", hint: "לְהַגִּיד", hebrew: "מָה אָמַרְתְּ?", wrong: ["מָה תַּגִּידִי?", "מָה אָמַרְתָּ?", "מָה אָמַרְנוּ?"] },
+      { english: "the movie started at eight", hint: "לְהַתְחִיל", hebrew: "הַסֶּרֶט הִתְחִיל בִּשְׁמוֹנֶה", wrong: ["הַסֶּרֶט יַתְחִיל בִּשְׁמוֹנֶה", "הַסֶּרֶט הִתְחִילָה בִּשְׁמוֹנֶה", "הַסֶּרֶט הִתְחִיל לִשְׁמוֹנֶה"] },
+      { english: "we started the game", hint: "לְהַתְחִיל", hebrew: "הִתְחַלְנוּ אֶת הַמִּשְׂחָק", wrong: ["נַתְחִיל אֶת הַמִּשְׂחָק", "הִתְחַלְנוּ הַמִּשְׂחָק", "הִתְחַלְתִּי אֶת הַמִּשְׂחָק"] },
+      { english: "this morning I got dressed quickly", hint: "לְהִתְלַבֵּשׁ", hebrew: "הַבֹּקֶר הִתְלַבַּשְׁתִּי מַהֵר", wrong: ["הַבֹּקֶר אֶתְלַבֵּשׁ מַהֵר", "הַבֹּקֶר הִתְלַבַּשְׁנוּ מַהֵר", "הַבֹּקֶר הִתְלַבֵּשׁ מַהֵר"] },
+      { english: "they (f.) got dressed for the party", hint: "לְהִתְלַבֵּשׁ", hebrew: "הֵן הִתְלַבְּשׁוּ לַמְּסִבָּה", wrong: ["הֵן יִתְלַבְּשׁוּ לַמְּסִבָּה", "הֵן הִתְלַבְּשָׁה לַמְּסִבָּה", "הֵן הִתְלַבְּשׁוּ אֶת הַמְּסִבָּה"] },
+      { english: "you (f.) bought a new dress", hint: "לִקְנוֹת", hebrew: "אַתְּ קָנִית שִׂמְלָה חֲדָשָׁה", wrong: ["אַתְּ תִּקְנִי שִׂמְלָה חֲדָשָׁה", "אַתְּ קָנִיתָ שִׂמְלָה חֲדָשָׁה", "אַתְּ קָנִית אֶת שִׂמְלָה חֲדָשָׁה"] },
+      { english: "they (m.) bought the tickets", hint: "לִקְנוֹת", hebrew: "הֵם קָנוּ אֶת הַכַּרְטִיסִים", wrong: ["הֵם יִקְנוּ אֶת הַכַּרְטִיסִים", "הֵם קָנוּ הַכַּרְטִיסִים", "הֵם קָנָה אֶת הַכַּרְטִיסִים"] },
+      { english: "last week I saw her", hint: "לִרְאוֹת", hebrew: "בַּשָּׁבוּעַ שֶׁעָבַר רָאִיתִי אוֹתָהּ", wrong: ["בַּשָּׁבוּעַ שֶׁעָבַר אֶרְאֶה אוֹתָהּ", "בַּשָּׁבוּעַ שֶׁעָבַר רָאִיתִי אֶת הִיא", "בַּשָּׁבוּעַ שֶׁעָבַר רָאִיתִי אוֹתוֹ"] },
+      { english: "you all (m.) saw the game", hint: "לִרְאוֹת", hebrew: "רְאִיתֶם אֶת הַמִּשְׂחָק", wrong: ["תִּרְאוּ אֶת הַמִּשְׂחָק", "רְאִיתֶם הַמִּשְׂחָק", "רָאִינוּ אֶת הַמִּשְׂחָק"] },
+      { english: "yesterday I got up at seven", hint: "לָקוּם", hebrew: "אֶתְמוֹל קַמְתִּי בְּשֶׁבַע", wrong: ["אֶתְמוֹל אָקוּם בְּשֶׁבַע", "אֶתְמוֹל קַמְנוּ בְּשֶׁבַע", "אֶתְמוֹל קָמָה בְּשֶׁבַע"] },
+      { english: "she got up late", hint: "לָקוּם", hebrew: "הִיא קָמָה מְאֻחָר", wrong: ["הִיא תָּקוּם מְאֻחָר", "הִיא קָם מְאֻחָר", "הִיא קַמְתְּ מְאֻחָר"] },
+      { english: "he came to school by bus", hint: "לָבוֹא", hebrew: "הוּא בָּא לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", wrong: ["הוּא יָבוֹא לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", "הוּא בָּאָה לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", "הוּא בָּא בְּבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס"] },
+      { english: "you (m.) came home late", hint: "לָבוֹא", hebrew: "אַתָּה בָּאתָ הַבַּיְתָה מְאֻחָר", wrong: ["אַתָּה תָּבוֹא הַבַּיְתָה מְאֻחָר", "אַתָּה בָּאת הַבַּיְתָה מְאֻחָר", "אַתָּה בָּאתָ בַּבַּיִת מְאֻחָר"] },
+      { english: "we sang a song at the party", hint: "לָשִׁיר", hebrew: "שַׁרְנוּ שִׁיר בַּמְּסִבָּה", wrong: ["נָשִׁיר שִׁיר בַּמְּסִבָּה", "שַׁרְתִּי שִׁיר בַּמְּסִבָּה", "שַׁרְנוּ אֶת שִׁיר בַּמְּסִבָּה"] },
+      { english: "I gave him the book", hint: "לָתֵת", hebrew: "נָתַתִּי לוֹ אֶת הַסֵּפֶר", wrong: ["אֶתֵּן לוֹ אֶת הַסֵּפֶר", "נָתַתִּי אוֹתוֹ אֶת הַסֵּפֶר", "נָתַתִּי לוֹ הַסֵּפֶר"] },
+      { english: "she gave us a present", hint: "לָתֵת", hebrew: "הִיא נָתְנָה לָנוּ מַתָּנָה", wrong: ["הִיא תִּתֵּן לָנוּ מַתָּנָה", "הִיא נָתַן לָנוּ מַתָּנָה", "הִיא נָתְנָה אוֹתָנוּ מַתָּנָה"] },
+      { english: "last year we traveled to Eilat", hint: "לִנְסֹעַ", hebrew: "בַּשָּׁנָה שֶׁעָבְרָה נָסַעְנוּ לְאֵילַת", wrong: ["בַּשָּׁנָה שֶׁעָבְרָה נִסַּע לְאֵילַת", "בַּשָּׁנָה שֶׁעָבְרָה נָסְעוּ לְאֵילַת", "בַּשָּׁנָה שֶׁעָבְרָה נָסַעְנוּ בְּאֵילַת"] },
+      { english: "you (f.) traveled by train", hint: "לִנְסֹעַ", hebrew: "אַתְּ נָסַעְתְּ בָּרַכֶּבֶת", wrong: ["אַתְּ תִּסְעִי בָּרַכֶּבֶת", "אַתְּ נָסַעְתָּ בָּרַכֶּבֶת", "אַתְּ נָסַעְתְּ לָרַכֶּבֶת"] },
+      { english: "I didn't understand the question", hint: "לְהָבִין", hebrew: "לֹא הֵבַנְתִּי אֶת הַשְּׁאֵלָה", wrong: ["לֹא אָבִין אֶת הַשְּׁאֵלָה", "לֹא הֵבַנְתִּי הַשְּׁאֵלָה", "לֹא הֵבַנּוּ אֶת הַשְּׁאֵלָה"] },
+      { english: "they (m.) understood him", hint: "לְהָבִין", hebrew: "הֵם הֵבִינוּ אוֹתוֹ", wrong: ["הֵם יָבִינוּ אוֹתוֹ", "הֵם הֵבִינוּ אֶת הוּא", "הֵם הֵבִינוּ אוֹתָהּ"] },
+      { english: "he invited me to the party", hint: "לְהַזְמִין", hebrew: "הוּא הִזְמִין אוֹתִי לַמְּסִבָּה", wrong: ["הוּא יַזְמִין אוֹתִי לַמְּסִבָּה", "הוּא הִזְמִינָה אוֹתִי לַמְּסִבָּה", "הוּא הִזְמִין אוֹתָהּ לַמְּסִבָּה"] },
+      { english: "we invited them (f.)", hint: "לְהַזְמִין", hebrew: "הִזְמַנּוּ אוֹתָן", wrong: ["נַזְמִין אוֹתָן", "הִזְמַנּוּ אוֹתָם", "הִזְמַנּוּ אֶת הֵן"] },
+      { english: "they (m.) played soccer", hint: "לְשַׂחֵק", hebrew: "הֵם שִׂחֲקוּ כַּדּוּרֶגֶל", wrong: ["הֵם יְשַׂחֲקוּ כַּדּוּרֶגֶל", "הֵם שִׂחֵק כַּדּוּרֶגֶל", "הֵם שִׂחַקְתֶּם כַּדּוּרֶגֶל"] },
+      { english: "he drank all the water", hint: "לִשְׁתּוֹת", hebrew: "הוּא שָׁתָה אֶת כָּל הַמַּיִם", wrong: ["הוּא יִשְׁתֶּה אֶת כָּל הַמַּיִם", "הוּא שָׁתָה כָּל הַמַּיִם", "הוּא שָׁתְתָה אֶת כָּל הַמַּיִם"] },
+      { english: "you (m.) did the homework", hint: "לַעֲשׂוֹת", hebrew: "עָשִׂיתָ אֶת שִׁעוּרֵי הַבַּיִת", wrong: ["תַּעֲשֶׂה אֶת שִׁעוּרֵי הַבַּיִת", "עָשִׂית אֶת שִׁעוּרֵי הַבַּיִת", "עָשִׂיתָ שִׁעוּרֵי הַבַּיִת"] },
+    ],
+  },
+  {
+    id: "tense-future", kind: "tense", icon: "⏩", english: "Big deck: future tense", hebrew: "חֲפִיסָה גְּדוֹלָה: עָתִיד",
+    words: [
+      { english: "I will write", hint: "לִכְתֹּב", hebrew: "אֲנִי אֶכְתֹּב", wrong: ["אֲנִי כָּתַבְתִּי", "אֲנִי נִכְתֹּב", "אֲנִי יִכְתֹּב"] },
+      { english: "you (m.) will eat", hint: "לֶאֱכֹל", hebrew: "אַתָּה תֹּאכַל", wrong: ["אַתָּה אָכַלְתָּ", "אַתָּה תֹּאכְלִי", "אַתָּה יֹאכַל"] },
+      { english: "you (f.) will speak", hint: "לְדַבֵּר", hebrew: "אַתְּ תְּדַבְּרִי", wrong: ["אַתְּ דִּבַּרְתְּ", "אַתְּ תְּדַבֵּר", "אַתְּ נְדַבֵּר"] },
+      { english: "he will start", hint: "לְהַתְחִיל", hebrew: "הוּא יַתְחִיל", wrong: ["הוּא הִתְחִיל", "הוּא תַּתְחִיל", "הוּא אַתְחִיל"] },
+      { english: "she will buy", hint: "לִקְנוֹת", hebrew: "הִיא תִּקְנֶה", wrong: ["הִיא קָנְתָה", "הִיא יִקְנֶה", "הִיא תִּקְנִי"] },
+      { english: "we will get dressed", hint: "לְהִתְלַבֵּשׁ", hebrew: "אֲנַחְנוּ נִתְלַבֵּשׁ", wrong: ["אֲנַחְנוּ הִתְלַבַּשְׁנוּ", "אֲנַחְנוּ אֶתְלַבֵּשׁ", "אֲנַחְנוּ יִתְלַבְּשׁוּ"] },
+      { english: "you all (m.) will travel", hint: "לִנְסֹעַ", hebrew: "אַתֶּם תִּסְעוּ", wrong: ["אַתֶּם נְסַעְתֶּם", "אַתֶּם יִסְעוּ", "אַתֶּם תִּסַּע"] },
+      { english: "they (m.) will sing", hint: "לָשִׁיר", hebrew: "הֵם יָשִׁירוּ", wrong: ["הֵם שָׁרוּ", "הֵם תָּשִׁירוּ", "הֵם יָשִׁיר"] },
+      { english: "I will get up", hint: "לָקוּם", hebrew: "אֲנִי אָקוּם", wrong: ["אֲנִי קַמְתִּי", "אֲנִי נָקוּם", "אֲנִי יָקוּם"] },
+      { english: "you (m.) will understand", hint: "לְהָבִין", hebrew: "אַתָּה תָּבִין", wrong: ["אַתָּה הֵבַנְתָּ", "אַתָּה תָּבִינִי", "אַתָּה אָבִין"] },
+      { english: "you (f.) will invite", hint: "לְהַזְמִין", hebrew: "אַתְּ תַּזְמִינִי", wrong: ["אַתְּ הִזְמַנְתְּ", "אַתְּ תַּזְמִין", "אַתְּ נַזְמִין"] },
+      { english: "he will give", hint: "לָתֵת", hebrew: "הוּא יִתֵּן", wrong: ["הוּא נָתַן", "הוּא תִּתֵּן", "הוּא אֶתֵּן"] },
+      { english: "she will play", hint: "לְשַׂחֵק", hebrew: "הִיא תְּשַׂחֵק", wrong: ["הִיא שִׂחֲקָה", "הִיא יְשַׂחֵק", "הִיא תְּשַׂחֲקִי"] },
+      { english: "we will come", hint: "לָבוֹא", hebrew: "אֲנַחְנוּ נָבוֹא", wrong: ["אֲנַחְנוּ בָּאנוּ", "אֲנַחְנוּ אָבוֹא", "אֲנַחְנוּ יָבוֹאוּ"] },
+      { english: "you all (m.) will say", hint: "לְהַגִּיד", hebrew: "אַתֶּם תַּגִּידוּ", wrong: ["אַתֶּם אֲמַרְתֶּם", "אַתֶּם יַגִּידוּ", "אַתֶּם תַּגִּיד"] },
+      { english: "they (f.) will see", hint: "לִרְאוֹת", hebrew: "הֵן יִרְאוּ", wrong: ["הֵן רָאוּ", "הֵן תִּרְאֶה", "הֵן נִרְאֶה"] },
+      { english: "she will tell", hint: "לְסַפֵּר", hebrew: "הִיא תְּסַפֵּר", wrong: ["הִיא סִפְּרָה", "הִיא יְסַפֵּר", "הִיא תְּסַפְּרִי"] },
+      { english: "you (f.) will drink", hint: "לִשְׁתּוֹת", hebrew: "אַתְּ תִּשְׁתִּי", wrong: ["אַתְּ שָׁתִית", "אַתְּ תִּשְׁתֶּה", "אַתְּ נִשְׁתֶּה"] },
+      { english: "tomorrow I will write a letter to Dana", hint: "לִכְתֹּב", hebrew: "מָחָר אֶכְתֹּב מִכְתָּב לְדָנָה", wrong: ["מָחָר כָּתַבְתִּי מִכְתָּב לְדָנָה", "מָחָר אֶכְתֹּב אֶת מִכְתָּב לְדָנָה", "מָחָר נִכְתֹּב מִכְתָּב לְדָנָה"] },
+      { english: "tonight we will eat the pizza", hint: "לֶאֱכֹל", hebrew: "הָעֶרֶב נֹאכַל אֶת הַפִּיצָה", wrong: ["הָעֶרֶב אָכַלְנוּ אֶת הַפִּיצָה", "הָעֶרֶב נֹאכַל הַפִּיצָה", "הָעֶרֶב יֹאכְלוּ אֶת הַפִּיצָה"] },
+      { english: "she will speak with her mother", hint: "לְדַבֵּר", hebrew: "הִיא תְּדַבֵּר עִם אִמָּא שֶׁלָּהּ", wrong: ["הִיא דִּבְּרָה עִם אִמָּא שֶׁלָּהּ", "הִיא יְדַבֵּר עִם אִמָּא שֶׁלָּהּ", "הִיא תְּדַבֵּר אֶת אִמָּא שֶׁלָּהּ"] },
+      { english: "he will tell me a story", hint: "לְסַפֵּר", hebrew: "הוּא יְסַפֵּר לִי סִפּוּר", wrong: ["הוּא סִפֵּר לִי סִפּוּר", "הוּא יְסַפֵּר אוֹתִי סִפּוּר", "הוּא תְּסַפֵּר לִי סִפּוּר"] },
+      { english: "you (m.) will say thank you", hint: "לְהַגִּיד", hebrew: "אַתָּה תַּגִּיד תּוֹדָה", wrong: ["אַתָּה אָמַרְתָּ תּוֹדָה", "אַתָּה תַּגִּידִי תּוֹדָה", "אַתָּה יַגִּיד תּוֹדָה"] },
+      { english: "what will you (f.) say?", hint: "לְהַגִּיד", hebrew: "מָה תַּגִּידִי?", wrong: ["מָה אָמַרְתְּ?", "מָה תַּגִּיד?", "מָה נַגִּיד?"] },
+      { english: "the movie will start at eight", hint: "לְהַתְחִיל", hebrew: "הַסֶּרֶט יַתְחִיל בִּשְׁמוֹנֶה", wrong: ["הַסֶּרֶט הִתְחִיל בִּשְׁמוֹנֶה", "הַסֶּרֶט תַּתְחִיל בִּשְׁמוֹנֶה", "הַסֶּרֶט יַתְחִיל לִשְׁמוֹנֶה"] },
+      { english: "we will start the game", hint: "לְהַתְחִיל", hebrew: "נַתְחִיל אֶת הַמִּשְׂחָק", wrong: ["הִתְחַלְנוּ אֶת הַמִּשְׂחָק", "נַתְחִיל הַמִּשְׂחָק", "אַתְחִיל אֶת הַמִּשְׂחָק"] },
+      { english: "tomorrow I will get dressed quickly", hint: "לְהִתְלַבֵּשׁ", hebrew: "מָחָר אֶתְלַבֵּשׁ מַהֵר", wrong: ["מָחָר הִתְלַבַּשְׁתִּי מַהֵר", "מָחָר נִתְלַבֵּשׁ מַהֵר", "מָחָר יִתְלַבֵּשׁ מַהֵר"] },
+      { english: "they (f.) will get dressed for the party", hint: "לְהִתְלַבֵּשׁ", hebrew: "הֵן יִתְלַבְּשׁוּ לַמְּסִבָּה", wrong: ["הֵן הִתְלַבְּשׁוּ לַמְּסִבָּה", "הֵן תִּתְלַבֵּשׁ לַמְּסִבָּה", "הֵן יִתְלַבְּשׁוּ אֶת הַמְּסִבָּה"] },
+      { english: "you (f.) will buy a new dress", hint: "לִקְנוֹת", hebrew: "אַתְּ תִּקְנִי שִׂמְלָה חֲדָשָׁה", wrong: ["אַתְּ קָנִית שִׂמְלָה חֲדָשָׁה", "אַתְּ תִּקְנֶה שִׂמְלָה חֲדָשָׁה", "אַתְּ תִּקְנִי אֶת שִׂמְלָה חֲדָשָׁה"] },
+      { english: "next week they (m.) will buy the tickets", hint: "לִקְנוֹת", hebrew: "בַּשָּׁבוּעַ הַבָּא הֵם יִקְנוּ אֶת הַכַּרְטִיסִים", wrong: ["בַּשָּׁבוּעַ הַבָּא הֵם קָנוּ אֶת הַכַּרְטִיסִים", "בַּשָּׁבוּעַ הַבָּא הֵם יִקְנוּ הַכַּרְטִיסִים", "בַּשָּׁבוּעַ הַבָּא הֵם יִקְנֶה אֶת הַכַּרְטִיסִים"] },
+      { english: "I will see her tomorrow", hint: "לִרְאוֹת", hebrew: "אֶרְאֶה אוֹתָהּ מָחָר", wrong: ["רָאִיתִי אוֹתָהּ מָחָר", "אֶרְאֶה אֶת הִיא מָחָר", "אֶרְאֶה אוֹתוֹ מָחָר"] },
+      { english: "you all (m.) will see the game", hint: "לִרְאוֹת", hebrew: "אַתֶּם תִּרְאוּ אֶת הַמִּשְׂחָק", wrong: ["אַתֶּם רְאִיתֶם אֶת הַמִּשְׂחָק", "אַתֶּם תִּרְאוּ הַמִּשְׂחָק", "אַתֶּם יִרְאוּ אֶת הַמִּשְׂחָק"] },
+      { english: "tomorrow I will get up at seven", hint: "לָקוּם", hebrew: "מָחָר אָקוּם בְּשֶׁבַע", wrong: ["מָחָר קַמְתִּי בְּשֶׁבַע", "מָחָר נָקוּם בְּשֶׁבַע", "מָחָר תָּקוּם בְּשֶׁבַע"] },
+      { english: "she will get up early", hint: "לָקוּם", hebrew: "הִיא תָּקוּם מֻקְדָּם", wrong: ["הִיא קָמָה מֻקְדָּם", "הִיא יָקוּם מֻקְדָּם", "הִיא תָּקוּמִי מֻקְדָּם"] },
+      { english: "he will come to school by bus", hint: "לָבוֹא", hebrew: "הוּא יָבוֹא לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", wrong: ["הוּא בָּא לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", "הוּא תָּבוֹא לְבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס", "הוּא יָבוֹא בְּבֵית הַסֵּפֶר בָּאוֹטוֹבּוּס"] },
+      { english: "you (m.) will come home early", hint: "לָבוֹא", hebrew: "אַתָּה תָּבוֹא הַבַּיְתָה מֻקְדָּם", wrong: ["אַתָּה בָּאתָ הַבַּיְתָה מֻקְדָּם", "אַתָּה תָּבוֹאִי הַבַּיְתָה מֻקְדָּם", "אַתָּה תָּבוֹא בַּבַּיִת מֻקְדָּם"] },
+      { english: "we will sing a song at the party", hint: "לָשִׁיר", hebrew: "נָשִׁיר שִׁיר בַּמְּסִבָּה", wrong: ["שַׁרְנוּ שִׁיר בַּמְּסִבָּה", "אָשִׁיר שִׁיר בַּמְּסִבָּה", "נָשִׁיר אֶת שִׁיר בַּמְּסִבָּה"] },
+      { english: "I will give him the book", hint: "לָתֵת", hebrew: "אֶתֵּן לוֹ אֶת הַסֵּפֶר", wrong: ["נָתַתִּי לוֹ אֶת הַסֵּפֶר", "אֶתֵּן אוֹתוֹ אֶת הַסֵּפֶר", "אֶתֵּן לוֹ הַסֵּפֶר"] },
+      { english: "she will give us a present", hint: "לָתֵת", hebrew: "הִיא תִּתֵּן לָנוּ מַתָּנָה", wrong: ["הִיא נָתְנָה לָנוּ מַתָּנָה", "הִיא יִתֵּן לָנוּ מַתָּנָה", "הִיא תִּתֵּן אוֹתָנוּ מַתָּנָה"] },
+      { english: "next year we will travel to Eilat", hint: "לִנְסֹעַ", hebrew: "בַּשָּׁנָה הַבָּאָה נִסַּע לְאֵילַת", wrong: ["בַּשָּׁנָה הַבָּאָה נָסַעְנוּ לְאֵילַת", "בַּשָּׁנָה הַבָּאָה יִסְעוּ לְאֵילַת", "בַּשָּׁנָה הַבָּאָה נִסַּע בְּאֵילַת"] },
+      { english: "you (f.) will travel by train", hint: "לִנְסֹעַ", hebrew: "אַתְּ תִּסְעִי בָּרַכֶּבֶת", wrong: ["אַתְּ נָסַעְתְּ בָּרַכֶּבֶת", "אַתְּ תִּסַּע בָּרַכֶּבֶת", "אַתְּ תִּסְעִי לָרַכֶּבֶת"] },
+      { english: "you all (m.) will understand the question", hint: "לְהָבִין", hebrew: "אַתֶּם תָּבִינוּ אֶת הַשְּׁאֵלָה", wrong: ["אַתֶּם הֲבַנְתֶּם אֶת הַשְּׁאֵלָה", "אַתֶּם תָּבִינוּ הַשְּׁאֵלָה", "אַתֶּם יָבִינוּ אֶת הַשְּׁאֵלָה"] },
+      { english: "they (m.) will understand him", hint: "לְהָבִין", hebrew: "הֵם יָבִינוּ אוֹתוֹ", wrong: ["הֵם הֵבִינוּ אוֹתוֹ", "הֵם יָבִינוּ אֶת הוּא", "הֵם יָבִינוּ אוֹתָהּ"] },
+      { english: "he will invite me to the party", hint: "לְהַזְמִין", hebrew: "הוּא יַזְמִין אוֹתִי לַמְּסִבָּה", wrong: ["הוּא הִזְמִין אוֹתִי לַמְּסִבָּה", "הוּא תַּזְמִין אוֹתִי לַמְּסִבָּה", "הוּא יַזְמִין אוֹתָהּ לַמְּסִבָּה"] },
+      { english: "we will invite them (f.)", hint: "לְהַזְמִין", hebrew: "נַזְמִין אוֹתָן", wrong: ["הִזְמַנּוּ אוֹתָן", "נַזְמִין אוֹתָם", "נַזְמִין אֶת הֵן"] },
+      { english: "they (m.) will play soccer", hint: "לְשַׂחֵק", hebrew: "הֵם יְשַׂחֲקוּ כַּדּוּרֶגֶל", wrong: ["הֵם שִׂחֲקוּ כַּדּוּרֶגֶל", "הֵם יְשַׂחֵק כַּדּוּרֶגֶל", "הֵם תְּשַׂחֲקוּ כַּדּוּרֶגֶל"] },
+      { english: "he will drink all the water", hint: "לִשְׁתּוֹת", hebrew: "הוּא יִשְׁתֶּה אֶת כָּל הַמַּיִם", wrong: ["הוּא שָׁתָה אֶת כָּל הַמַּיִם", "הוּא יִשְׁתֶּה כָּל הַמַּיִם", "הוּא תִּשְׁתֶּה אֶת כָּל הַמַּיִם"] },
+      { english: "you (m.) will do the homework", hint: "לַעֲשׂוֹת", hebrew: "אַתָּה תַּעֲשֶׂה אֶת שִׁעוּרֵי הַבַּיִת", wrong: ["אַתָּה עָשִׂיתָ אֶת שִׁעוּרֵי הַבַּיִת", "אַתָּה תַּעֲשִׂי אֶת שִׁעוּרֵי הַבַּיִת", "אַתָּה תַּעֲשֶׂה שִׁעוּרֵי הַבַּיִת"] },
+    ],
+  },
 ];
 
 // Get the premade decks ready, like the levels: label them, and make the feminine copies.
@@ -1412,7 +1661,8 @@ function useDeck(deckId) {
   const deck = findDeck(deckId);
   if (!deck) return;
   currentDeckId = deck.id;
-  WORDS = (deck.review ? mixReviewWords(deck) : deck.words).map(forMyGender);
+  const list = deck.review ? mixReviewWords(deck) : deck.checkpoint ? mixCheckpointWords(deck) : deck.words;
+  WORDS = list.map(forMyGender);
 }
 
 // ---------- Masculine or feminine ("I" and "we") ----------

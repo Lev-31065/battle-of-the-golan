@@ -166,6 +166,15 @@ function setItemIcon(element, id) {
 // The Throw button: dragging less than this (screen pixels) = throw the way you're facing.
 const AIM_DEADZONE = 15;
 
+// ---------- B levels and review checkpoints (words.js) ----------
+// A B level = its own hand-written sentences (levels-b.js) + this many random extras:
+const REVIEW_MIX = {
+  fromThisLevel: 5,  // words from the level's A part
+  fromEarlier: 5,    // words from earlier levels
+};
+// A review checkpoint asks about this many questions, spread evenly over every level before it.
+const CHECKPOINT_QUESTIONS = 30;
+
 // ---------- Messages at the bottom of the screen ----------
 const MESSAGES = {
   time: 6,           // seconds each message stays (was about 3; Daniel: "make sure they appear for a while")
@@ -302,7 +311,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12c";
+const GAME_VERSION = "2026-11-12d";
 
 // ---------- Helpers ----------
 

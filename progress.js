@@ -223,8 +223,8 @@ function noteAutoAnswer(correct, seconds) {
     if (struggles >= AUTO_LEVEL.settleAfter) {
       auto.placing = false;                 // this is your level
     } else if (lastFew.length === AUTO_LEVEL.jumpAfter && lastFew.every((a) => a.fast)) {
-      // Jump to the next main level (skip the review levels while climbing).
-      const next = DECKS.findIndex((deck, i) => i > index && !deck.review);
+      // Jump to the next main level (skip the B levels and checkpoints while climbing).
+      const next = DECKS.findIndex((deck, i) => i > index && !deck.review && !deck.checkpoint);
       if (next === -1) {
         auto.placing = false;               // already at the top!
       } else {
