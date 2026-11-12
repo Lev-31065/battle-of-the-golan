@@ -8,7 +8,7 @@
 
 let raceInfo = { startAt: Infinity, finishers: [] }; // from the referee
 let mySpeed = 0;          // how fast my sled is going (track units per second)
-let mySteer = 0;          // my steering, smoothed (for tilting the sled)
+let mySteer = 0;          // which way my sled points: -1 = turned fully left, 0 = straight down the path, 1 = fully right
 let raceTurn = 0;         // goes up and down as the track turns (slides the mountains)
 let crashAt = -Infinity;  // when I last hit a tree (for the screen shake)
 let lastRaceSend = -Infinity; // when I last told the referee where I am (game clock)
@@ -72,13 +72,14 @@ function raceUpdate(dt) {
 
   const started = gameTime >= raceInfo.startAt;
   const steer = started ? steerInput() : 0;
-  mySteer += (steer - mySteer) * Math.min(1, dt * 8);
+  // The sled swings round toward where you steer (not instantly, like a real sled).
+  mySteer += (steer - mySteer) * Math.min(1, dt * RACE.turnSpeed);
 
   if (started) {
     const segment = findSegment(me.y);
     const fraction = mySpeed / RACE.maxSpeed; // 0 = stopped, 1 = top speed
-    // Steering moves you sideways (faster when you're going fast)…
-    me.x += steer * RACE.steerSpeed * fraction * dt;
+    // The way the sled points moves you sideways (faster when you're going fast)…
+    me.x += mySteer * RACE.steerSpeed * fraction * dt;
     // …and curves push you toward the outside, so you have to steer into them.
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
     // You can go off the path, but not past the edge of the mountainside.
@@ -264,9 +265,11 @@ function raceRender() {
 
   const sleds = !racing ? [] : Object.values(players)
     .filter((p) => p.id !== client.myId)
-    .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, steer: p.steer }));
+    .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn }));
   const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
-  drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, time: gameTime, sleds, gate });
+  // The view turns (part of the way) with my sled, so the world swings round when I steer.
+  const viewTurn = racing ? mySteer * RACE.maxTurn * RACE.cameraTurn : 0;
+  drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate });
   if (!racing) return;
   const boosting = gameTime < boostUntil;
   if (boosting) drawBoostLines(ctx, w, h, gameTime);
@@ -285,7 +288,8 @@ function raceRender() {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer, gameTime, null);
+  // (The sled points a bit further round than the view, so you can see it turning.)
+  drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer * RACE.maxTurn - viewTurn * 0.5, gameTime, null);
 
   // The race info on top.
   const order = raceOrder();

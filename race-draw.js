@@ -90,9 +90,10 @@ function hash(a, b) {
 
 // turn = how much the path has turned (slides the backdrop sideways).
 // progress = how far down the mountain I am (0 = the top, 1 = the lake): the Kinneret grows as you get closer.
-function drawValley(ctx, w, h, turn, progress, time, snow) {
+// pan = how far the view has turned (in pixels): everything in the backdrop slides by that much.
+function drawValley(ctx, w, h, turn, progress, time, snow, pan = 0) {
   const horizon = Math.round(h * RACE.horizon);
-  const slide = Math.max(-0.45, Math.min(0.45, turn * 0.5)) * w; // (how far the lake slides as you turn)
+  const slide = Math.max(-0.45, Math.min(0.45, turn * 0.5)) * w - pan; // (how far the lake slides as you turn)
 
   // The sky, and the sun.
   const sky = ctx.createLinearGradient(0, 0, 0, horizon);
@@ -242,7 +243,9 @@ function drawSegment(ctx, w, seg, mist) {
   const outA = a.unit * 2.5, outB = b.unit * 2.5;     // and how far out
   const slopeColor = fade(slope);
   polygon(ctx, a.x - edgeA, a.y, b.x - edgeB, b.y, b.x - edgeB - outB, b.y + dropB, a.x - edgeA - outA, a.y + dropA, slopeColor);
+  ctx.strokeStyle = slopeColor; ctx.lineWidth = 1.5; ctx.stroke(); // (an outline in the same color fills the tiny gaps between pieces on sharp bends)
   polygon(ctx, a.x + edgeA, a.y, b.x + edgeB, b.y, b.x + edgeB + outB, b.y + dropB, a.x + edgeA + outA, a.y + dropA, slopeColor);
+  ctx.stroke();
   polygon(ctx, a.x - edgeA, a.y, a.x + edgeA, a.y, b.x + edgeB, b.y, b.x - edgeB, b.y, fade(ground));
 
   // The path, with slightly darker packed edges.
@@ -480,28 +483,43 @@ function drawRaceScene(ctx, w, h, scene) {
   const base = findSegment(cameraZ);
   const basePercent = clamp01((cameraZ - base.p1.world.z) / L);
 
-  // The camera floats above the path where my sled is, so it goes down the mountain with me.
+  // The camera floats above the path where my sled is, so it goes down the mountain (and over the hills) with me.
   const mySpot = cameraZ + raceCamera.playerZ;
   const mySegment = findSegment(mySpot);
   const height = lerp(mySegment.p1.world.y, mySegment.p2.world.y, clamp01((mySpot - mySegment.p1.world.z) / L));
   const cameraY = height + RACE.cameraHeight;
-  const cameraX = scene.cameraX * RACE.roadWidth;
 
-  drawValley(ctx, w, h, scene.turn, trackProgress(cameraZ), scene.time, mySegment.snow);
+  // Turning the view: when my sled points right, the camera swings round behind it, so
+  // everything far away slides LEFT across the screen (the world turns around me), while
+  // my sled stays in the middle. `pan` = how far (in pixels) things far away slide.
+  const viewTurn = scene.viewTurn || 0;
+  const pan = -Math.tan(viewTurn) * raceCamera.depth * w / 2;
+  const cameraX = scene.cameraX * RACE.roadWidth - Math.sin(viewTurn) * raceCamera.playerZ;
+
+  drawValley(ctx, w, h, scene.turn, trackProgress(cameraZ), scene.time, mySegment.snow, pan);
 
   // First work out where every piece lands on the screen, near to far.
   // `x` and `dx` bend the path: each curved piece shifts the next one a bit more.
+  // `clip` = the highest point on the screen the path has reached so far: anything
+  // further away that lands lower than that is hidden behind a hill.
   const shown = [];
   let x = 0;
   let dx = -(base.curve * basePercent);
+  let clip = h;
   const drawCount = Math.min(RACE.drawDistance, segments.length - base.index);
   for (let n = 0; n < drawCount; n++) {
     const seg = segments[base.index + n];
     projectPoint(seg.p1, cameraX - x, cameraY, cameraZ, w, h, seg.width);
     projectPoint(seg.p2, cameraX - x - dx, cameraY, cameraZ, w, h, seg.width2);
+    seg.p1.screen.x += pan;
+    seg.p2.screen.x += pan;
     x += dx;
     dx += seg.curve;
-    if (seg.p1.camera.z > raceCamera.depth) shown.push(seg);
+    if (seg.p1.camera.z <= raceCamera.depth) continue; // behind the camera
+    seg.clip = clip;
+    seg.hidden = seg.p2.screen.y >= clip; // completely behind a hill (but trees there can still poke up)
+    clip = Math.min(clip, seg.p2.screen.y);
+    shown.push(seg);
   }
 
   // Which other sleds are on which piece of path.
@@ -516,10 +534,17 @@ function drawRaceScene(ctx, w, h, scene) {
   for (let i = shown.length - 1; i >= 0; i--) {
     const seg = shown[i];
     const a = seg.p1.screen, b = seg.p2.screen;
-    if (b.y >= h || b.y > a.y + 1) continue; // below the screen, or facing away (hidden behind a hill)
+    if (b.y >= h && a.y >= h) continue; // below the screen
     const far = i / drawCount;
-    drawSegment(ctx, w, seg, Math.min(0.85, far * far * 0.9));
-
+    // Behind a hill, only the part above the top of the hill shows (the path, its
+    // mountainside, trees, sleds…), so everything is cut off at the hilltop's line.
+    ctx.save();
+    if (seg.hidden || a.y > seg.clip + 1) {
+      ctx.beginPath();
+      ctx.rect(0, 0, w, seg.clip);
+      ctx.clip();
+    }
+    if (!seg.hidden) drawSegment(ctx, w, seg, Math.min(0.85, far * far * 0.9));
     for (const sprite of seg.sprites) {
       const size = SPRITE_SIZES[sprite.type];
       const width = size.w * a.scale * w / 2;
@@ -537,8 +562,9 @@ function drawRaceScene(ctx, w, h, scene) {
       const s = lerp(a.scale, b.scale, t);
       const sy = lerp(a.y, b.y, t);
       const sx = lerp(a.x, b.x, t) + s * sled.x * RACE.roadWidth * w / 2;
-      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, sled.steer || 0, scene.time, sled.name);
+      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, (sled.turn || 0) - viewTurn, scene.time, sled.name);
     }
+    ctx.restore();
   }
 }
 
@@ -570,65 +596,181 @@ function drawBanner(ctx, w, seg, text, color) {
   drawTextInBox(ctx, text, a.x, a.y - tall + bannerH * 0.5, right - left, bannerH * 0.8, 400, "#ffffff", true);
 }
 
-// ---------- A sled, seen from behind ----------
-// cx, bottom = where it sits on the screen. size = its width in pixels.
-// steer (-1 … 1) tilts it into the turn.
-function drawSled(ctx, cx, bottom, size, color, steer, time, name) {
+// ---------- A sled, seen from behind (and a little from above) ----------
+// An old-fashioned wooden sled: two wooden runners with iron strips, curling up at the front,
+// and a deck of wooden slats. The rider wears a wool coat (in this sled's color), a knitted
+// kippah, and a white scarf with blue stripes like a tallit, with tzitzit peeking out
+// under the coat. A little Israeli flag flies from the back.
+//
+// cx, bottom = where the back of the sled sits on the screen. size = its width in pixels.
+// turn = which way it points, compared to the camera (radians: plus = right).
+//
+// The sled is a tiny 3D model: every point has x (sideways), y (up) and z (forward), in
+// "sled units" (the sled is about 100 wide). `at(x, y, z)` turns the point round by `turn`
+// and works out where it lands on the screen. That's why it really looks like it turns.
+function drawSled(ctx, cx, bottom, size, color, turn, time, name) {
   const u = size / 100;
+  const cos = Math.cos(turn), sin = Math.sin(turn);
+  const tilt = 0.42; // how much of the top we see (the camera looks down a little)
+  const at = (x, y, z) => {
+    const X = x * cos + z * sin, Z = -x * sin + z * cos;
+    return [cx + X * u, bottom - (y + Z * tilt) * u];
+  };
+  const trace = (points) => {
+    ctx.beginPath();
+    points.forEach(([x, y, z], i) => { const [sx, sy] = at(x, y, z); if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy); });
+  };
+  const shape = (points, fill, stroke, lineWidth) => {
+    trace(points);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth * u; ctx.stroke(); }
+  };
+  const line = (points, stroke, width) => {
+    trace(points);
+    ctx.strokeStyle = stroke; ctx.lineWidth = width * u; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke();
+  };
+  const coat = mixedColor(color, "#5b4636", 0.3);     // wool, a bit earthy
+  const coatDark = mixedColor(color, "#2b2118", 0.5);
+  const flap = Math.sin(time * 14);
+
   ctx.save();
-  // A soft shadow on the snow.
-  ctx.fillStyle = "rgba(30, 60, 90, 0.18)";
-  ctx.beginPath(); ctx.ellipse(cx, bottom - u * 2, u * 54, u * 8, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.translate(cx, bottom);
-  ctx.rotate(steer * 0.13);
-  // The two metal runners, curling up at the back.
-  ctx.strokeStyle = "#334155"; ctx.lineWidth = u * 5; ctx.lineCap = "round";
+  // A soft shadow on the snow, under the whole sled.
+  shape([[-50, 0, -4], [50, 0, -4], [50, 0, 150], [-50, 0, 150]], "rgba(30, 60, 90, 0.16)");
+
+  // The runners: an iron strip on the bottom, wood on top, curling up at the front.
   for (const s of [-1, 1]) {
-    ctx.beginPath(); ctx.moveTo(s * u * 36, -u * 4); ctx.lineTo(s * u * 36, -u * 13);
-    ctx.arc(s * u * 36 - s * u * 5, -u * 13, u * 5, s > 0 ? 0 : Math.PI, Math.PI * 1.5, s < 0); ctx.stroke();
+    const x = s * 40;
+    const runner = [[x, 2, -6], [x, 2, 126], [x, 6, 138], [x, 14, 145], [x, 21, 141], [x, 20, 134]];
+    line(runner, "#3a3f44", 6);
+    line(runner.map(([px, py, pz]) => [px, py + 4, pz]), "#8a5a2b", 5);
+    // Little posts holding up the deck.
+    for (const z of [8, 60, 112]) line([[x, 6, z], [x * 0.95, 16, z]], "#6b4423", 4);
   }
-  // The wooden seat.
-  ctx.fillStyle = "#a0522d";
-  ctx.beginPath(); ctx.moveTo(-u * 46, -u * 12); ctx.lineTo(u * 46, -u * 12); ctx.lineTo(u * 42, -u * 22); ctx.lineTo(-u * 42, -u * 22); ctx.fill();
-  ctx.fillStyle = "#7c3f1d"; ctx.fillRect(-u * 46, -u * 14, u * 92, u * 2.5);
-  // The rider's jacket (in this sled's color), sitting up.
-  ctx.fillStyle = color;
+  // The deck: wooden slats from the front to the back (far ones first, so near ones cover them).
+  const woods = ["#b98a55", "#a8784a", "#c29462", "#9f6f42", "#b3834f", "#a77649"];
+  for (let i = 5; i >= 0; i--) {
+    const z0 = 4 + i * 21, z1 = z0 + 17;
+    shape([[-46, 17, z0], [46, 17, z0], [46, 17, z1], [-46, 17, z1]], woods[i], "#5e3b1c", 1);
+    line([[-30, 17.2, z0 + 8], [10, 17.2, z0 + 9]], "rgba(94, 59, 28, 0.35)", 0.8); // wood grain
+  }
+  // The steering rope, from the front curls back to the rider's hands.
+  line([[-40, 22, 140], [-30, 24, 92], [-22, 30, 62]], "#d6c08a", 2.2);
+  line([[40, 22, 140], [30, 24, 92], [22, 30, 62]], "#d6c08a", 2.2);
+
+  // The rider, sitting on the deck (a little forward from the back).
+  const [hx, hy] = at(0, 17, 40);
+  const r = u;
+  ctx.translate(hx, hy);
+  // Tzitzit: white strings hanging down at both sides, swinging.
+  ctx.strokeStyle = "#f8fafc"; ctx.lineWidth = r * 1.4; ctx.lineCap = "round";
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(s * (24 + k * 2) * r, -r * 14);
+      ctx.quadraticCurveTo((s * (28 + k * 2) - flap * 2) * r, -r * 6, (s * (30 + k * 2.5) - flap * 3) * r, r * 1);
+      ctx.stroke();
+    }
+  }
+  // The coat: a wool jacket with a belt, sitting up.
+  ctx.fillStyle = coat;
   ctx.beginPath();
-  ctx.moveTo(-u * 30, -u * 20); ctx.lineTo(u * 30, -u * 20);
-  ctx.quadraticCurveTo(u * 27, -u * 56, u * 18, -u * 62);
-  ctx.lineTo(-u * 18, -u * 62);
-  ctx.quadraticCurveTo(-u * 27, -u * 56, -u * 30, -u * 20);
+  ctx.moveTo(-r * 29, -r * 8); ctx.lineTo(r * 29, -r * 8);
+  ctx.quadraticCurveTo(r * 28, -r * 44, r * 17, -r * 52);
+  ctx.lineTo(-r * 17, -r * 52);
+  ctx.quadraticCurveTo(-r * 28, -r * 44, -r * 29, -r * 8);
   ctx.fill();
-  // Arms holding on to the sides.
-  ctx.strokeStyle = shadeColor(color, -0.25); ctx.lineWidth = u * 9;
-  for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * u * 22, -u * 54); ctx.quadraticCurveTo(s * u * 38, -u * 40, s * u * 40, -u * 22); ctx.stroke(); }
-  ctx.fillStyle = "#1f2937"; // mittens
-  for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(s * u * 40, -u * 21, u * 5, 0, Math.PI * 2); ctx.fill(); }
-  // The scarf tail flaps in the wind, away from the turn.
-  const flap = Math.sin(time * 14) * u * 3;
-  ctx.fillStyle = "#facc15";
-  ctx.beginPath(); ctx.moveTo(-u * 6, -u * 60); ctx.quadraticCurveTo(-u * 20 - steer * u * 10, -u * 56 + flap, -u * 30 - steer * u * 14, -u * 50 - flap);
-  ctx.lineTo(-u * 26 - steer * u * 14, -u * 45 - flap); ctx.quadraticCurveTo(-u * 16, -u * 52, -u * 2, -u * 55); ctx.fill();
-  ctx.fillRect(-u * 17, -u * 64, u * 34, u * 7);
-  // Head: hair, then a warm hat with a pom-pom.
-  ctx.fillStyle = "#5b3a1e";
-  ctx.beginPath(); ctx.arc(0, -u * 74, u * 14, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = coatDark;
+  ctx.fillRect(-r * 28, -r * 20, r * 56, r * 4);  // belt
+  ctx.fillRect(-r * 1, -r * 50, r * 2, r * 30);   // the back seam
+  // Arms reaching forward to the rope, leaning into the turn.
+  const lean = turn * 10;
+  ctx.strokeStyle = coatDark; ctx.lineWidth = r * 9; ctx.lineCap = "round";
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(s * r * 21, -r * 46);
+    ctx.quadraticCurveTo(s * r * 33 + lean * r, -r * 36, s * r * 26 + lean * r, -r * 24); ctx.stroke();
+  }
+  ctx.fillStyle = "#6b4a2e"; // leather mittens
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(s * r * 26 + lean * r, -r * 23, r * 4.5, 0, Math.PI * 2); ctx.fill(); }
+  // The scarf: white with blue stripes, its end flying back in the wind, away from the turn.
+  const fly = -turn * 18;
   ctx.fillStyle = "#f8fafc";
-  ctx.beginPath(); ctx.arc(0, -u * 77, u * 14.5, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = color; ctx.fillRect(-u * 14.5, -u * 79, u * 29, u * 5);
-  ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.arc(0, -u * 93, u * 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(r * 4, -r * 50);
+  ctx.quadraticCurveTo(r * (16 + fly), -r * (44 + flap * 2), r * (24 + fly * 1.4), -r * (36 + flap * 4));
+  ctx.lineTo(r * (19 + fly * 1.4), -r * (32 + flap * 4));
+  ctx.quadraticCurveTo(r * (11 + fly), -r * 41, r * 1, -r * 45);
+  ctx.fill();
+  ctx.fillRect(-r * 16, -r * 56, r * 32, r * 8);
+  ctx.fillStyle = "#1d4ed8";
+  ctx.fillRect(-r * 16, -r * 54.5, r * 32, r * 1.4);
+  ctx.fillRect(-r * 16, -r * 50.5, r * 32, r * 1.4);
+  // Head: dark curly hair, seen from behind.
+  ctx.fillStyle = "#3b2414";
+  ctx.beginPath(); ctx.arc(0, -r * 67, r * 13.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a2e1a";
+  for (const [dx, dy] of [[-9, -60], [9, -60], [-11, -69], [11, -69], [0, -57], [-5, -76], [5, -76]]) {
+    ctx.beginPath(); ctx.arc(dx * r, dy * r, r * 4.2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = "#e8b48f"; // ears
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * r * 13.5, -r * 66, r * 2.5, r * 4, 0, 0, Math.PI * 2); ctx.fill(); }
+  // The knitted kippah on top (in this sled's color, with a white pattern around the edge).
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(0, -r * 77, r * 9.5, r * 5.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = r * 1.1;
+  ctx.setLineDash([r * 1.6, r * 1.2]);
+  ctx.beginPath(); ctx.ellipse(0, -r * 77, r * 7, r * 3.8, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.translate(-hx, -hy);
+
+  // A little Israeli flag on a stick at the back corner, waving in the wind.
+  const [px, py] = at(-38, 18, 2);
+  const stick = 46 * r;
+  ctx.strokeStyle = "#6b4423"; ctx.lineWidth = r * 2;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - stick); ctx.stroke();
+  const fw = 24 * r, fh = 16 * r;
+  const wave = (t) => Math.sin(time * 9 + t * 4) * r * 1.6 * t;
+  const fx = px, fy = py - stick;
+  const band = (y0, y1, fill) => {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    for (let k = 0; k <= 6; k++) { const t = k / 6; ctx[k === 0 ? "moveTo" : "lineTo"](fx - t * fw, fy + y0 * fh + wave(t)); }
+    for (let k = 6; k >= 0; k--) { const t = k / 6; ctx.lineTo(fx - t * fw, fy + y1 * fh + wave(t)); }
+    ctx.fill();
+  };
+  band(0, 1, "#ffffff");
+  band(0.1, 0.24, "#1d4ed8");
+  band(0.76, 0.9, "#1d4ed8");
+  // The Star of David in the middle: two triangles.
+  const sx = fx - fw * 0.5, sy = fy + fh * 0.5 + wave(0.5), sr = fh * 0.2;
+  ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = Math.max(0.6, r * 0.9);
+  for (const flip of [1, -1]) {
+    ctx.beginPath();
+    for (let k = 0; k < 3; k++) {
+      const angle = -Math.PI / 2 * flip + k * Math.PI * 2 / 3;
+      const X = sx + Math.cos(angle) * sr, Y = sy + Math.sin(angle) * sr;
+      if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
   ctx.restore();
-  // Name above other players' sleds.
+
+  // A name above other players' sleds.
   if (name) {
     const fontSize = Math.max(10, Math.min(22, u * 14));
     ctx.font = `800 ${fontSize}px Rubik, Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(15, 23, 42, 0.8)";
-    ctx.strokeText(name, cx, bottom - u * 104);
+    ctx.strokeText(name, cx, bottom - u * 110);
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(name, cx, bottom - u * 104);
+    ctx.fillText(name, cx, bottom - u * 110);
   }
+}
+
+// Two "#rrggbb" colors mixed: t = 0 → all the first, 1 → all the second.
+function mixedColor(a, b, t) {
+  return rgbText(mixRgb(hexToRgb(a), hexToRgb(b), t));
 }
 
 // A color made lighter (amount > 0) or darker (amount < 0). Works with "#rrggbb" colors.
@@ -700,7 +842,7 @@ const LANE_COLORS = ["#2563eb", "#7c3aed", "#0e7490"];
 
 function drawGate(ctx, w, seg, info) {
   const a = seg.p1.screen;
-  if (a.y > seg.clip + 2) return; // behind a hill
+  if (seg.hidden && a.y - 2600 * a.scale * w / 2 > seg.clip) return; // completely behind a hill
   const unit = a.scale * w / 2;   // pixels per track unit, at this distance
   const tall = 2600 * unit; // (big, so you can read it from far away)
   if (tall < 6) return;

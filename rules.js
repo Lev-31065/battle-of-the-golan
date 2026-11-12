@@ -315,8 +315,11 @@ const RACE = {
   countdown: 3,           // seconds of 3… 2… 1… before the sleds can go
   segmentLength: 200,     // how long one piece of the path is
   roadWidth: 2000,        // the measuring stick for widths: the widths below are in these
-  pathWidth: 0.55,        // half the width of the normal (narrow) path
-  gateWidth: 1.7,         // half the width of the path at an answer gate (much wider)
+  pathWidth: 1.05,        // half the width of the normal path (most of the way)
+  narrowWidth: 0.5,       // half the width in the few narrow places
+  wideWidth: 1.8,         // half the width in the very wide places
+  hills: 1,               // how big the hills and dips are (0 = none, 1 = normal, 2 = huge)
+  gateWidth: 1.7,         // half the width of the path at an answer gate
   startWidth: 1.2,        // half the width at the start and the finish
   shoulder: 1.0,          // how much ground there is beside the path before it drops down the mountainside
   lanes: 3,               // lanes at the gates (one answer over each lane)
@@ -325,9 +328,12 @@ const RACE = {
   brake: 3000,            // how fast you slow down after the finish line (so you stop on the beach)
   offTrackSpeed: 0.3,     // off the path, your top speed drops to 30%
   offTrackSlowdown: 6000, // how fast going off the path slows you down
-  steerSpeed: 1.6,        // how fast you slide left and right at top speed
-  curvePush: 0.25,        // how hard curves push you toward the outside
-  maxSide: 3.2,           // the farthest from the middle any sled can be (the referee checks this)
+  steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
+  turnSpeed: 4,           // how quickly the sled swings round when you steer (higher = snappier)
+  maxTurn: 0.6,           // how far the sled can turn (in radians: 0.6 is about 35 degrees)
+  cameraTurn: 0.6,        // how much the view turns with the sled (0 = not at all, 1 = fully)
+  curvePush: 0.1,         // how hard curves push you toward the outside
+  maxSide: 4,         // the farthest from the middle any sled can be (the referee checks this)
   crashSpeed: 0.2,        // hitting a tree, bush or rock drops you to 20% speed
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
@@ -353,7 +359,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12m";
+const GAME_VERSION = "2026-11-12n";
 
 // ---------- Helpers ----------
 

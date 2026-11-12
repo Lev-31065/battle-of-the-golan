@@ -70,6 +70,8 @@ function trackProgress(z) {
   const easeInOut = (a, b, t) => a + (b - a) * (-Math.cos(t * Math.PI) / 2 + 0.5);
   const smooth = (t) => t * t * (3 - 2 * t);
 
+  let pieceWidth = RACE.startWidth; // how wide the pieces being built are
+
   function lastY() {
     return segments.length === 0 ? 0 : segments[segments.length - 1].p2.world.y;
   }
@@ -85,6 +87,7 @@ function trackProgress(z) {
       sprites: [],
       dark: Math.floor(n / 3) % 2 === 1, // light and dark stripes, so you can feel the speed
       width: RACE.pathWidth,
+      baseWidth: pieceWidth, // (how wide this piece was planned; smoothed into `width` later)
       snow: 1,
       sand: 0,
       water: false,
@@ -109,8 +112,10 @@ function trackProgress(z) {
   }
 
   // ----- The course -----
-  // A flat start at the top, then curvy downhill stretches with a straight, wide answer
-  // gate between them, then the path flattens out onto the beach at the Kinneret.
+  // A flat start at the top, then curvy stretches with hills and dips, with a straight,
+  // wide answer gate between them, then the path flattens out onto the beach at the Kinneret.
+  // (`pieceWidth` = how wide the path is on the pieces being built; smoothed out further down.)
+
   addRoad(0, 90, 0, 0, 0); // the start, on top of the mountain
   TRACK.startZ = 40 * L;
   let lastCurve = 1;
@@ -119,19 +124,33 @@ function trackProgress(z) {
     const stretch = g === 0 ? 260 : RACE.gateGap - RACE.gateZone;
     let made = 0;
     while (made < stretch) {
-      const n = Math.min(stretch - made, 70 + Math.floor(random() * 90));
-      lastCurve = -Math.sign(lastCurve) * (random() < 0.25 ? 0 : 1 + random() * 2.5); // bends left and right, in turn
-      downhill(n, lastCurve, 0.12 + random() * 0.16);
+      const n = Math.min(stretch - made, 40 + Math.floor(random() * 70));
+      const lastPiece = made + n >= stretch;
+      // Bends: mostly left, right, left, right… sometimes two the same way, sometimes a short straight.
+      const r = random();
+      const turnAmount = r < 0.12 ? 0 : 2 + random() * 5;
+      const sameWay = random() < 0.25;
+      lastCurve = (sameWay ? Math.sign(lastCurve) || 1 : -Math.sign(lastCurve) || 1) * turnAmount;
+      // How wide: mostly wide, sometimes very wide, now and then narrow (never right before a gate).
+      const wr = random();
+      pieceWidth = wr < 0.15 && !lastPiece ? RACE.narrowWidth
+        : wr < 0.4 ? RACE.wideWidth
+        : RACE.pathWidth + (random() - 0.5) * 0.3;
+      downhill(n, lastCurve, 0.1 + random() * 0.16);
       made += n;
     }
     // The gate: a straight, gently sloping stretch, with the gate in the middle.
+    pieceWidth = RACE.gateWidth;
     const gateIndex = segments.length + Math.floor(RACE.gateZone / 2);
     addRoad(0, RACE.gateZone, 0, 0, -0.04 * RACE.gateZone);
     TRACK.gates.push({ number: g, index: gateIndex, z: gateIndex * L, width: RACE.gateWidth });
   }
-  downhill(220, -1.5, 0.1);         // the last stretch down
-  downhill(160, 1, 0.05);
+  pieceWidth = RACE.pathWidth;
+  downhill(120, -4, 0.12);          // the last stretch down
+  downhill(100, 5, 0.1);
+  downhill(120, -2.5, 0.05);
   addRoad(40, 60, 0, 0, -3);        // flattening out by the lake
+  pieceWidth = RACE.startWidth;
   const finishIndex = segments.length + 50;
   addRoad(0, 140, 0, 0, 0);         // the beach (the finish line is on it)
   const waterIndex = segments.length;
@@ -139,7 +158,29 @@ function trackProgress(z) {
   TRACK.finishZ = finishIndex * L;
   TRACK.length = segments.length * L;
 
+  // ----- Hills and dips (like a roller coaster, while still going down the mountain overall) -----
+  // Each hill is a smooth bump up (or a dip down), kept away from the gates, the start and the finish.
+  const bump = new Array(segments.length + 1).fill(0);
+  for (let at = 130; at < finishIndex - 260;) {
+    const length = 50 + Math.floor(random() * 70);
+    const nearGate = TRACK.gates.some((gate) => at + length > gate.index - RACE.gateZone / 2 - 15 && at < gate.index + RACE.gateZone / 2 + 15);
+    if (!nearGate) {
+      const amount = (random() < 0.65 ? 1 : -1) * (8 + random() * 16) * L * RACE.hills;
+      for (let k = 0; k <= length; k++) bump[at + k] += amount * (1 - Math.cos(2 * Math.PI * k / length)) / 2;
+      at += length + 20 + Math.floor(random() * 80);
+    } else {
+      at += 10;
+    }
+  }
+  segments.forEach((seg, n) => { seg.p1.world.y += bump[n]; seg.p2.world.y += bump[n + 1]; });
+
   // ----- Path width, snow and sand -----
+  // Smooth the widths, so the path gets wider and narrower gently instead of in sudden steps.
+  const smoothWidth = segments.map((_, n) => {
+    let sum = 0, count = 0;
+    for (let k = n - 20; k <= n + 20; k++) { if (segments[k]) { sum += segments[k].baseWidth; count++; } }
+    return sum / count;
+  });
   for (const seg of segments) {
     const progress = trackProgress(seg.p1.world.z);
     // The ground beside the path: all snow at the top, melting away between 12% and 40% of the way down.
@@ -147,21 +188,20 @@ function trackProgress(z) {
     // The path itself stays snowy until near the lake, then turns into sand.
     seg.sand = Math.max(0, Math.min(1, (seg.index - (finishIndex - 120)) / 70));
     seg.water = seg.index >= waterIndex;
-    // Wider at the start, at each gate and at the finish.
-    let wide = 0;
-    if (seg.index < 110) wide = Math.max(wide, 1 - smooth(Math.max(0, Math.min(1, (seg.index - 80) / 30))));
+    seg.width = smoothWidth[seg.index];
+    // Exactly the gate width around each gate (so the 3 lanes line up with the answers).
     for (const gate of TRACK.gates) {
       const away = Math.abs(seg.index - gate.index);
-      wide = Math.max(wide, 1 - smooth(Math.max(0, Math.min(1, (away - RACE.gateZone / 2 + 30) / 35))) * 1);
+      const t = 1 - smooth(Math.max(0, Math.min(1, (away - RACE.gateZone / 2 + 30) / 30)));
+      if (t > 0) seg.width = seg.width + (RACE.gateWidth - seg.width) * t;
     }
-    if (seg.index > finishIndex - 60) wide = Math.max(wide, smooth(Math.min(1, (seg.index - finishIndex + 60) / 30)));
-    const wideWidth = seg.index < 110 || seg.index > finishIndex - 60 ? RACE.startWidth : RACE.gateWidth;
-    seg.width = RACE.pathWidth + (wideWidth - RACE.pathWidth) * wide;
   }
   // The far end of each piece takes the next piece's width, so the edges join up smoothly.
   segments.forEach((seg, i) => { seg.width2 = (segments[i + 1] || seg).width; });
   segments[Math.floor(TRACK.startZ / L)].line = "start";
   segments[finishIndex].line = "finish";
+  // Each gate stands on its own piece of path (that's how the drawing finds it).
+  for (const gate of TRACK.gates) segments[gate.index].gate = gate;
 
   // ----- Things beside the path -----
   const add = (n, type, offset) => { if (segments[n]) segments[n].sprites.push({ type, offset }); };
