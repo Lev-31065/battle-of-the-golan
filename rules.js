@@ -166,6 +166,13 @@ function setItemIcon(element, id) {
 // The Throw button: dragging less than this (screen pixels) = throw the way you're facing.
 const AIM_DEADZONE = 15;
 
+// ---------- Messages at the bottom of the screen ----------
+const MESSAGES = {
+  time: 6,           // seconds each message stays (was about 3; Daniel: "make sure they appear for a while")
+  max: 3,            // at most this many at once; a 4th pushes out the oldest
+  rotateTipTime: 10, // seconds the big "turn your phone sideways" card stays (a tap closes it sooner)
+};
+
 // ---------- Speed boost box ----------
 const SPEED_BOOST = {
   multiplier: 1.5,  // 1.5 = one and a half times normal speed
@@ -295,7 +302,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12a";
+const GAME_VERSION = "2026-11-12b";
 
 // ---------- Helpers ----------
 

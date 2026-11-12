@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-12a">
+  <link rel="stylesheet" href="style.css?v=2026-11-12b">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -359,9 +359,14 @@
     <span id="word-card-english" class="word-card-english"></span>
   </div>
 
-  <!-- A short message that pops up at the bottom and fades away -->
-  <div class="toast-area">
-    <div id="toast" class="toast" hidden></div>
+  <!-- Short messages pop up at the bottom and go away after a few seconds (showToast in game.js) -->
+  <div id="toast-area" class="toast-area"></div>
+
+  <!-- Upright phone during a game: a big "turn your phone sideways" card (game.js: showRotateTip) -->
+  <div id="rotate-tip" class="rotate-tip" hidden>
+    <div class="rotate-phone">📱</div>
+    <span class="he" lang="he" dir="rtl">מְסוֹבְבִים אֶת הַטֶּלֶפוֹן לָרֹחַב!</span>
+    <span class="en">Turn your phone sideways to see more of the map!</span>
   </div>
 
   <!-- Supabase: a free library for logins and saving data online (used by account.js). -->
@@ -369,18 +374,18 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-12a"></script>
-  <script src="rules.js?v=2026-11-12a"></script>
-  <script src="sound.js?v=2026-11-12a"></script>
-  <script src="speech.js?v=2026-11-12a"></script>
-  <script src="words.js?v=2026-11-12a"></script>
-  <script src="progress.js?v=2026-11-12a"></script>
-  <script src="account.js?v=2026-11-12a"></script>
-  <script src="decks.js?v=2026-11-12a"></script>
-  <script src="quiz.js?v=2026-11-12a"></script>
-  <script src="draw.js?v=2026-11-12a"></script>
-  <script src="network.js?v=2026-11-12a"></script>
-  <script src="server.js?v=2026-11-12a"></script>
-  <script src="game.js?v=2026-11-12a"></script>
+  <script src="map.js?v=2026-11-12b"></script>
+  <script src="rules.js?v=2026-11-12b"></script>
+  <script src="sound.js?v=2026-11-12b"></script>
+  <script src="speech.js?v=2026-11-12b"></script>
+  <script src="words.js?v=2026-11-12b"></script>
+  <script src="progress.js?v=2026-11-12b"></script>
+  <script src="account.js?v=2026-11-12b"></script>
+  <script src="decks.js?v=2026-11-12b"></script>
+  <script src="quiz.js?v=2026-11-12b"></script>
+  <script src="draw.js?v=2026-11-12b"></script>
+  <script src="network.js?v=2026-11-12b"></script>
+  <script src="server.js?v=2026-11-12b"></script>
+  <script src="game.js?v=2026-11-12b"></script>
 </body>
 </html>

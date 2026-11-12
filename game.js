@@ -123,6 +123,33 @@ function exitFullscreen() {
     if (result && result.catch) result.catch(() => {});
   } catch {}
 }
+// ---------- Sideways (landscape) ----------
+// Android lets a full-screen page turn itself sideways (screen.orientation.lock). iPhones
+// don't allow it, so there an upright phone gets a big "turn your phone sideways" card.
+function lockSideways() {
+  try {
+    if (!isFullscreen() || !screen.orientation || !screen.orientation.lock) return;
+    const result = screen.orientation.lock("landscape");
+    if (result && result.catch) result.catch(() => {}); // the phone said no: the card will show
+  } catch {}
+}
+function unlockSideways() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
+}
+const rotateTip = document.getElementById("rotate-tip");
+let rotateTipTimer = null;
+function showRotateTip() {
+  if (client.phase !== "playing" || window.innerHeight <= window.innerWidth) return;
+  rotateTip.hidden = false;
+  clearTimeout(rotateTipTimer);
+  rotateTipTimer = setTimeout(() => { rotateTip.hidden = true; }, MESSAGES.rotateTipTime * 1000);
+}
+// Turned sideways (or the game ended)? The card goes away right away. A tap also closes it.
+window.addEventListener("resize", () => {
+  if (window.innerHeight <= window.innerWidth) rotateTip.hidden = true;
+});
+rotateTip.addEventListener("pointerdown", () => { rotateTip.hidden = true; });
+
 const fullscreenButton = document.getElementById("fullscreen-button");
 fullscreenButton.addEventListener("click", () => {
   if (isFullscreen()) exitFullscreen();
@@ -262,14 +289,30 @@ function onPress(button, action) {
 
 // ---------- Messages ----------
 
-const toastEl = document.getElementById("toast");
-let toastTimer = null;
-// showToast("English", "עברית") — the Hebrew shows underneath.
+// Messages stack up at the bottom (newest at the bottom), so a new one doesn't wipe out
+// the one you're reading. Each stays MESSAGES.time seconds; at most MESSAGES.max at once.
+const toastArea = document.getElementById("toast-area");
+// showToast("English", "עברית") — the Hebrew shows on top.
 function showToast(english, hebrew) {
-  setBilingual(toastEl, english, hebrew);
-  toastEl.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2800);
+  // The same message again? Just restart its clock (no copies).
+  for (const old of toastArea.children) {
+    if (old.dataset.bi === english + "|" + (hebrew || "")) {
+      clearTimeout(old.timer);
+      old.timer = setTimeout(() => old.remove(), MESSAGES.time * 1000);
+      toastArea.appendChild(old); // (moves it to the bottom, as the newest)
+      return;
+    }
+  }
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  setBilingual(toast, english, hebrew);
+  toastArea.appendChild(toast);
+  toast.timer = setTimeout(() => toast.remove(), MESSAGES.time * 1000);
+  // Too many? The oldest goes first.
+  while (toastArea.children.length > MESSAGES.max) {
+    clearTimeout(toastArea.firstChild.timer);
+    toastArea.firstChild.remove();
+  }
 }
 
 // ---------- Home screen (the first screen: Play Game, Log in, your progress) ----------
@@ -495,6 +538,10 @@ function showScreen(name) {
   playEl.hidden = name !== "play";
   modesEl.hidden = name !== "modes";
   lobbyEl.hidden = name !== "lobby";
+  if (name !== null) rotateTip.hidden = true; // (not in a game any more)
+  // Back on the home or play screen: let the phone turn upright again. (The lobby stays
+  // sideways between games, so the phone doesn't flip back and forth.)
+  if (name === "home" || name === "play") unlockSideways();
   if (name === "home") updateProgressSummary();
 }
 
@@ -961,9 +1008,9 @@ function changePhase(phase) {
     shopPaid = {};   // a new game: half-paid items start from zero
     myHeld = null;
     answeredFreezeId = 0;
-    if (window.innerHeight > window.innerWidth) {
-      setTimeout(() => showToast("📱 Tip: turn your phone sideways to see more of the map!", "טִיפ: מְסוֹבְבִים אֶת הַטֶּלֶפוֹן לָרֹחַב כְּדֵי לִרְאוֹת יוֹתֵר מֵהַמַּפָּה!"), 3000);
-    }
+    lockSideways(); // Android in full screen: the game turns sideways by itself
+    // Still upright after a moment (iPhones can't be turned by the game)? Show the big card.
+    setTimeout(showRotateTip, 1200);
   } else if (phase === "over") {
     closeQuiz();
     shopEl.hidden = true;

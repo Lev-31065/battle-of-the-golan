@@ -101,8 +101,8 @@ button, select, input { touch-action: manipulation; }
    half of the screen, game.js moves it under the thumb and adds "active". */
 .joystick-base {
   position: fixed;
-  left: 78px;                  /* resting spot: the circle's center is 78px from the left… */
-  top: calc(100% - 78px);      /* …and 78px from the bottom, level with the action buttons */
+  left: 120px;                 /* resting spot: the circle's center is 120px from the left… */
+  top: calc(100% - 100px);     /* …and 100px from the bottom (moved in from the corner, Daniel 2026-11-12) */
   width: 120px;
   height: 120px;
   margin: -60px 0 0 -60px;     /* centers the circle on its spot */
@@ -174,8 +174,8 @@ button, select, input { touch-action: manipulation; }
 /* ---------- Action buttons (bottom right) ---------- */
 .actions {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  right: 56px;                 /* moved in from the corner, toward the middle (Daniel 2026-11-12; was 18px) */
+  bottom: 34px;
   display: flex;
   gap: 14px;
   align-items: flex-end;
@@ -228,8 +228,8 @@ button, select, input { touch-action: manipulation; }
    Low enough to stay clear of the row of round buttons under the minimap, even on short sideways phones. */
 .toolbar {
   position: fixed;
-  right: 18px;
-  bottom: 114px;
+  right: 56px;                 /* lines up with the action buttons (moved in 2026-11-12) */
+  bottom: 130px;
   display: flex;
   gap: 6px;
   padding: 4px;
@@ -488,24 +488,50 @@ button, select, input { touch-action: manipulation; }
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: 176px;               /* narrow (upright) phones: just above the action buttons and the toolbar */
+  bottom: 192px;               /* narrow (upright) phones: just above the action buttons and the toolbar */
   display: flex;
-  justify-content: center;
+  flex-direction: column;      /* several messages stack, newest at the bottom */
+  align-items: center;
+  gap: 6px;
   z-index: 15;
   pointer-events: none;        /* touches pass through to the game */
 }
 @media (min-width: 640px) {
-  .toast-area { bottom: 16px; right: 330px; }   /* sideways phones: at the very bottom, left of the buttons */
+  .toast-area { bottom: 16px; right: 370px; }   /* sideways phones: at the very bottom, left of the buttons */
 }
 .toast {
   max-width: 100%;
-  padding: 8px 16px;
+  padding: 10px 18px;
   border-radius: 12px;
-  background: rgba(17, 24, 39, 0.6);   /* the last number is how solid it is: 0.6 = a bit see-through */
+  background: rgba(17, 24, 39, 0.72);  /* the last number is how solid it is: 0.72 = a little see-through */
   color: white;
+  font-size: 17px;             /* bigger than before (Daniel 2026-11-12) */
   font-weight: 600;
   text-align: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);  /* keeps white text readable over bright grass */
+}
+
+/* ---------- "Turn your phone sideways" card (upright phones during a game) ---------- */
+.rotate-tip {
+  position: fixed;
+  top: 30%;
+  left: 24px;
+  right: 24px;
+  padding: 22px 18px;
+  border-radius: 20px;
+  background: rgba(17, 24, 39, 0.88);
+  border: 3px solid #fde047;
+  color: white;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  z-index: 35;                 /* above the game, below popups (40) */
+}
+.rotate-tip[hidden] { display: none; }
+.rotate-phone { font-size: 56px; animation: turn-phone 1.6s ease-in-out infinite; }
+@keyframes turn-phone {        /* the phone tips over sideways, again and again */
+  0%, 25% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
 }
 
 /* ---------- Two languages: HEBREW on top (bigger), English underneath (smaller) ----------
