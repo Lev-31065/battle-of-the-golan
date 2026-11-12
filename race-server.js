@@ -5,7 +5,7 @@
 // who crossed the finish line first, and when the race is over.
 //
 // A sled's spot is two numbers:
-//   p.y = how far it has gone along the track since the start (it keeps growing, lap after lap)
+//   p.y = how far it has gone along the track since the start (from the top of the mountain down to the lake)
 //   p.x = how far left or right it is (0 = the middle, -1 / 1 = the edges)
 // (They're called x and y so the shared code can glide other players smoothly, like in Capture the Flag.)
 // (The questions it answers are at the bottom: SERVER_GAMES.race.)
@@ -39,8 +39,8 @@ function raceStartGame() {
   const everyone = Object.values(server.players);
   everyone.forEach((p, i) => {
     const row = Math.floor(i / 2);
-    p.x = everyone.length === 1 ? 0 : (i % 2 === 0 ? -0.5 : 0.5);
-    p.y = -RACE.segmentLength * 8 - row * RACE.segmentLength * 4; // behind the line (far enough to see the banner)
+    p.x = everyone.length === 1 ? 0 : (i % 2 === 0 ? -0.45 : 0.45);
+    p.y = TRACK.startZ - RACE.segmentLength * 8 - row * RACE.segmentLength * 4; // behind the start line (far enough to see the banner)
     p.speed = 0;
     p.steer = 0;
     p.finished = false;
@@ -68,9 +68,9 @@ function raceHandle(p, msg) {
   raceCheckFinish(p);
 }
 
-// Crossed the line after the last lap?
+// Reached the finish line on the beach of the Kinneret?
 function raceCheckFinish(p) {
-  if (p.finished || p.y < RACE.laps * TRACK.length) return;
+  if (p.finished || p.y < TRACK.finishZ) return;
   p.finished = true;
   p.finishTime = server.time - server.race.startAt;
   server.race.finishers.push(p.id);

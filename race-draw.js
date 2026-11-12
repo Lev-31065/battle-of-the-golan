@@ -1,12 +1,16 @@
-// race-draw.js — draws Mt Hermon Racing: the snowy track, the mountains, the trees,
-// the sleds and the race info on top (lap, place, speed, countdown).
+// race-draw.js — draws Mt Hermon Racing: the mountain path, the valley far below with the
+// Kinneret, the bushes and trees, the sleds, and the race info on top.
 //
 // How the "3D" works (a trick old arcade racing games used, called pseudo-3D):
-// the track is a row of short flat pieces (race-track.js). For each piece we work out
+// the path is a row of short flat pieces (race-track.js). For each piece we work out
 // where its near end and far end land on the screen ("projecting"): far-away pieces are
-// small and near the middle of the screen, close ones are wide and near the bottom.
-// Then we paint each piece as a flat shape, from near to far. Nothing is really 3D,
-// but it looks like it, and it's fast enough for any phone.
+// small and high up, close ones are wide and near the bottom. Then we paint the pieces
+// from FAR to NEAR (like a painter: the back of the picture first), so near things cover
+// far things. Nothing is really 3D, but it looks like it, and it's fast enough for any phone.
+//
+// The path runs along a ridge: beside it there's a strip of ground ("shoulder"), and past
+// that the mountainside drops away, so you look down into the valley (painted behind
+// everything, like a giant backdrop).
 
 // The camera: `depth` comes from how wide it sees (the field of view). `playerZ` is how
 // far in front of the camera my sled sits.
@@ -15,25 +19,45 @@ raceCamera.playerZ = RACE.cameraHeight * raceCamera.depth;
 
 const SLED_WIDTH = 600; // a sled's width in track units
 
-const RACE_COLORS = {
-  snow: "#f6f9fd", snowDark: "#e2ebf5",           // the snow beside the track (light/dark stripes)
-  track: "#d3e4f2", trackDark: "#c6d9ea",         // the packed-snow track
-  edge: "#ffffff", edgeDark: "#e11d48",           // the red and white edge stripes
-  lane: "rgba(255, 255, 255, 0.9)",               // the lane lines
-  mist: "#eef5fb",                                // far-away things fade into this
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = (t) => Math.max(0, Math.min(1, t));
+
+// ---------- Colors ----------
+// Colors are mixed on the fly (snowy → grassy → sandy), so they're kept as [red, green, blue].
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [n >> 16, (n >> 8) & 255, n & 255];
+}
+function mixRgb(a, b, t) {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+function rgbText(c) {
+  return `rgb(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])})`;
+}
+const C = {
+  snow: hexToRgb("#f4f8fc"), snowDark: hexToRgb("#e5edf5"),         // snowy ground (light/dark stripes)
+  grass: hexToRgb("#9aad62"), grassDark: hexToRgb("#8ea258"),       // green winter grass lower down
+  sand: hexToRgb("#eadaa8"), sandDark: hexToRgb("#e1cf98"),         // the beach
+  path: hexToRgb("#e9f1f9"), pathDark: hexToRgb("#dce7f2"),         // the packed-snow path
+  pathEdge: hexToRgb("#bccddf"),                                      // its edges
+  sandPath: hexToRgb("#d9c48b"), sandPathDark: hexToRgb("#d1bb80"),
+  slopeSnow: hexToRgb("#cfdbe6"), slopeRock: hexToRgb("#857a66"),   // the mountainside dropping away
+  slopeSand: hexToRgb("#c9b47e"),
+  water: hexToRgb("#3f8fcf"), waterDark: hexToRgb("#4a99d8"),
+  haze: hexToRgb("#dce7ee"),                                          // far-away things fade into this
 };
 
-const lerp = (a, b, t) => a + (b - a) * t;
-
-// Where a point on the track lands on the screen. `w` and `h` are the screen size.
-function projectPoint(p, cameraX, cameraY, cameraZ, w, h) {
+// Where a point on the path lands on the screen. `w` and `h` are the screen size,
+// `width` is the path's half width there (in RACE.roadWidth).
+function projectPoint(p, cameraX, cameraY, cameraZ, w, h, width) {
   p.camera.x = 0 - cameraX;
   p.camera.y = p.world.y - cameraY;
   p.camera.z = p.world.z - cameraZ;
   p.screen.scale = raceCamera.depth / p.camera.z;
+  p.screen.unit = p.screen.scale * RACE.roadWidth * w / 2;   // pixels for one RACE.roadWidth, here
   p.screen.x = Math.round(w / 2 + p.screen.scale * p.camera.x * w / 2);
   p.screen.y = Math.round(h * RACE.horizon - p.screen.scale * p.camera.y * h / 2); // (RACE.horizon = where the horizon sits)
-  p.screen.w = Math.round(p.screen.scale * RACE.roadWidth * w / 2);
+  p.screen.w = p.screen.unit * width;
 }
 
 function polygon(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
@@ -47,135 +71,211 @@ function polygon(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
   ctx.fill();
 }
 
-// ---------- The sky and the mountains ----------
+// ---------- The backdrop: sky, far hills, and the valley with the Kinneret ----------
 
-// A wavy mountain line. `t` goes 0 → 1 around a full circle, so the line joins up
-// with itself and the mountains can scroll forever as you turn.
+// A wavy line. `t` goes 0 → 1 around a full circle, so the line joins up with itself.
 function ridge(t, waves) {
   let y = 0;
   for (const [k, amount, shift] of waves) y += amount * Math.sin(2 * Math.PI * (k * t + shift));
   return y;
 }
-const HERMON_WAVES = [[1, 0.55, 0.1], [2, 0.25, 0.4], [3, 0.12, 0.7], [7, 0.05, 0.2], [13, 0.025, 0.5]];
-const HILL_WAVES = [[2, 0.5, 0.3], [3, 0.3, 0.8], [5, 0.2, 0.1], [11, 0.08, 0.6]];
+const FAR_HILL_WAVES = [[1, 0.4, 0.15], [2, 0.3, 0.6], [5, 0.15, 0.3], [11, 0.06, 0.8], [23, 0.025, 0.1]];
+const FIELD_COLORS = ["#8aa65a", "#97b063", "#a9ad68", "#7f9b50", "#b5a873", "#8fa85c", "#a3b56c", "#9c9a62"].map(hexToRgb);
 
-// `turn` goes up as you turn right and down as you turn left, so the mountains slide
-// sideways. Far mountains slide slowly, near hills slide faster (that's "parallax").
-function drawRaceSky(ctx, w, h, turn) {
-  const horizon = h * (RACE.horizon + 0.03);
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, "#4ea4e6");
-  sky.addColorStop(1, "#d4ebfa");
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, horizon + 2);
-  // The sun.
-  ctx.fillStyle = "rgba(255, 250, 220, 0.9)";
-  ctx.beginPath();
-  ctx.arc(w * 0.8, h * 0.08, Math.max(12, h * 0.04), 0, Math.PI * 2);
-  ctx.fill();
-
-  // Far away: Mt Hermon itself, gray-blue with a snowy top.
-  const farShift = turn * 0.15;
-  const mountainY = (x) => horizon - h * (0.1 + 0.075 * ridge(((x / w) * 0.5 + farShift) % 1 + 1, HERMON_WAVES));
-  ctx.beginPath();
-  ctx.moveTo(0, horizon);
-  for (let x = 0; x <= w + 4; x += 4) ctx.lineTo(x, mountainY(x));
-  ctx.lineTo(w, horizon);
-  ctx.closePath();
-  ctx.fillStyle = "#8ea8c3";
-  ctx.fill();
-  // The snow cap: everything above a wobbly line, inside the mountain.
-  ctx.save();
-  ctx.clip();
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  for (let x = 0; x <= w + 6; x += 6) {
-    const t = (x / w) * 0.5 + farShift;
-    ctx.lineTo(x, horizon - h * 0.1 + h * 0.01 * Math.sin(t * 90));
-  }
-  ctx.lineTo(w, 0);
-  ctx.closePath();
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
-  ctx.restore();
-
-  // Closer: low snowy hills with a line of dark pine trees on top.
-  const nearShift = turn * 0.4;
-  const hillY = (x) => horizon - h * (0.035 + 0.025 * ridge(((x / w) * 0.5 + nearShift) % 1 + 1, HILL_WAVES));
-  ctx.beginPath();
-  ctx.moveTo(0, horizon + 2);
-  for (let x = 0; x <= w + 4; x += 4) ctx.lineTo(x, hillY(x));
-  ctx.lineTo(w, horizon + 2);
-  ctx.closePath();
-  ctx.fillStyle = "#e9f1f8";
-  ctx.fill();
-  ctx.fillStyle = "#3d5a4c";
-  const step = Math.max(6, w / 120);
-  const first = Math.floor((nearShift * w * 2) / step);
-  for (let i = first; i * step < nearShift * w * 2 + w + step; i++) {
-    // The same trees every time: "random" from the tree's number.
-    const r = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-    if (r < 0.45) continue;
-    const x = i * step - nearShift * w * 2;
-    const base = hillY(x) + 2;
-    const tall = h * (0.012 + r * 0.02);
-    ctx.beginPath();
-    ctx.moveTo(x - tall * 0.35, base);
-    ctx.lineTo(x, base - tall);
-    ctx.lineTo(x + tall * 0.35, base);
-    ctx.fill();
-  }
-  // Snow all the way down (the track gets painted on top).
-  ctx.fillStyle = RACE_COLORS.snow;
-  ctx.fillRect(0, horizon + 1, w, h - horizon);
+// A number from 0 to 1 that's always the same for the same inputs (for "random" field colors).
+function hash(a, b) {
+  const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return s - Math.floor(s);
 }
 
-// ---------- One piece of track ----------
+// turn = how much the path has turned (slides the backdrop sideways).
+// progress = how far down the mountain I am (0 = the top, 1 = the lake): the Kinneret grows as you get closer.
+function drawValley(ctx, w, h, turn, progress, time, snow) {
+  const horizon = Math.round(h * RACE.horizon);
+  const slide = Math.max(-0.45, Math.min(0.45, turn * 0.5)) * w; // (how far the lake slides as you turn)
+
+  // The sky, and the sun.
+  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, "#4f9fe0");
+  sky.addColorStop(1, "#d3e8f6");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, horizon + 1);
+  ctx.fillStyle = "rgba(255, 250, 225, 0.95)";
+  ctx.beginPath();
+  ctx.arc(w * 0.82, h * 0.07, Math.max(10, h * 0.032), 0, Math.PI * 2);
+  ctx.fill();
+  // A few soft clouds, drifting slowly.
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  for (let i = 0; i < 5; i++) {
+    const span = w + 300;
+    const cx = ((i * 0.23 + 0.1) * span - slide * 0.3 + time * 6 * (1 + i * 0.2)) % span;
+    const x = (cx + span) % span - 150;
+    const y = h * (0.05 + (i % 3) * 0.05);
+    const r = h * (0.025 + (i % 2) * 0.012);
+    for (const [dx, dy, k] of [[0, 0, 1], [r * 1.1, r * 0.2, 0.8], [-r * 1.1, r * 0.25, 0.75], [r * 0.4, -r * 0.4, 0.7]]) {
+      ctx.beginPath();
+      ctx.ellipse(x + dx, y + dy, r * 1.6 * k, r * k, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Far hills on the other side of the valley, hazy blue.
+  const hillY = (x) => horizon - h * (0.03 + 0.022 * ridge(((x - slide * 0.4) / w * 0.5 % 1 + 2) % 1, FAR_HILL_WAVES));
+  ctx.beginPath();
+  ctx.moveTo(0, horizon + 1);
+  for (let x = 0; x <= w + 4; x += 4) ctx.lineTo(x, hillY(x));
+  ctx.lineTo(w, horizon + 1);
+  ctx.closePath();
+  ctx.fillStyle = "#9db3c6";
+  ctx.fill();
+
+  // The valley floor, far below: a patchwork of fields, tiny near the horizon and bigger closer in.
+  // As you go down the mountain, the rows slowly slide toward you. Below the valley, the
+  // mountainside I'm on fills the bottom of the screen (snowy up high, rocky lower down).
+  const valleyBottom = horizon + (h - horizon) * 0.36;
+  const side = rgbText(mixRgb(C.slopeRock, C.slopeSnow, snow));
+  const mountain = ctx.createLinearGradient(0, valleyBottom - h * 0.06, 0, h);
+  mountain.addColorStop(0, "rgba(0, 0, 0, 0)");
+  mountain.addColorStop(0.25, side);
+  mountain.addColorStop(1, side);
+  ctx.fillStyle = "#b9c7ae";
+  ctx.fillRect(0, horizon, w, h - horizon);
+  const rows = 30;
+  const scroll = progress * 160;
+  const phase = scroll % 1;
+  for (let r = rows - 1; r >= 0; r--) {
+    const t0 = (r + phase) / rows, t1 = (r + 1 + phase) / rows;
+    const y0 = horizon + (valleyBottom - horizon) * Math.pow(t0, 2.2);
+    const y1 = horizon + (valleyBottom - horizon) * Math.pow(Math.min(1, t1), 2.2);
+    const row = r - Math.floor(scroll); // (the same row keeps the same fields as it slides)
+    const colW = 12 + t0 * 60;
+    const shift = -slide * (0.6 + t0) + hash(row, 0) * colW;
+    const first = Math.floor(-shift / colW) - 1;
+    const haze = 0.25 + 0.45 * (1 - t0) * (1 - t0);
+    for (let c = first; c * colW + shift < w; c++) {
+      const color = FIELD_COLORS[Math.floor(hash(row, c) * FIELD_COLORS.length)];
+      ctx.fillStyle = rgbText(mixRgb(color, C.haze, haze));
+      ctx.fillRect(c * colW + shift, y0, colW - 1, y1 - y0 + 0.5);
+    }
+  }
+
+  // The Kinneret, far ahead, growing as you come down the mountain.
+  const lakeX = w / 2 - slide;
+  const lakeY = horizon + h * (0.012 + progress * 0.045);
+  const rx = w * (0.22 + progress * 0.75), ry = h * (0.012 + progress * 0.03);
+  // The Jordan River winding toward it.
+  ctx.strokeStyle = "rgba(78, 145, 205, 0.9)";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const y = lakeY + (valleyBottom - lakeY) * Math.pow(t, 2);
+    const x = lakeX + rx * 0.15 + Math.sin(t * 9 + 1) * w * 0.05 * t + t * w * 0.35 - slide * t;
+    ctx.lineWidth = 1 + t * 10;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "#d9cf9f"; // the shore
+  ctx.beginPath();
+  ctx.ellipse(lakeX, lakeY, rx * 1.03, ry * 1.25, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const lake = ctx.createLinearGradient(0, lakeY - ry, 0, lakeY + ry);
+  lake.addColorStop(0, "#5ea9df");
+  lake.addColorStop(1, "#2f7fc0");
+  ctx.fillStyle = lake;
+  ctx.beginPath();
+  ctx.ellipse(lakeX, lakeY, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Sparkles on the water.
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 9; i++) {
+    const sx = lakeX + (hash(i, 3) - 0.5) * rx * 1.4;
+    const sy = lakeY + (hash(i, 7) - 0.5) * ry * 1.2;
+    const len = rx * 0.06 * (0.6 + 0.4 * Math.sin(time * 2 + i));
+    ctx.beginPath(); ctx.moveTo(sx - len / 2, sy); ctx.lineTo(sx + len / 2, sy); ctx.stroke();
+  }
+  // A little white town on the far shore.
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  for (let i = 0; i < 10; i++) {
+    const tx = lakeX + rx * (0.55 + hash(i, 11) * 0.35);
+    const ty = lakeY - ry * (0.6 + hash(i, 13) * 0.6);
+    const s = Math.max(1, ry * 0.18);
+    ctx.fillRect(tx, ty, s * 1.4, s);
+  }
+  // The mountainside below me.
+  ctx.fillStyle = mountain;
+  ctx.fillRect(0, valleyBottom - h * 0.06, w, h - valleyBottom + h * 0.06);
+  // Haze over the far part of the valley.
+  const mist = ctx.createLinearGradient(0, horizon, 0, horizon + h * 0.2);
+  mist.addColorStop(0, "rgba(220, 231, 238, 0.75)");
+  mist.addColorStop(1, "rgba(220, 231, 238, 0)");
+  ctx.fillStyle = mist;
+  ctx.fillRect(0, horizon - h * 0.02, w, h * 0.22);
+}
+
+// ---------- One piece of path ----------
+// mist = how much it fades into the haze (0 = close, 1 = far away).
 
 function drawSegment(ctx, w, seg, mist) {
   const a = seg.p1.screen; // near end (lower on the screen)
   const b = seg.p2.screen; // far end
-  const edgeA = a.w / 6, edgeB = b.w / 6;
-  ctx.fillStyle = seg.dark ? RACE_COLORS.snowDark : RACE_COLORS.snow;
-  ctx.fillRect(0, b.y, w, a.y - b.y + 1); // (+1 so no thin gaps show between pieces)
-  const edge = seg.dark ? RACE_COLORS.edgeDark : RACE_COLORS.edge;
-  polygon(ctx, a.x - a.w - edgeA, a.y, a.x - a.w, a.y, b.x - b.w, b.y, b.x - b.w - edgeB, b.y, edge);
-  polygon(ctx, a.x + a.w + edgeA, a.y, a.x + a.w, a.y, b.x + b.w, b.y, b.x + b.w + edgeB, b.y, edge);
-  polygon(ctx, a.x - a.w, a.y, a.x + a.w, a.y, b.x + b.w, b.y, b.x - b.w, b.y, seg.dark ? RACE_COLORS.trackDark : RACE_COLORS.track);
+  const fade = (c) => rgbText(mixRgb(c, C.haze, mist));
+  const pick = (light, dark) => (seg.dark ? dark : light);
 
-  if (seg.index <= 1) {
-    // The start/finish line: black and white squares, two rows.
-    const columns = 12;
+  if (seg.water) {
+    // The Kinneret: water all the way across.
+    ctx.fillStyle = fade(pick(C.water, C.waterDark));
+    ctx.fillRect(0, b.y, w, a.y - b.y + 1);
+    return;
+  }
+
+  // The ground beside the path: snowy at the top, grassy lower down, sand at the beach.
+  let ground = mixRgb(pick(C.grass, C.grassDark), pick(C.snow, C.snowDark), seg.snow);
+  ground = mixRgb(ground, pick(C.sand, C.sandDark), seg.sand);
+  let slope = mixRgb(C.slopeRock, C.slopeSnow, seg.snow);
+  slope = mixRgb(slope, C.slopeSand, seg.sand);
+
+  // How far the ground reaches on each side, and the mountainside dropping away below it.
+  const edgeA = a.w + RACE.shoulder * a.unit, edgeB = b.w + RACE.shoulder * b.unit;
+  const dropA = a.unit * 9, dropB = b.unit * 9;   // how far down the slope goes (on the screen)
+  const outA = a.unit * 2.5, outB = b.unit * 2.5;     // and how far out
+  const slopeColor = fade(slope);
+  polygon(ctx, a.x - edgeA, a.y, b.x - edgeB, b.y, b.x - edgeB - outB, b.y + dropB, a.x - edgeA - outA, a.y + dropA, slopeColor);
+  polygon(ctx, a.x + edgeA, a.y, b.x + edgeB, b.y, b.x + edgeB + outB, b.y + dropB, a.x + edgeA + outA, a.y + dropA, slopeColor);
+  polygon(ctx, a.x - edgeA, a.y, a.x + edgeA, a.y, b.x + edgeB, b.y, b.x - edgeB, b.y, fade(ground));
+
+  // The path, with slightly darker packed edges.
+  const path = mixRgb(pick(C.path, C.pathDark), pick(C.sandPath, C.sandPathDark), seg.sand);
+  const rimA = a.w * 0.08 + 1, rimB = b.w * 0.08 + 1;
+  polygon(ctx, a.x - a.w - rimA, a.y, a.x + a.w + rimA, a.y, b.x + b.w + rimB, b.y, b.x - b.w - rimB, b.y, fade(mixRgb(C.pathEdge, path, seg.sand)));
+  polygon(ctx, a.x - a.w, a.y, a.x + a.w, a.y, b.x + b.w, b.y, b.x - b.w, b.y, fade(path));
+
+  if (seg.line) {
+    // The start and finish lines: black and white squares, two rows.
+    const columns = 14;
     for (let row = 0; row < 2; row++) {
       const yA = lerp(a.y, b.y, row / 2), yB = lerp(a.y, b.y, (row + 1) / 2);
       const xA = lerp(a.x, b.x, row / 2), xB = lerp(a.x, b.x, (row + 1) / 2);
       const wA = lerp(a.w, b.w, row / 2), wB = lerp(a.w, b.w, (row + 1) / 2);
       for (let c = 0; c < columns; c++) {
-        const color = (c + row + seg.index * 2) % 2 === 0 ? "#111827" : "#ffffff";
+        const color = (c + row) % 2 === 0 ? "#111827" : "#ffffff";
         const l = c / columns * 2 - 1, r = (c + 1) / columns * 2 - 1;
         polygon(ctx, xA + wA * l, yA, xA + wA * r, yA, xB + wB * r, yB, xB + wB * l, yB, color);
       }
     }
-  } else if (!seg.dark) {
-    // Dashed lines between the lanes.
-    const lineA = a.w / 24, lineB = b.w / 24;
+  } else if (!seg.dark && seg.width > RACE.gateWidth * 0.8) {
+    // Where the path is wide (at the gates), dashed lines show the 3 lanes.
+    const lineA = a.unit / 30, lineB = b.unit / 30;
     for (let lane = 1; lane < RACE.lanes; lane++) {
       const t = lane / RACE.lanes * 2 - 1;
       const xA = a.x + a.w * t, xB = b.x + b.w * t;
-      polygon(ctx, xA - lineA / 2, a.y, xA + lineA / 2, a.y, xB + lineB / 2, b.y, xB - lineB / 2, b.y, RACE_COLORS.lane);
+      polygon(ctx, xA - lineA / 2, a.y, xA + lineA / 2, a.y, xB + lineB / 2, b.y, xB - lineB / 2, b.y, fade(C.pathEdge));
     }
-  }
-
-  // Far away, everything fades into the mountain mist.
-  if (mist > 0.02) {
-    ctx.globalAlpha = mist;
-    ctx.fillStyle = RACE_COLORS.mist;
-    ctx.fillRect(0, b.y, w, a.y - b.y + 1);
-    ctx.globalAlpha = 1;
   }
 }
 
-// ---------- Trees, snowmen, flags, cabins (painted once, then reused) ----------
+// ---------- Bushes, rocks, trees (painted once, then reused) ----------
 // Each picture is painted once onto its own little hidden canvas. After that, drawing
 // it is just "copy this picture, this big, here", which is very fast.
 
@@ -184,44 +284,106 @@ const spritePictures = {};
 function spritePicture(type) {
   if (spritePictures[type]) return spritePictures[type];
   const size = SPRITE_SIZES[type];
-  const H = 320;
-  const W = Math.round(H * size.w / size.h);
+  const H = 300;
+  const W = Math.max(8, Math.round(H * size.w / size.h));
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
   const g = c.getContext("2d");
-  if (type === "pine" || type === "bigPine") paintPine(g, W, H);
-  else if (type === "snowman") paintSnowman(g, W, H);
-  else if (type === "rock") paintRock(g, W, H);
-  else if (type === "cabin") paintCabin(g, W, H);
-  else if (type === "flagRed") paintFlag(g, W, H, "#e11d48");
-  else if (type === "flagBlue") paintFlag(g, W, H, "#2563eb");
+  const painters = {
+    bush: () => paintBush(g, W, H, false),
+    bushSnow: () => paintBush(g, W, H, true),
+    oak: () => paintOak(g, W, H, false),
+    oakSnow: () => paintOak(g, W, H, true),
+    olive: () => paintOlive(g, W, H),
+    palm: () => paintPalm(g, W, H),
+    rock: () => paintRock(g, W, H, false),
+    rockSnow: () => paintRock(g, W, H, true),
+    snowman: () => paintSnowman(g, W, H),
+    cabin: () => paintCabin(g, W, H),
+    sign: () => paintSign(g, W, H),
+    pole: () => paintPole(g, W, H),
+    reeds: () => paintReeds(g, W, H),
+  };
+  painters[type]();
   spritePictures[type] = c;
   return c;
 }
 
-function paintPine(g, W, H) {
-  const cx = W / 2;
-  g.fillStyle = "#6b4423"; // the trunk
-  g.fillRect(cx - W * 0.06, H * 0.84, W * 0.12, H * 0.16);
-  for (let i = 0; i < 4; i++) {
-    const bottom = H * (0.88 - i * 0.19);
-    const top = bottom - H * 0.34;
-    const half = W * 0.5 * (1 - i * 0.2);
-    // Dark green on the left, lighter on the right (the sun is on the right).
-    g.fillStyle = "#1f4d36";
-    g.beginPath(); g.moveTo(cx - half, bottom); g.lineTo(cx, top); g.lineTo(cx, bottom); g.fill();
-    g.fillStyle = "#2f6b4c";
-    g.beginPath(); g.moveTo(cx, top); g.lineTo(cx + half, bottom); g.lineTo(cx, bottom); g.fill();
-    // Snow on the branches.
-    g.fillStyle = "#f1f6fb";
-    g.beginPath(); g.moveTo(cx - half * 0.42, top + H * 0.14); g.lineTo(cx, top); g.lineTo(cx + half * 0.42, top + H * 0.14);
-    g.quadraticCurveTo(cx, top + H * 0.1, cx - half * 0.42, top + H * 0.14); g.fill();
-    for (let k = -2; k <= 2; k++) {
-      g.beginPath();
-      g.ellipse(cx + k * half * 0.38, bottom - H * 0.012, half * 0.16, H * 0.016, 0, 0, Math.PI * 2);
-      g.fill();
-    }
+// A blob made of overlapping circles: [x, y, radius] as fractions of the picture.
+function blob(g, W, H, circles, color) {
+  g.fillStyle = color;
+  for (const [x, y, r] of circles) {
+    g.beginPath();
+    g.arc(x * W, y * H, r * Math.min(W, H), 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+function paintBush(g, W, H, snowy) {
+  const body = [[0.25, 0.68, 0.3], [0.5, 0.55, 0.38], [0.75, 0.68, 0.3], [0.5, 0.75, 0.32]];
+  blob(g, W, H, body, "#3f5a2c");
+  blob(g, W, H, body.map(([x, y, r]) => [x + 0.04, y - 0.03, r * 0.8]), "#56753a");
+  if (snowy) {
+    // A thick cap of snow on top.
+    blob(g, W, H, [[0.3, 0.45, 0.2], [0.52, 0.32, 0.25], [0.72, 0.46, 0.19]], "#f4f8fc");
+    blob(g, W, H, [[0.42, 0.36, 0.12], [0.62, 0.38, 0.1]], "#ffffff");
+  }
+}
+
+// A round oak tree (Mt Hermon has oaks, not pines).
+function paintOak(g, W, H, snowy) {
+  g.fillStyle = "#5b3f26";
+  g.beginPath();
+  g.moveTo(W * 0.45, H); g.lineTo(W * 0.47, H * 0.55); g.lineTo(W * 0.38, H * 0.42);
+  g.lineTo(W * 0.42, H * 0.4); g.lineTo(W * 0.5, H * 0.5); g.lineTo(W * 0.6, H * 0.38);
+  g.lineTo(W * 0.63, H * 0.41); g.lineTo(W * 0.54, H * 0.56); g.lineTo(W * 0.56, H);
+  g.fill();
+  const crown = [[0.3, 0.38, 0.2], [0.5, 0.26, 0.26], [0.72, 0.38, 0.2], [0.42, 0.45, 0.18], [0.62, 0.47, 0.17]];
+  blob(g, W, H, crown, "#35502a");
+  blob(g, W, H, crown.map(([x, y, r]) => [x + 0.03, y - 0.03, r * 0.75]), "#4c6c35");
+  if (snowy) blob(g, W, H, [[0.32, 0.27, 0.12], [0.5, 0.13, 0.15], [0.7, 0.27, 0.12]], "#f4f8fc");
+}
+
+// An olive tree: silvery green, with a twisty trunk.
+function paintOlive(g, W, H) {
+  g.strokeStyle = "#6b5a45"; g.lineCap = "round";
+  g.lineWidth = W * 0.09;
+  g.beginPath(); g.moveTo(W * 0.5, H); g.quadraticCurveTo(W * 0.38, H * 0.75, W * 0.5, H * 0.5); g.stroke();
+  g.lineWidth = W * 0.05;
+  g.beginPath(); g.moveTo(W * 0.48, H * 0.6); g.lineTo(W * 0.28, H * 0.45); g.stroke();
+  g.beginPath(); g.moveTo(W * 0.5, H * 0.55); g.lineTo(W * 0.72, H * 0.42); g.stroke();
+  const crown = [[0.25, 0.4, 0.18], [0.45, 0.3, 0.22], [0.68, 0.35, 0.2], [0.55, 0.45, 0.17], [0.35, 0.48, 0.14]];
+  blob(g, W, H, crown, "#6f7f55");
+  blob(g, W, H, crown.map(([x, y, r]) => [x + 0.03, y - 0.03, r * 0.7]), "#8c9c6f");
+}
+
+function paintPalm(g, W, H) {
+  g.strokeStyle = "#8b6a42"; g.lineCap = "round"; g.lineWidth = W * 0.08;
+  g.beginPath(); g.moveTo(W * 0.5, H); g.quadraticCurveTo(W * 0.42, H * 0.55, W * 0.52, H * 0.18); g.stroke();
+  g.strokeStyle = "#6f5233"; g.lineWidth = W * 0.02;
+  for (let y = 0.3; y < 1; y += 0.07) { g.beginPath(); g.moveTo(W * 0.43, H * y); g.lineTo(W * 0.55, H * y - H * 0.01); g.stroke(); }
+  g.strokeStyle = "#3f7a3a"; g.lineWidth = W * 0.05;
+  for (const [dx, dy] of [[-0.45, 0.12], [-0.4, -0.02], [-0.2, -0.12], [0.2, -0.12], [0.42, -0.02], [0.47, 0.12]]) {
+    g.beginPath();
+    g.moveTo(W * 0.52, H * 0.18);
+    g.quadraticCurveTo(W * (0.52 + dx * 0.6), H * (0.12 + dy - 0.06), W * (0.52 + dx), H * (0.18 + dy + 0.06));
+    g.stroke();
+  }
+}
+
+// A black basalt rock (the Golan and the Hermon foothills are full of them).
+function paintRock(g, W, H, snowy) {
+  g.fillStyle = "#3f3d3b";
+  g.beginPath();
+  g.moveTo(0, H); g.lineTo(W * 0.06, H * 0.5); g.lineTo(W * 0.3, H * 0.15); g.lineTo(W * 0.66, H * 0.12);
+  g.lineTo(W * 0.94, H * 0.5); g.lineTo(W, H); g.closePath(); g.fill();
+  g.fillStyle = "#57534e";
+  g.beginPath(); g.moveTo(W * 0.3, H * 0.15); g.lineTo(W * 0.66, H * 0.12); g.lineTo(W * 0.6, H * 0.6); g.lineTo(W * 0.2, H * 0.55); g.fill();
+  if (snowy) {
+    g.fillStyle = "#f4f8fc";
+    g.beginPath(); g.moveTo(W * 0.1, H * 0.45); g.lineTo(W * 0.3, H * 0.12); g.lineTo(W * 0.66, H * 0.09); g.lineTo(W * 0.9, H * 0.45);
+    g.quadraticCurveTo(W * 0.5, H * 0.3, W * 0.1, H * 0.45); g.fill();
   }
 }
 
@@ -230,17 +392,16 @@ function paintSnowman(g, W, H) {
   const ball = (y, r) => {
     g.fillStyle = "#ffffff";
     g.beginPath(); g.arc(cx, y, r, 0, Math.PI * 2); g.fill();
-    g.fillStyle = "rgba(140, 170, 200, 0.35)"; // a blue shadow on the left
-    g.beginPath(); g.arc(cx - r * 0.15, y + r * 0.1, r, Math.PI * 0.55, Math.PI * 1.45); g.arc(cx, y, r, Math.PI * 1.45, Math.PI * 0.55, true); g.fill();
+    g.fillStyle = "rgba(140, 170, 200, 0.3)"; // a blue shadow on the left
+    g.beginPath(); g.arc(cx - r * 0.2, y + r * 0.1, r * 0.85, Math.PI * 0.55, Math.PI * 1.45); g.fill();
   };
   const r1 = W * 0.42, r2 = W * 0.31, r3 = W * 0.22;
   const y1 = H - r1, y2 = y1 - r1 - r2 * 0.7, y3 = y2 - r2 - r3 * 0.7;
-  // Stick arms, waving.
-  g.strokeStyle = "#5b3a1e"; g.lineWidth = W * 0.035; g.lineCap = "round";
+  g.strokeStyle = "#5b3a1e"; g.lineWidth = W * 0.035; g.lineCap = "round"; // stick arms, waving
   g.beginPath(); g.moveTo(cx - r2 * 0.8, y2); g.lineTo(cx - W * 0.5, y2 - r2 * 1.1); g.stroke();
   g.beginPath(); g.moveTo(cx + r2 * 0.8, y2); g.lineTo(cx + W * 0.5, y2 - r2 * 0.6); g.stroke();
   ball(y1, r1); ball(y2, r2); ball(y3, r3);
-  g.fillStyle = "#dc2626"; // scarf
+  g.fillStyle = "#2563eb"; // a blue and white scarf
   g.fillRect(cx - r3 * 0.95, y3 + r3 * 0.65, r3 * 1.9, r3 * 0.35);
   g.fillRect(cx + r3 * 0.3, y3 + r3 * 0.8, r3 * 0.35, r3 * 0.9);
   g.fillStyle = "#111827"; // eyes, buttons, hat
@@ -250,18 +411,6 @@ function paintSnowman(g, W, H) {
   g.fillRect(cx - r3 * 0.6, y3 - r3 * 1.75, r3 * 1.2, r3 * 0.85);
   g.fillStyle = "#f97316"; // carrot nose
   g.beginPath(); g.moveTo(cx - r3 * 0.12, y3 + r3 * 0.08); g.lineTo(cx + r3 * 0.12, y3 + r3 * 0.08); g.lineTo(cx, y3 + r3 * 0.5); g.fill();
-}
-
-function paintRock(g, W, H) {
-  g.fillStyle = "#6b7280";
-  g.beginPath();
-  g.moveTo(0, H); g.lineTo(W * 0.08, H * 0.45); g.lineTo(W * 0.35, H * 0.12); g.lineTo(W * 0.7, H * 0.2);
-  g.lineTo(W * 0.95, H * 0.55); g.lineTo(W, H); g.closePath(); g.fill();
-  g.fillStyle = "#4b5563";
-  g.beginPath(); g.moveTo(W * 0.55, H); g.lineTo(W * 0.7, H * 0.2); g.lineTo(W * 0.95, H * 0.55); g.lineTo(W, H); g.fill();
-  g.fillStyle = "#f8fafc"; // snow on top
-  g.beginPath(); g.moveTo(W * 0.12, H * 0.42); g.lineTo(W * 0.35, H * 0.12); g.lineTo(W * 0.7, H * 0.2); g.lineTo(W * 0.88, H * 0.45);
-  g.quadraticCurveTo(W * 0.5, H * 0.32, W * 0.12, H * 0.42); g.fill();
 }
 
 function paintCabin(g, W, H) {
@@ -277,15 +426,148 @@ function paintCabin(g, W, H) {
   g.quadraticCurveTo(W * 0.5, H * 0.24, -W * 0.01, wallTop); g.fill();
   g.fillStyle = "#fde68a"; g.fillRect(W * 0.2, H * 0.62, W * 0.2, H * 0.16); // a warm window
   g.fillStyle = "#5b3a1e"; g.fillRect(W * 0.55, H * 0.6, W * 0.18, H * 0.4);  // the door
-  g.strokeStyle = "#5b3a1e"; g.lineWidth = H * 0.015; g.strokeRect(W * 0.2, H * 0.62, W * 0.2, H * 0.16);
   g.fillStyle = "rgba(220, 230, 240, 0.7)"; // smoke
   for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(W * (0.66 + i * 0.05), H * (0.08 - i * 0.03), H * (0.03 + i * 0.012), 0, Math.PI * 2); g.fill(); }
 }
 
-function paintFlag(g, W, H, color) {
-  g.fillStyle = "#475569"; g.fillRect(W * 0.1, 0, W * 0.16, H);
-  g.fillStyle = color;
-  g.beginPath(); g.moveTo(W * 0.26, H * 0.02); g.lineTo(W, H * 0.12); g.lineTo(W * 0.26, H * 0.24); g.fill();
+// A wooden sign: "כִּנֶּרֶת" with an arrow.
+function paintSign(g, W, H) {
+  g.fillStyle = "#6b4423";
+  g.fillRect(W * 0.2, H * 0.4, W * 0.07, H * 0.6);
+  g.fillRect(W * 0.73, H * 0.4, W * 0.07, H * 0.6);
+  g.fillStyle = "#a0703f";
+  g.fillRect(W * 0.05, H * 0.05, W * 0.9, H * 0.5);
+  g.strokeStyle = "#6b4423"; g.lineWidth = H * 0.025; g.strokeRect(W * 0.05, H * 0.05, W * 0.9, H * 0.5);
+  g.fillStyle = "#fff8e1";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = `800 ${H * 0.17}px Rubik, Arial, sans-serif`;
+  g.direction = "rtl";
+  g.fillText("כִּנֶּרֶת", W * 0.5, H * 0.2);
+  g.direction = "ltr";
+  g.font = `700 ${H * 0.11}px Rubik, Arial, sans-serif`;
+  g.fillText("Kinneret ↓", W * 0.5, H * 0.4);
+}
+
+// A thin snow pole with an orange top, marking the path's edge.
+function paintPole(g, W, H) {
+  g.fillStyle = "#1f2937"; g.fillRect(W * 0.25, H * 0.15, W * 0.5, H * 0.85);
+  g.fillStyle = "#f97316"; g.fillRect(W * 0.2, 0, W * 0.6, H * 0.2);
+}
+
+function paintReeds(g, W, H) {
+  g.strokeStyle = "#7c8b3e"; g.lineCap = "round"; g.lineWidth = W * 0.03;
+  for (let i = 0; i < 9; i++) {
+    const x = W * (0.1 + i * 0.1);
+    g.beginPath(); g.moveTo(x, H); g.quadraticCurveTo(x + W * 0.04, H * 0.5, x + W * (i % 2 ? 0.08 : -0.05), H * (0.1 + (i % 3) * 0.08)); g.stroke();
+  }
+  g.fillStyle = "#7a5230";
+  for (let i = 0; i < 9; i += 2) { g.beginPath(); g.ellipse(W * (0.1 + i * 0.1) + W * 0.03, H * 0.25, W * 0.025, H * 0.07, 0, 0, Math.PI * 2); g.fill(); }
+}
+
+// ---------- The whole picture ----------
+// scene = {
+//   cameraZ:  how far along the path the camera is
+//   cameraX:  how far left/right the camera is (my sled's sideways spot)
+//   turn:     for sliding the backdrop as you turn
+//   time:     the clock (for flapping scarves and sparkles)
+//   sleds:    other sleds: [{ y (distance along the path), x (sideways), color, name, steer }]
+//   gate:     the question on the next gate: { number, english, choices: [left, middle, right] } (or null)
+// }
+function drawRaceScene(ctx, w, h, scene) {
+  const segments = TRACK.segments;
+  const L = RACE.segmentLength;
+  const cameraZ = Math.max(0, scene.cameraZ);
+  const base = findSegment(cameraZ);
+  const basePercent = clamp01((cameraZ - base.p1.world.z) / L);
+
+  // The camera floats above the path where my sled is, so it goes down the mountain with me.
+  const mySpot = cameraZ + raceCamera.playerZ;
+  const mySegment = findSegment(mySpot);
+  const height = lerp(mySegment.p1.world.y, mySegment.p2.world.y, clamp01((mySpot - mySegment.p1.world.z) / L));
+  const cameraY = height + RACE.cameraHeight;
+  const cameraX = scene.cameraX * RACE.roadWidth;
+
+  drawValley(ctx, w, h, scene.turn, trackProgress(cameraZ), scene.time, mySegment.snow);
+
+  // First work out where every piece lands on the screen, near to far.
+  // `x` and `dx` bend the path: each curved piece shifts the next one a bit more.
+  const shown = [];
+  let x = 0;
+  let dx = -(base.curve * basePercent);
+  const drawCount = Math.min(RACE.drawDistance, segments.length - base.index);
+  for (let n = 0; n < drawCount; n++) {
+    const seg = segments[base.index + n];
+    projectPoint(seg.p1, cameraX - x, cameraY, cameraZ, w, h, seg.width);
+    projectPoint(seg.p2, cameraX - x - dx, cameraY, cameraZ, w, h, seg.width2);
+    x += dx;
+    dx += seg.curve;
+    if (seg.p1.camera.z > raceCamera.depth) shown.push(seg);
+  }
+
+  // Which other sleds are on which piece of path.
+  const sledsOn = new Map();
+  for (const sled of scene.sleds) {
+    const index = findSegment(sled.y).index;
+    if (!sledsOn.has(index)) sledsOn.set(index, []);
+    sledsOn.get(index).push(sled);
+  }
+
+  // Then paint them far to near, each piece with the things standing on it.
+  for (let i = shown.length - 1; i >= 0; i--) {
+    const seg = shown[i];
+    const a = seg.p1.screen, b = seg.p2.screen;
+    if (b.y >= h || b.y > a.y + 1) continue; // below the screen, or facing away (hidden behind a hill)
+    const far = i / drawCount;
+    drawSegment(ctx, w, seg, Math.min(0.85, far * far * 0.9));
+
+    for (const sprite of seg.sprites) {
+      const size = SPRITE_SIZES[sprite.type];
+      const width = size.w * a.scale * w / 2;
+      const tall = size.h * a.scale * w / 2;
+      if (width < 0.8) continue;
+      const sx = a.x + sprite.offset * a.unit;
+      if (sx + width / 2 < 0 || sx - width / 2 > w) continue;
+      ctx.drawImage(spritePicture(sprite.type), sx - width / 2, a.y - tall, width, tall);
+    }
+    if (seg.line === "start") drawBanner(ctx, w, seg, "מֵרוֹץ הַחֶרְמוֹן · MT HERMON RACING", "#1d4ed8");
+    if (seg.line === "finish") drawBanner(ctx, w, seg, "🏁 כִּנֶּרֶת · KINNERET 🏁", "#0e7490");
+    if (seg.gate) drawGate(ctx, w, seg, scene.gate && scene.gate.number === seg.gate.number ? scene.gate : null);
+    for (const sled of sledsOn.get(seg.index) || []) {
+      const t = clamp01((sled.y - seg.p1.world.z) / L);
+      const s = lerp(a.scale, b.scale, t);
+      const sy = lerp(a.y, b.y, t);
+      const sx = lerp(a.x, b.x, t) + s * sled.x * RACE.roadWidth * w / 2;
+      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, sled.steer || 0, scene.time, sled.name);
+    }
+  }
+}
+
+// "1st", "2nd", "3rd", "4th"…
+function ordinal(n) {
+  const last = n % 10, lastTwo = n % 100;
+  if (last === 1 && lastTwo !== 11) return n + "st";
+  if (last === 2 && lastTwo !== 12) return n + "nd";
+  if (last === 3 && lastTwo !== 13) return n + "rd";
+  return n + "th";
+}
+
+// A banner over the path (the start and the finish).
+function drawBanner(ctx, w, seg, text, color) {
+  const a = seg.p1.screen;
+  const tall = 2000 * a.scale * w / 2;
+  if (tall < 4) return;
+  const left = a.x - a.w * 1.1, right = a.x + a.w * 1.1;
+  const poleW = Math.max(2, a.w * 0.035);
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(left - poleW / 2, a.y - tall, poleW, tall);
+  ctx.fillRect(right - poleW / 2, a.y - tall, poleW, tall);
+  const bannerH = tall * 0.22;
+  ctx.fillStyle = color;
+  ctx.fillRect(left, a.y - tall, right - left, bannerH);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(left, a.y - tall + bannerH * 0.06, right - left, bannerH * 0.06);
+  ctx.fillRect(left, a.y - tall + bannerH * 0.88, right - left, bannerH * 0.06);
+  drawTextInBox(ctx, text, a.x, a.y - tall + bannerH * 0.5, right - left, bannerH * 0.8, 400, "#ffffff", true);
 }
 
 // ---------- A sled, seen from behind ----------
@@ -357,130 +639,6 @@ function shadeColor(hex, amount) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-// ---------- The whole picture ----------
-// scene = {
-//   cameraZ:  how far along the track the camera is
-//   cameraX:  how far left/right the camera is (my sled's sideways spot)
-//   turn:     for sliding the mountains as you turn
-//   time:     the clock (for flapping scarves)
-//   sleds:    other sleds: [{ y (distance along the track), x (sideways), color, name, steer }]
-//   gate:     the question on the next gate: { number, english, choices: [left, middle, right] } (or null)
-// }
-function drawRaceScene(ctx, w, h, scene) {
-  const segments = TRACK.segments;
-  const count = segments.length;
-  const L = RACE.segmentLength;
-  const cameraZ = wrapTrack(scene.cameraZ);
-  const base = findSegment(cameraZ);
-  const basePercent = (cameraZ % L) / L;
-
-  // The camera floats above the snow where my sled is, so it goes up and down the hills.
-  const mySpot = wrapTrack(cameraZ + raceCamera.playerZ);
-  const mySegment = findSegment(mySpot);
-  const height = lerp(mySegment.p1.world.y, mySegment.p2.world.y, (mySpot % L) / L);
-  const cameraY = height + RACE.cameraHeight;
-  const cameraX = scene.cameraX * RACE.roadWidth;
-
-  drawRaceSky(ctx, w, h, scene.turn);
-
-  // Near to far. `x` and `dx` bend the track: each curved piece shifts the next one a bit more.
-  // `maxY` = the top of what's been painted so far: a piece hidden behind a hill is skipped.
-  let maxY = h;
-  let x = 0;
-  let dx = -(base.curve * basePercent);
-  const drawCount = Math.min(RACE.drawDistance, count);
-  for (let n = 0; n < drawCount; n++) {
-    const seg = segments[(base.index + n) % count];
-    const looped = seg.index < base.index; // (past the end of the lap: the start of the next one)
-    const z = cameraZ - (looped ? TRACK.length : 0);
-    seg.clip = maxY;
-    projectPoint(seg.p1, cameraX - x, cameraY, z, w, h);
-    projectPoint(seg.p2, cameraX - x - dx, cameraY, z, w, h);
-    x += dx;
-    dx += seg.curve;
-    seg.visible = seg.p1.camera.z > raceCamera.depth;
-    if (!seg.visible || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxY) continue;
-    const far = n / drawCount;
-    drawSegment(ctx, w, seg, 1 - Math.exp(-far * far * 2.5));
-    maxY = seg.p2.screen.y;
-  }
-
-  // Which other sleds are on which piece of track.
-  const sledsOn = new Map();
-  for (const sled of scene.sleds) {
-    const index = findSegment(sled.y).index;
-    if (!sledsOn.has(index)) sledsOn.set(index, []);
-    sledsOn.get(index).push(sled);
-  }
-
-  // Far to near, so near things are painted over far things.
-  for (let n = drawCount - 1; n > 0; n--) {
-    const seg = segments[(base.index + n) % count];
-    if (!seg.visible) continue;
-    const scale = seg.p1.screen.scale;
-    for (const sprite of seg.sprites) {
-      const size = SPRITE_SIZES[sprite.type];
-      const width = size.w * scale * w / 2;
-      const tall = size.h * scale * w / 2;
-      if (width < 0.8) continue;
-      const sx = seg.p1.screen.x + scale * sprite.offset * RACE.roadWidth * w / 2;
-      if (sx + width / 2 < 0 || sx - width / 2 > w) continue;
-      const top = seg.p1.screen.y - tall;
-      // Cut off the bottom if a hill in front hides it.
-      const hidden = Math.max(0, top + tall - seg.clip);
-      if (hidden >= tall) continue;
-      const picture = spritePicture(sprite.type);
-      ctx.drawImage(picture, 0, 0, picture.width, picture.height * (1 - hidden / tall), sx - width / 2, top, width, tall - hidden);
-    }
-    if (seg.index === 0) drawStartBanner(ctx, w, seg);
-    if (seg.gate) drawGate(ctx, w, seg, scene.gate && scene.gate.number === seg.gate.number ? scene.gate : null);
-    for (const sled of sledsOn.get(seg.index) || []) {
-      const t = (wrapTrack(sled.y) % L) / L;
-      const s = lerp(seg.p1.screen.scale, seg.p2.screen.scale, t);
-      const sy = lerp(seg.p1.screen.y, seg.p2.screen.y, t);
-      if (sy > seg.clip + 2) continue; // behind a hill
-      const sx = lerp(seg.p1.screen.x, seg.p2.screen.x, t) + s * sled.x * RACE.roadWidth * w / 2;
-      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, sled.steer || 0, scene.time, sled.name);
-    }
-  }
-}
-
-// The banner over the start/finish line: "Mt Hermon Racing".
-function drawStartBanner(ctx, w, seg) {
-  const a = seg.p1.screen;
-  const tall = 1700 * a.scale * w / 2;
-  if (tall < 4) return;
-  const left = a.x - a.w * 1.18, right = a.x + a.w * 1.18;
-  const poleW = Math.max(2, a.w * 0.04);
-  ctx.fillStyle = "#475569";
-  ctx.fillRect(left - poleW / 2, a.y - tall, poleW, tall);
-  ctx.fillRect(right - poleW / 2, a.y - tall, poleW, tall);
-  const bannerH = tall * 0.24;
-  ctx.fillStyle = "#1d4ed8";
-  ctx.fillRect(left, a.y - tall, right - left, bannerH);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(left, a.y - tall + bannerH * 0.06, right - left, bannerH * 0.06);
-  ctx.fillRect(left, a.y - tall + bannerH * 0.88, right - left, bannerH * 0.06);
-  const fontSize = bannerH * 0.5;
-  if (fontSize < 5) return;
-  ctx.font = `800 ${fontSize}px Rubik, Arial, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.direction = "rtl";
-  ctx.fillText("מֵרוֹץ הַחֶרְמוֹן · MT HERMON RACING", a.x, a.y - tall + bannerH * 0.52);
-  ctx.direction = "ltr";
-  ctx.textBaseline = "alphabetic";
-}
-
-// "1st", "2nd", "3rd", "4th"…
-function ordinal(n) {
-  const last = n % 10, lastTwo = n % 100;
-  if (last === 1 && lastTwo !== 11) return n + "st";
-  if (last === 2 && lastTwo !== 12) return n + "nd";
-  if (last === 3 && lastTwo !== 13) return n + "rd";
-  return n + "th";
-}
-
 
 // ---------- Fitting words into a box ----------
 
@@ -544,7 +702,7 @@ function drawGate(ctx, w, seg, info) {
   const a = seg.p1.screen;
   if (a.y > seg.clip + 2) return; // behind a hill
   const unit = a.scale * w / 2;   // pixels per track unit, at this distance
-  const tall = 1500 * unit;
+  const tall = 2600 * unit; // (big, so you can read it from far away)
   if (tall < 6) return;
   const poleW = Math.max(2, a.w * 0.035);
   const edges = [-1, -1 / 3, 1 / 3, 1].map((t) => a.x + a.w * t);
@@ -555,13 +713,13 @@ function drawGate(ctx, w, seg, info) {
   ctx.fillRect(edges[0] - poleW / 2, top, edges[3] - edges[0] + poleW, beamH);
 
   // The English word, on a white sign above the frame.
-  const signW = a.w * 0.95, signH = tall * 0.24;
+  const signW = a.w * 0.8, signH = tall * 0.2;
   roundedBox(ctx, a.x - signW / 2, top - signH, signW, signH, signH * 0.2, "#ffffff", "#1e3a8a", Math.max(1, signH * 0.06));
   drawTextInBox(ctx, info ? info.english : "?", a.x, top - signH / 2, signW, signH, 200, "#1e3a8a", false);
 
   // One Hebrew answer over each lane.
   const panelTop = top + beamH;
-  const panelH = tall * 0.3;
+  const panelH = tall * 0.26;
   for (let lane = 0; lane < 3; lane++) {
     const gap = (edges[lane + 1] - edges[lane]) * 0.05;
     const left = edges[lane] + poleW / 2 + gap / 2;
@@ -602,18 +760,15 @@ const PANEL_COLORS = { right: "rgba(22, 163, 74, 0.92)", wrong: "rgba(220, 38, 3
 // in the same order as the lanes (left, middle, right). The lane I'm in has a yellow frame.
 // Returns where the panel ends (so other things can go under it).
 function drawGatePanel(ctx, w, size, gate) {
-  const panelW = Math.min(w * 0.56, 540);
+  const panelW = Math.min(w * 0.5, 480);
   const x = (w - panelW) / 2;
   const y = 6;
-  const wordH = size * 1.5;
-  const tipH = size * 0.9;
-  const answerH = size * 1.9;
+  const wordH = size * 1.3;
+  const tipH = 0; // (no instructions line: the gate itself shows what to do)
+  const answerH = size * 1.7;
   const panelH = wordH + tipH + answerH + 12;
   roundedBox(ctx, x, y, panelW, panelH, 14, "rgba(15, 23, 42, 0.72)");
   drawTextInBox(ctx, gate.english, w / 2, y + 2 + wordH / 2, panelW - 20, wordH, size * 1.3, "#ffffff", false);
-  // How to answer (Hebrew first).
-  drawTextInBox(ctx, "נוֹסְעִים מִתַּחַת לַתְּשׁוּבָה הַנְּכוֹנָה · Drive under the right Hebrew",
-    w / 2, y + wordH + tipH / 2, panelW - 20, tipH, size * 0.5, "#cbd5e1", true, 600);
   const boxW = (panelW - 16) / 3;
   const boxY = y + wordH + tipH + 4;
   for (let lane = 0; lane < 3; lane++) {
@@ -641,12 +796,11 @@ function drawGateFeedback(ctx, w, size, feedback) {
   return 6 + panelH;
 }
 
-// info = { lap, place, racers, kmh, countdown (a number, "go", or null), finishedPlace,
+// info = { progress: { me, others: [{ at, color }] } (0 = start, 1 = the Kinneret), place, racers, kmh, countdown (a number, "go", or null), finishedPlace,
 //          deepSnow, showArrows, gate (the question, or null), feedback (or null), boosting, slowed }
 function drawRaceHud(ctx, w, h, info) {
   const size = Math.max(16, Math.min(28, h * 0.06));
-  // The lap, top left.
-  drawBilingualText(ctx, `הַקָּפָה ${info.lap}/${RACE.laps}`, `Lap ${info.lap}/${RACE.laps}`, 14, size + 6, size, "#ffffff", "left");
+  drawProgressBar(ctx, w, size, info.progress);
 
   let below = 6;
   if (info.finishedPlace) {
@@ -666,7 +820,7 @@ function drawRaceHud(ctx, w, h, info) {
   if (info.boosting) drawBilingualText(ctx, "⚡ טוּרְבּוֹ!", "Boost!", w - cornerX, h - size * 3.2, size * 0.9, "#fde047");
   else if (info.slowed) drawBilingualText(ctx, "🐢 אִטִּי…", "Slowed down", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
   if (info.deepSnow && !info.finishedPlace) {
-    drawBilingualText(ctx, "שֶׁלֶג עָמֹק — אִטִּי!", "❄️ Deep snow — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");
+    drawBilingualText(ctx, "מִחוּץ לַשְּׁבִיל — אִטִּי!", "❄️ Off the path — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");
   }
   if (info.showArrows) {
     // Where to tap to steer.
@@ -680,6 +834,35 @@ function drawRaceHud(ctx, w, h, info) {
     drawBilingualText(ctx, go ? "יוֹצְאִים!" : String(info.countdown), go ? "Go!" : "", w / 2, h * 0.5, size * (go ? 2.6 : 3.4), go ? "#4ade80" : "#ffffff");
   }
 }
+
+// Top left: how far down the mountain everyone is. ⛰️ = the start, 🌊 = the Kinneret.
+// My dot is big and yellow; the other sleds are small dots in their colors.
+function drawProgressBar(ctx, w, size, progress) {
+  const x = 14, y = 10;
+  const barW = Math.min(230, w * 0.24);
+  ctx.font = `${Math.round(size * 0.8)}px Rubik, Arial, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const lineY = y + size * 0.55;
+  ctx.fillText("⛰️", x, lineY);
+  ctx.fillText("🌊", x + barW + size * 0.9, lineY);
+  const left = x + size * 1.05, right = x + barW + size * 0.75;
+  roundedBox(ctx, left, lineY - 4, right - left, 8, 4, "rgba(15, 23, 42, 0.55)");
+  roundedBox(ctx, left, lineY - 4, (right - left) * progress.me, 8, 4, "#fde047");
+  for (const other of progress.others) {
+    ctx.fillStyle = other.color;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(left + (right - left) * other.at, lineY, size * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = "#fde047";
+  ctx.strokeStyle = "#1f2937";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(left + (right - left) * progress.me, lineY, size * 0.32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.textBaseline = "alphabetic";
+  drawBilingualText(ctx, "לַכִּנֶּרֶת", "To the Kinneret", (left + right) / 2, lineY + size * 1.25, size * 0.6);
+}
+
 
 // White speed lines flying past while boosting.
 function drawBoostLines(ctx, w, h, time) {

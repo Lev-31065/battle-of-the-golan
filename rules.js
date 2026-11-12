@@ -308,37 +308,43 @@ const TRANSLATE = {
 };
 
 // ---------- Mt Hermon Racing (the sled race: race-*.js) ----------
-// Distances are in "track units". The track is a long row of short pieces called
+// Distances are in "track units". The path is a long row of short pieces called
 // segments (race-track.js), each RACE.segmentLength long.
 const RACE = {
-  laps: 3,                // laps to finish the race
+  // The path: one long ride from the top of Mt Hermon down to the Kinneret (race-track.js).
   countdown: 3,           // seconds of 3… 2… 1… before the sleds can go
-  segmentLength: 200,     // how long one piece of the track is
-  roadWidth: 2000,        // HALF the width of the track (from the middle to one edge)
-  lanes: 3,               // lanes on the track (one answer over each lane at the gates)
-  maxSpeed: 6000,         // top speed (track units per second). Was 10000: too fast
-  accel: 2000,            // how fast you speed up on the track
-  offTrackSpeed: 0.3,     // in the deep snow beside the track, your top speed drops to 30%
-  offTrackSlowdown: 6000, // how fast deep snow slows you down
-  steerSpeed: 2.2,        // how fast you slide left and right at top speed
-  curvePush: 0.32,        // how hard curves push you toward the outside
-  maxSide: 2.2,           // how far from the middle you can go (1 = the track's edge)
-  crashSpeed: 0.2,        // hitting a tree or snowman drops you to 20% speed
+  segmentLength: 200,     // how long one piece of the path is
+  roadWidth: 2000,        // the measuring stick for widths: the widths below are in these
+  pathWidth: 0.55,        // half the width of the normal (narrow) path
+  gateWidth: 1.7,         // half the width of the path at an answer gate (much wider)
+  startWidth: 1.2,        // half the width at the start and the finish
+  shoulder: 1.0,          // how much ground there is beside the path before it drops down the mountainside
+  lanes: 3,               // lanes at the gates (one answer over each lane)
+  maxSpeed: 5500,         // top speed (track units per second). Was 10000, then 6000
+  accel: 1800,            // how fast you speed up on the path
+  brake: 3000,            // how fast you slow down after the finish line (so you stop on the beach)
+  offTrackSpeed: 0.3,     // off the path, your top speed drops to 30%
+  offTrackSlowdown: 6000, // how fast going off the path slows you down
+  steerSpeed: 1.6,        // how fast you slide left and right at top speed
+  curvePush: 0.25,        // how hard curves push you toward the outside
+  maxSide: 3.2,           // the farthest from the middle any sled can be (the referee checks this)
+  crashSpeed: 0.2,        // hitting a tree, bush or rock drops you to 20% speed
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
-  firstGate: 110,         // the first gate stands on this segment
-  gateEvery: 210,         // then one gate every this many segments (about 7 seconds apart)
-  gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
+  gateCount: 7,           // how many gates on the way down
+  gateGap: 640,           // segments from one gate to the next (about 23 seconds)
+  gateZone: 110,          // the straight, wide stretch around each gate (in segments)
+  gateShowAt: 200,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
   boostTime: 2.5,         // …for this many seconds
   slowSpeed: 0.45,        // wrong answer: top speed drops to 45%…
   slowTime: 1.5,          // …for this many seconds
-  feedbackTime: 2,        // seconds "Correct!" or "The answer is…" stays on the screen
+  feedbackTime: 2.5,      // seconds "Correct!" or "The answer is…" stays on the screen
   // Screen
-  cameraHeight: 1700,     // how high the camera floats above the snow (higher = more from above). Was 1000
+  cameraHeight: 1700,     // how high the camera floats above the path (higher = more from above)
   fieldOfView: 100,       // how wide the camera sees (degrees)
-  horizon: 0.36,          // where the horizon is on the screen (0 = top, 0.5 = middle). Higher up = you see more track
-  drawDistance: 220,      // how many segments ahead get drawn (fewer = faster on old phones)
+  horizon: 0.3,           // where the horizon is on the screen (0 = top, 0.5 = middle)
+  drawDistance: 320,      // how many segments ahead get drawn (fewer = faster on old phones)
   sendEvery: 100,         // milliseconds between "here's where my sled is" messages
   colors: ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#f97316"], // one per sled
 };
@@ -347,7 +353,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12l";
+const GAME_VERSION = "2026-11-12m";
 
 // ---------- Helpers ----------
 

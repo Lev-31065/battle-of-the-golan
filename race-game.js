@@ -81,15 +81,18 @@ function raceUpdate(dt) {
     me.x += steer * RACE.steerSpeed * fraction * dt;
     // …and curves push you toward the outside, so you have to steer into them.
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
-    me.x = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, me.x));
+    // You can go off the path, but not past the edge of the mountainside.
+    const farthest = segment.width + RACE.shoulder * 0.8;
+    me.x = Math.max(-farthest, Math.min(farthest, me.x));
 
-    // Past the red and white edge = deep snow: much slower.
+    // Off the path = much slower (deep snow up high, rough ground lower down).
     // A right answer at a gate = a boost (faster for a moment); a wrong one = slowed down.
-    inDeepSnow = Math.abs(me.x) > 1;
+    inDeepSnow = Math.abs(me.x) > segment.width;
     const boosting = gameTime < boostUntil, slowed = gameTime < slowUntil;
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
-      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1);
-    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - RACE.offTrackSlowdown * dt);
+      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1)
+      * (me.finished || me.y > TRACK.finishZ ? 0 : 1); // past the finish line: slow down and stop on the beach
+    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - (top === 0 ? RACE.brake : RACE.offTrackSlowdown) * dt);
     else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
 
     // Crashing into a tree, a snowman, a rock or a cabin.
@@ -160,20 +163,16 @@ function raceUpdate(dt) {
 
 // The next gate ahead of distance y: { z (its distance along the race), gate }, or null.
 function nextGateAhead(y) {
-  const lapStart = Math.floor(y / TRACK.length) * TRACK.length;
-  for (const lapsAhead of [0, 1]) {
-    for (const gate of TRACK.gates) {
-      const z = lapStart + lapsAhead * TRACK.length + gate.index * RACE.segmentLength;
-      if (z > y && z > lastGateZ) return z < RACE.laps * TRACK.length ? { z, gate } : null; // (no gates after the finish)
-    }
+  for (const gate of TRACK.gates) {
+    if (gate.z > y && gate.z > lastGateZ) return { z: gate.z, gate };
   }
   return null;
 }
 
-// Which lane a sideways spot is in: 0 = left, 1 = middle, 2 = right, -1 = off the track.
-function laneAt(x) {
-  if (Math.abs(x) > 1) return -1;
-  return Math.max(0, Math.min(2, Math.floor((x + 1) / 2 * 3)));
+// Which lane a sideways spot is in at a gate: 0 = left, 1 = middle, 2 = right, -1 = off the path.
+function laneAt(x, width = RACE.gateWidth) {
+  if (Math.abs(x) > width) return -1;
+  return Math.max(0, Math.min(2, Math.floor((x / width + 1) / 2 * 3)));
 }
 
 // Three answers: the right one and 2 wrong ones (the quiz's tricky wrong answers first).
@@ -255,7 +254,7 @@ function raceRender() {
   const me = myPlayer();
   const racing = me && client.phase !== "lobby";
   // In the lobby (behind the room code), the camera just glides along the track.
-  const myY = racing ? me.y : gameTime * 1500;
+  const myY = racing ? me.y : TRACK.startZ + (gameTime * 1500) % (TRACK.finishZ - TRACK.startZ);
   const myX = racing ? me.x : 0;
 
   // A little shake right after a crash.
@@ -293,7 +292,10 @@ function raceRender() {
   const started = gameTime >= raceInfo.startAt;
   const sinceStart = gameTime - raceInfo.startAt;
   drawRaceHud(ctx, w, h, {
-    lap: Math.max(1, Math.min(RACE.laps, Math.floor(me.y / TRACK.length) + 1)),
+    progress: {
+      me: trackProgress(me.y),
+      others: Object.values(players).filter((p) => p.id !== client.myId).map((p) => ({ at: trackProgress(p.y), color: p.color })),
+    },
     place: order.indexOf(me) + 1,
     racers: order.length,
     kmh: Math.round(fraction * 90),
