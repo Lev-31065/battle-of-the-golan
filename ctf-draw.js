@@ -1,4 +1,4 @@
-// draw.js — everything that paints pictures onto the canvas.
+// ctf-draw.js — everything that paints Capture the Flag onto the canvas (the map, players, weapons…).
 //
 // A canvas is like a blank sheet of paper. About 60 times every second we
 // wipe it and repaint the whole scene: grass, rivers, bases, then players on top.
