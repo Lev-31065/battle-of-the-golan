@@ -252,6 +252,9 @@ button, select, input { touch-action: manipulation; }
 .tool-slot { position: relative; }  /* (so the count badge can sit on its corner) */
 .tool-count { right: -7px; top: -7px; min-width: 18px; padding: 1px 4px; font-size: 11px; }
 .tool-slot.held { border-color: #fde047; background: rgba(253, 224, 71, 0.45); }  /* the one you're holding */
+/* Our own item drawings (ITEM_PICS in rules.js): the same size as an emoji in the same spot. */
+.pic-icon svg { display: block; width: 1.15em; height: 1.15em; margin: 0 auto; }
+.tool-pic.pic-icon svg { width: 1.2em; height: 1.2em; }
 .shop-items { display: flex; flex-direction: column; gap: 10px; }
 
 /* ---------- Home and lobby screens ---------- */

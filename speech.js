@@ -177,8 +177,11 @@ function reportVoiceProblem(why, line, voiceName) {
   if (voiceProblemShown[line.lang] || typeof showToast !== "function") return;
   voiceProblemShown[line.lang] = true;
   const language = line.lang === "he" ? "Hebrew" : "English";
-  showToast(`🗣️ ${language} voice problem: ${why} · voice: ${voiceName || "phone's choice"} · voices: ${voices.length}`,
-    line.lang === "he" ? "בְּעָיָה בַּקּוֹל בְּעִבְרִית" : "בְּעָיָה בַּקּוֹל בְּאַנְגְּלִית");
+  // The tip first: restarting the phone fixed Daniel's Pixel (2026-11-12). The details after it help us debug.
+  showToast(`🗣️ ${language} voice isn't working. Try restarting your phone. (${why} · voice: ${voiceName || "phone's choice"} · voices: ${voices.length})`,
+    line.lang === "he"
+      ? "הַקּוֹל בְּעִבְרִית לֹא עוֹבֵד. נַסּוּ לְהַפְעִיל מֵחָדָשׁ אֶת הַטֶּלֶפוֹן."
+      : "הַקּוֹל בְּאַנְגְּלִית לֹא עוֹבֵד. נַסּוּ לְהַפְעִיל מֵחָדָשׁ אֶת הַטֶּלֶפוֹן.");
 }
 
 // Hebrew without the nikud dots (some phone voices choke on them).

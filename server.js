@@ -364,6 +364,7 @@ function serverCheckSpears() {
     if (box.alive && distance(box, tip) <= box.radius + spear.tipReach) {
       p.lastSwing = server.time;
       serverHurt(box, box.hp, p);
+      breakSpear(p);
       continue;
     }
     for (const enemy of Object.values(server.players)) {
@@ -371,9 +372,20 @@ function serverCheckSpears() {
       if (distance(enemy, tip) > enemy.radius + spear.tipReach) continue;
       p.lastSwing = server.time; // (phones use this to draw a quick jab)
       serverHurt(enemy, enemy.hp, p); // all their health = knocked out
+      breakSpear(p);
       break; // one stab at a time
     }
   }
+}
+
+// The spear is used up after one stab (ITEMS.spear.oneUse): it's gone from your toolbar and
+// your hands are empty. You can buy a new one at the shop.
+function breakSpear(p) {
+  if (!ITEMS.spear.oneUse) return;
+  p.items = p.items.filter((id) => id !== "spear");
+  if (p.held === "spear") p.held = null;
+  floatText("💥 Snap!", p.x, p.y - 40, "#fbbf24", 0.9, null, "נִשְׁבְּרָה!");
+  toast("🔱 Your spear broke. Buy a new one at the shop.", "הַחֲנִית נִשְׁבְּרָה. אֶפְשָׁר לִקְנוֹת חֲדָשָׁה בַּחֲנוּת.", p.id);
 }
 
 // ---------- Throwing (rocks, ninja stars) ----------

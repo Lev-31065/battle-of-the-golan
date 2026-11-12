@@ -1001,7 +1001,7 @@ function fillShop(p) {
 
     const icon = document.createElement("span");
     icon.className = "shop-icon";
-    icon.textContent = item.icon;
+    setItemIcon(icon, id); // (our own drawing, or the emoji)
     const text = document.createElement("span");
     text.className = "shop-text";
     const name = document.createElement("b");
@@ -1108,7 +1108,10 @@ function updateToolbar(p) {
       button.type = "button";
       button.className = "tool-slot";
       button.dataset.item = id || "";
-      button.textContent = id ? ITEMS[id].icon : "✋";
+      const picture = document.createElement("span");
+      picture.className = "tool-pic";
+      setItemIcon(picture, id); // (null = ✋ empty hands)
+      button.appendChild(picture);
       button.title = (id ? ITEMS[id].name : "Empty hands") + ` (${i + 1})`;
       // Thrown things: a little badge says how many are left.
       if (ammo[id]) {
@@ -1846,10 +1849,10 @@ function updateHud(p) {
   attackButton.hidden = !canAttack(p);
   const weapon = heldWeapon(p);
   if (weapon) {
-    if (attackIcon.textContent !== weapon.icon) attackIcon.textContent = weapon.icon;
+    setItemIcon(attackIcon, p.held);
     attackButton.classList.toggle("cooling", gameTime - p.lastSwing < weapon.cooldown);
   } else if (holdingTree(p)) {
-    if (attackIcon.textContent !== ITEMS.tree.icon) attackIcon.textContent = ITEMS.tree.icon;
+    setItemIcon(attackIcon, "tree");
     attackButton.classList.remove("cooling");
   }
   // The button's words: "Plant" while holding a tree, otherwise "Hit".
@@ -1866,7 +1869,7 @@ function updateHud(p) {
   if (throwButton.hidden) {
     if (aim.active) cancelAim(); // (ran out, got busy, or grabbed a flag mid-aim)
   } else {
-    if (throwIcon.textContent !== throwable.icon) throwIcon.textContent = throwable.icon;
+    setItemIcon(throwIcon, p.held);
     const left = String(p.ammo[p.held]);
     if (throwCount.textContent !== left) throwCount.textContent = left;
     throwButton.classList.toggle("cooling", gameTime - p.lastSwing < throwable.cooldown);

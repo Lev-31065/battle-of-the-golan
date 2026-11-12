@@ -44,7 +44,7 @@ const ITEMS = {
   },
   stick: {
     kind: "melee", cost: 2, damage: 8, range: 70, cooldown: 0.25,
-    icon: "🏑", name: "Stick", nameHe: "מַקֵּל",
+    icon: "🏑", pic: "stick", name: "Stick", nameHe: "מַקֵּל",
     about: "Super fast, but weak", aboutHe: "מָהִיר מְאוֹד, אֲבָל חַלָּשׁ",
   },
   // kind "wear" = you wear it, you don't hold it. It works all the time and isn't in the toolbar.
@@ -62,30 +62,31 @@ const ITEMS = {
   // kind "spear" = no button. It sticks out in front of you while you hold it;
   // touch an enemy with the TIP and they're knocked out. Listed late because it's hard to use.
   spear: {
-    kind: "spear", cost: 4, length: 58, side: 8, tipReach: 8, cooldown: 0.8,
+    kind: "spear", cost: 4, oneUse: true, length: 95, side: 8, tipReach: 8, cooldown: 0.8,
     // length = how far the tip sticks out past your body. side = how far right of center it's held.
     // tipReach = how close the tip must get to an enemy.
     // cooldown = seconds after a stab before the spear can stab again.
+    // oneUse = it breaks after one stab (an enemy or the speed box). Daniel: it was too strong.
     icon: "🔱", name: "Spear", nameHe: "חֲנִית",
-    about: "No button: touch an enemy with the tip = knocked out!",
-    aboutHe: "בְּלִי כַּפְתּוֹר: נוֹגְעִים בְּאוֹיֵב עִם הַחֹד = נוֹקְאָאוּט!",
+    about: "No button: touch an enemy with the tip = knocked out! Breaks after one stab",
+    aboutHe: "בְּלִי כַּפְתּוֹר: נוֹגְעִים בְּאוֹיֵב עִם הַחֹד = נוֹקְאָאוּט! נִשְׁבֶּרֶת אַחֲרֵי דְּקִירָה אַחַת",
   },
   // lands = true: it doesn't hit anyone while flying. It lands at the end of its range and
   // becomes a hidden trap (settings in POMEGRANATE below).
   grenade: {
-    kind: "throw", cost: 4, perBuy: 1, damage: 0, range: 260, speed: 360, size: 11, cooldown: 0.6,
+    kind: "throw", cost: 3, perBuy: 2, damage: 0, range: 260, speed: 360, size: 11, cooldown: 0.6,
     freezes: false, goesThrough: true, lands: true,
-    icon: "💣", name: "Pomegranate grenade", nameHe: "רִמּוֹן יָד",
-    about: "Throw it: it hides, and blows up when an enemy comes near (half their health)",
-    aboutHe: "זוֹרְקִים אוֹתוֹ: הוּא מִתְחַבֵּא וּמִתְפּוֹצֵץ כְּשֶׁאוֹיֵב מִתְקָרֵב (חֲצִי מֵהַחַיִּים)",
+    icon: "💣", pic: "pomegranate", name: "Pomegranate grenade", nameHe: "רִמּוֹן יָד",
+    about: "You get 2. Throw one: it hides, and blows up when an enemy comes near (half their health)",
+    aboutHe: "מְקַבְּלִים 2. זוֹרְקִים אֶחָד: הוּא מִתְחַבֵּא וּמִתְפּוֹצֵץ כְּשֶׁאוֹיֵב מִתְקָרֵב (חֲצִי מֵהַחַיִּים)",
   },
   // Same damage as the hammer, but thrown. Flies its full range, through everyone in its path.
   stars: {
-    kind: "throw", cost: 5, perBuy: 4, damage: 34, range: 470, speed: 470, size: 12, cooldown: 0.35,
+    kind: "throw", cost: 3, perBuy: 5, damage: 34, range: 470, speed: 470, size: 12, cooldown: 0.35,
     freezes: false, goesThrough: true,
     icon: "⭐", name: "Ninja stars", nameHe: "כּוֹכְבֵי נִינְגָּ׳ה",
-    about: "You get 4. Each one hits every enemy in its path",
-    aboutHe: "מְקַבְּלִים 4. כָּל אֶחָד פּוֹגֵעַ בְּכָל אוֹיֵב בַּדֶּרֶךְ",
+    about: "You get 5. Each one hits every enemy in its path",
+    aboutHe: "מְקַבְּלִים 5. כָּל אֶחָד פּוֹגֵעַ בְּכָל אוֹיֵב בַּדֶּרֶךְ",
   },
   // kind "plant" = hold it, then press the Plant button to plant it in front of you.
   tree: {
@@ -113,6 +114,53 @@ const POMEGRANATE = {
 // Can you hold this item in your hand (= it gets a toolbar button)? Worn things like boots can't.
 function isHoldable(id) {
   return Boolean(ITEMS[id]) && ITEMS[id].kind !== "wear";
+}
+
+// Our own pictures for items that have no good emoji (an item's `pic` names one of these).
+// SVG = a picture written as code, so it stays sharp at any size. The `icon` emoji is still
+// used inside text messages.
+const ITEM_PICS = {
+  // A twig: a brown branch with a small side branch and two leaves.
+  stick:
+    '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+    '<g stroke-linecap="round" fill="none">' +
+    '<path d="M12 54 L52 12" stroke="#3b2412" stroke-width="10"/>' +
+    '<path d="M12 54 L52 12" stroke="#a0662b" stroke-width="6"/>' +
+    '<path d="M34 31 L47 36" stroke="#3b2412" stroke-width="7"/>' +
+    '<path d="M34 31 L47 36" stroke="#a0662b" stroke-width="3.5"/>' +
+    '<path d="M20 46 L16 38" stroke="#3b2412" stroke-width="6"/>' +
+    '<path d="M20 46 L16 38" stroke="#a0662b" stroke-width="3"/></g>' +
+    '<path d="M47 36 q10 -6 12 4 q-9 6 -12 -4z" fill="#4ade80" stroke="#14532d" stroke-width="2"/>' +
+    '<path d="M52 12 q2 -9 10 -6 q-2 9 -10 6z" fill="#4ade80" stroke="#14532d" stroke-width="2"/>' +
+    '</svg>',
+  // A pomegranate (רִמּוֹן) with its little crown, and a grenade's pull ring on the side.
+  pomegranate:
+    '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+    '<defs><radialGradient id="pomSkin" cx="0.38" cy="0.35" r="0.7">' +
+    '<stop offset="0" stop-color="#fca5a5"/><stop offset="0.45" stop-color="#dc2626"/>' +
+    '<stop offset="1" stop-color="#7f1d1d"/></radialGradient></defs>' +
+    '<circle cx="50" cy="20" r="7" fill="none" stroke="#475569" stroke-width="3.5"/>' +
+    '<path d="M44 24 L39 27" stroke="#475569" stroke-width="3.5" stroke-linecap="round"/>' +
+    '<circle cx="30" cy="38" r="21" fill="url(#pomSkin)" stroke="#1f2937" stroke-width="2.5"/>' +
+    '<path d="M21 20 L19 7 L26 14 L30 5 L34 14 L41 7 L39 20 Z" fill="#991b1b" stroke="#1f2937" stroke-width="2.5" stroke-linejoin="round"/>' +
+    '<ellipse cx="22" cy="30" rx="5" ry="3" fill="#fff" opacity="0.45" transform="rotate(-30 22 30)"/>' +
+    '</svg>',
+};
+
+// Put an item's picture into a page element: our own drawing if it has one, otherwise its emoji.
+// (It remembers which item it shows, so calling it every frame costs nothing.)
+function setItemIcon(element, id) {
+  const item = ITEMS[id];
+  const key = id || "";
+  if (element.dataset.icon === key) return;
+  element.dataset.icon = key;
+  if (item && item.pic && ITEM_PICS[item.pic]) {
+    element.innerHTML = ITEM_PICS[item.pic]; // (our own fixed drawing, never player text)
+    element.classList.add("pic-icon");
+  } else {
+    element.textContent = item ? item.icon : "✋";
+    element.classList.remove("pic-icon");
+  }
 }
 
 // The Throw button: dragging less than this (screen pixels) = throw the way you're facing.
@@ -247,7 +295,7 @@ const TRANSLATE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-11e";
+const GAME_VERSION = "2026-11-12a";
 
 // ---------- Helpers ----------
 
