@@ -668,15 +668,20 @@ function makeDeckGroup(label, decks) {
 const autoOption = document.createElement("option");
 autoOption.value = AUTO;
 autoOption.textContent = "🤖 Auto: a level for each player · אוֹטוֹמָטִי: רָמָה אִישִׁית";
-const premadeGroup = makeDeckGroup("🎯 Premade decks · חֲפִיסוֹת מוּכָנוֹת", TOPIC_DECKS);
+// The premade decks: one section each for themes, key concepts and every verb pattern
+// (premadeSections() in words.js).
+const premadeGroups = premadeSections().map((section) =>
+  makeDeckGroup(`🎯 ${section.english} · ${section.hebrew}`, section.decks));
 const levelsGroup = makeDeckGroup("📈 Levels · רָמוֹת", DECKS);
 deckSelect.append(autoOption, levelsGroup);
 
 // Premade decks sit between Auto and the levels, but only in a class game.
-// (We take the whole group out of the list, because iPhones ignore "hidden" on list items.)
+// (We take whole groups out of the list, because iPhones ignore "hidden" on list items.)
 function showPremadeDecks(show) {
-  if (show && !premadeGroup.parentNode) deckSelect.insertBefore(premadeGroup, levelsGroup);
-  if (!show && premadeGroup.parentNode) premadeGroup.remove();
+  for (const group of premadeGroups) {
+    if (show && !group.parentNode) deckSelect.insertBefore(group, levelsGroup);
+    if (!show && group.parentNode) group.remove();
+  }
 }
 
 // Teacher decks go in their own group right under Auto (class games only):

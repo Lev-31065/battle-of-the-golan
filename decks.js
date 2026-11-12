@@ -138,6 +138,22 @@ function makePickRow(id, english, hebrew, detail, detailHe, deck = null) {
   return row;
 }
 
+// One premade deck's line: the deck (click to pick it) + a 📋 "copy & edit" button.
+function makePremadeLine(deck) {
+  const n = deck.words.length;
+  const line = document.createElement("div");
+  line.className = "deck-line";
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "deck-edit";
+  copy.textContent = "📋";
+  copy.title = "Copy & edit · הַעְתָּקָה וַעֲרִיכָה";
+  copy.setAttribute("aria-label", "Copy and edit this deck");
+  copy.addEventListener("click", () => openDeckEditor(null, deck));
+  line.append(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`, deck), copy);
+  return line;
+}
+
 function renderDeckList() {
   // Column 1: my own decks. Each has a ✏️ button to change it.
   decksList.innerHTML = "";
@@ -159,37 +175,17 @@ function renderDeckList() {
     decksList.appendChild(line);
   }
 
-  // Column 2: the premade decks: theme decks, then root decks, each under a small heading.
+  // Column 2: the premade decks, each section under a small heading: themes, key concepts,
+  // then one section per verb pattern (premadeSections() in words.js).
   const premadeList = document.getElementById("premade-list");
   premadeList.innerHTML = "";
-  const premadeHeadings = {
-    theme: ["Themes", "נוֹשְׂאִים"],
-    root: ["Verb roots: what comes after the verb", "שָׁרָשִׁים: מָה בָּא אַחֲרֵי הַפֹּעַל"],
-    conj: ["Verb roots: past & future", "שָׁרָשִׁים: עָבָר וְעָתִיד"],
-    tense: ["Key concepts", "מֻשָּׂגֵי מַפְתֵּחַ"],
-  };
-  let lastKind = null;
   // Each has a 📋 button: "copy & edit" makes it one of MY decks, which I can change.
-  for (const deck of TOPIC_DECKS) {
-    if (deck.kind !== lastKind && premadeHeadings[deck.kind]) {
-      const heading = document.createElement("p");
-      heading.className = "premade-subheading";
-      setBilingual(heading, ...premadeHeadings[deck.kind]);
-      premadeList.appendChild(heading);
-    }
-    lastKind = deck.kind;
-    const n = deck.words.length;
-    const line = document.createElement("div");
-    line.className = "deck-line";
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "deck-edit";
-    copy.textContent = "📋";
-    copy.title = "Copy & edit · הַעְתָּקָה וַעֲרִיכָה";
-    copy.setAttribute("aria-label", "Copy and edit this deck");
-    copy.addEventListener("click", () => openDeckEditor(null, deck));
-    line.append(makePickRow(deck.id, deck.english, deck.hebrew, `${n} words`, `${n} מִלִּים`, deck), copy);
-    premadeList.appendChild(line);
+  for (const section of premadeSections()) {
+    const heading = document.createElement("p");
+    heading.className = "premade-subheading";
+    setBilingual(heading, section.english, section.hebrew);
+    premadeList.appendChild(heading);
+    for (const deck of section.decks) premadeList.appendChild(makePremadeLine(deck));
   }
 
   // Column 3: Auto, then every level.

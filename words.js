@@ -657,7 +657,13 @@ function mixCheckpointWords(deck) {
 //   kind: "conj"  → one verb conjugated: all 8 people in the past, all 8 in the future,
 //                   plus 2 sentences. (Made from a conjugation table, so the wrong answers
 //                   follow a pattern: other tense, other gender, other person.)
+//   kind: "tense" → a "Key concept" (past tense, future tense).
 // icon = the emoji shown before the deck's name.
+// pattern = the verb pattern (binyan) of a "root" or "conj" deck: "paal", "piel" …
+//           (the list is VERB_PATTERNS, under TOPIC_DECKS). Each deck sticks to ONE
+//           pattern, so a root with verbs in two patterns gets two decks (ל־מ־ד: learn / teach).
+//           The dashboard and the lobby list root decks under a heading per pattern.
+// The order here doesn't matter: sortPremadeDecks() puts them in order (see below).
 
 // Helper for the newer conjugation decks: builds the 16 questions (8 past + 8 future)
 // from a short table, so each verb is just two lines of Hebrew that are easy to check.
@@ -1009,7 +1015,7 @@ const TOPIC_DECKS = [
 
   // ===== Root decks =====
   {
-    id: "root-ktv", kind: "root", icon: "🌱", english: "Root כ־ת־ב: write", hebrew: "שֹׁרֶשׁ כ־ת־ב: לִכְתֹּב",
+    id: "root-ktv", kind: "root", pattern: "paal", icon: "🌱", english: "Root כ־ת־ב: write", hebrew: "שֹׁרֶשׁ כ־ת־ב: לִכְתֹּב",
     words: [
       { english: "to write", hebrew: "לִכְתֹּב", wrong: ["כּוֹתֵב", "מִכְתָּב", "לִקְרֹא"] },
       { english: "he writes", hebrew: "הוּא כּוֹתֵב", wrong: ["הוּא כּוֹתֶבֶת", "הוּא כּוֹתְבִים", "הוּא כָּתַב"] },
@@ -1076,15 +1082,13 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-lmd", kind: "root", icon: "🌱", english: "Root ל־מ־ד: learn & teach", hebrew: "שֹׁרֶשׁ ל־מ־ד: לִלְמֹד, לְלַמֵּד",
+    // ל־מ־ד has two verbs in two patterns: לִלְמֹד (learn, פָּעַל) here, לְלַמֵּד (teach, פִּעֵל) in "root-lmd-teach".
+    id: "root-lmd", kind: "root", pattern: "paal", icon: "🌱", english: "Root ל־מ־ד: learn", hebrew: "שֹׁרֶשׁ ל־מ־ד: לִלְמֹד",
     words: [
       { english: "to learn", hebrew: "לִלְמֹד", wrong: ["לְלַמֵּד", "לוֹמֵד", "תַּלְמִיד"] },
-      { english: "to teach", hebrew: "לְלַמֵּד", wrong: ["לִלְמֹד", "מְלַמֵּד", "מוֹרֶה"] },
       { english: "he learns", hebrew: "הוּא לוֹמֵד", wrong: ["הוּא מְלַמֵּד", "הוּא לוֹמֶדֶת", "הוּא לָמַד"] },
       { english: "she learns", hebrew: "הִיא לוֹמֶדֶת", wrong: ["הִיא מְלַמֶּדֶת", "הִיא לוֹמֵד", "הִיא לָמְדָה"] },
       { english: "they (m.) learn", hebrew: "הֵם לוֹמְדִים", wrong: ["הֵם מְלַמְּדִים", "הֵם לוֹמְדוֹת", "הֵם לוֹמֵד"] },
-      { english: "she teaches", hebrew: "הִיא מְלַמֶּדֶת", wrong: ["הִיא לוֹמֶדֶת", "הִיא מְלַמֵּד", "הִיא לִמְּדָה"] },
-      { english: "they (f.) teach", hebrew: "הֵן מְלַמְּדוֹת", wrong: ["הֵן לוֹמְדוֹת", "הֵן מְלַמְּדִים", "הֵן מְלַמֶּדֶת"] },
       { english: "a student (m.)", hebrew: "תַּלְמִיד", wrong: ["מְלַמֵּד", "לִמּוּדִים", "תַּלְמִידָה"] },
       { english: "studies", hebrew: "לִמּוּדִים", wrong: ["תַּלְמִידִים", "לוֹמְדִים", "מְלַמְּדִים"] },
       // לוֹמֵד + (a subject, no אֶת) / בְּ (where, or in which language) / עַל (about) / מִ (from whom) / an infinitive
@@ -1093,44 +1097,21 @@ const TOPIC_DECKS = [
       { english: "she learns about Israel", hebrew: "הִיא לוֹמֶדֶת עַל יִשְׂרָאֵל", wrong: ["הִיא לוֹמֶדֶת בְּיִשְׂרָאֵל", "הִיא לוֹמֶדֶת אֶת יִשְׂרָאֵל", "הִיא לוֹמֶדֶת לְיִשְׂרָאֵל"] },
       { english: "she learns in Israel", hebrew: "הִיא לוֹמֶדֶת בְּיִשְׂרָאֵל", wrong: ["הִיא לוֹמֶדֶת עַל יִשְׂרָאֵל", "הִיא לוֹמֶדֶת לְיִשְׂרָאֵל", "הִיא לוֹמֶדֶת מִיִּשְׂרָאֵל"] },
       { english: "she learns from the teacher (m.)", hebrew: "הִיא לוֹמֶדֶת מֵהַמּוֹרֶה", wrong: ["הִיא לוֹמֶדֶת לַמּוֹרֶה", "הִיא לוֹמֶדֶת אֶת הַמּוֹרֶה", "הִיא לוֹמֶדֶת עַל הַמּוֹרֶה"] },
-      { english: "the teacher (f.) teaches the class", hebrew: "הַמּוֹרָה מְלַמֶּדֶת אֶת הַכִּתָּה", wrong: ["הַמּוֹרָה לוֹמֶדֶת אֶת הַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת לַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת הַכִּתָּה"] },
       { english: "he learns to swim", hebrew: "הוּא לוֹמֵד לִשְׂחוֹת", wrong: ["הוּא לוֹמֵד שׂוֹחֶה", "הוּא לוֹמֵד אֶת לִשְׂחוֹת", "הוּא מְלַמֵּד לִשְׂחוֹת"] },
-      // The describing word from the root (מְלֻמָּד = educated) vs. the action (מְלַמֵּד = teaches)
-      { english: "educated, learned (m.)", hebrew: "מְלֻמָּד", wrong: ["מְלַמֵּד", "לוֹמֵד", "מְלֻמֶּדֶת"] },
-      { english: "she is a very educated woman", hebrew: "הִיא אִשָּׁה מְלֻמֶּדֶת מְאוֹד", wrong: ["הִיא אִשָּׁה מְלַמֶּדֶת מְאוֹד", "הִיא אִשָּׁה מְלֻמָּד מְאוֹד", "הִיא אִשָּׁה לוֹמֶדֶת מְאוֹד"] },
-      // ----- More practice (2026-11-12) -----
-      // More present tense: I, you, we, they
       { english: "I learn", hebrew: "אֲנִי לוֹמֵד", wrong: ["אֲנִי לוֹמֶדֶת", "אֲנִי מְלַמֵּד", "אֲנִי לָמַדְתִּי"], f: { hebrew: "אֲנִי לוֹמֶדֶת", wrong: ["אֲנִי לוֹמֵד", "אֲנִי מְלַמֶּדֶת", "אֲנִי לָמַדְתִּי"] } },
       { english: "you (m.) learn", hebrew: "אַתָּה לוֹמֵד", wrong: ["אַתָּה לוֹמֶדֶת", "אַתָּה מְלַמֵּד", "אַתָּה לָמַדְתָּ"] },
       { english: "you (f.) learn", hebrew: "אַתְּ לוֹמֶדֶת", wrong: ["אַתְּ לוֹמֵד", "אַתְּ מְלַמֶּדֶת", "אַתְּ לָמַדְתְּ"] },
       { english: "we learn", hebrew: "אֲנַחְנוּ לוֹמְדִים", wrong: ["אֲנַחְנוּ מְלַמְּדִים", "אֲנַחְנוּ לוֹמֵד", "אֲנַחְנוּ לָמַדְנוּ"], f: { hebrew: "אֲנַחְנוּ לוֹמְדוֹת", wrong: ["אֲנַחְנוּ מְלַמְּדוֹת", "אֲנַחְנוּ לוֹמֶדֶת", "אֲנַחְנוּ לָמַדְנוּ"] } },
       { english: "they (f.) learn", hebrew: "הֵן לוֹמְדוֹת", wrong: ["הֵן לוֹמְדִים", "הֵן מְלַמְּדוֹת", "הֵן לוֹמֶדֶת"] },
-      { english: "I teach", hebrew: "אֲנִי מְלַמֵּד", wrong: ["אֲנִי מְלַמֶּדֶת", "אֲנִי לוֹמֵד", "אֲנִי מְלֻמָּד"], f: { hebrew: "אֲנִי מְלַמֶּדֶת", wrong: ["אֲנִי מְלַמֵּד", "אֲנִי לוֹמֶדֶת", "אֲנִי מְלֻמֶּדֶת"] } },
-      { english: "he teaches", hebrew: "הוּא מְלַמֵּד", wrong: ["הוּא לוֹמֵד", "הוּא מְלַמֶּדֶת", "הוּא לִמֵּד"] },
-      // Past and future
       { english: "he learned", hebrew: "הוּא לָמַד", wrong: ["הוּא לִמֵּד", "הוּא לוֹמֵד", "הוּא יִלְמַד"] },
-      { english: "she taught", hebrew: "הִיא לִמְּדָה", wrong: ["הִיא לָמְדָה", "הִיא מְלַמֶּדֶת", "הִיא לִמֵּד"] },
       { english: "I learned", hebrew: "לָמַדְתִּי", wrong: ["לִמַּדְתִּי", "אֶלְמַד", "לָמַדְנוּ"] },
       { english: "she will learn", hebrew: "הִיא תִּלְמַד", wrong: ["הִיא יִלְמַד", "הִיא לָמְדָה", "הִיא תְּלַמֵּד"] },
-      { english: "he will teach", hebrew: "הוּא יְלַמֵּד", wrong: ["הוּא יִלְמַד", "הוּא לִמֵּד", "הוּא תְּלַמֵּד"] },
-      // More describing words: feminine and plural
-      { english: "educated (f.)", hebrew: "מְלֻמֶּדֶת", wrong: ["מְלַמֶּדֶת", "מְלֻמָּד", "לוֹמֶדֶת"] },
-      { english: "educated (m. pl.)", hebrew: "מְלֻמָּדִים", wrong: ["מְלַמְּדִים", "מְלֻמָּדוֹת", "לוֹמְדִים"] },
-      { english: "educated (f. pl.)", hebrew: "מְלֻמָּדוֹת", wrong: ["מְלַמְּדוֹת", "מְלֻמָּדִים", "מְלֻמֶּדֶת"] },
-      { english: "he is an educated man", hebrew: "הוּא אִישׁ מְלֻמָּד", wrong: ["הוּא אִישׁ מְלַמֵּד", "הוּא אִישׁ מְלֻמֶּדֶת", "הוּא אִישׁ לוֹמֵד"] },
-      { english: "they are educated people", hebrew: "הֵם אֲנָשִׁים מְלֻמָּדִים", wrong: ["הֵם אֲנָשִׁים מְלַמְּדִים", "הֵם אֲנָשִׁים מְלֻמָּדוֹת", "הֵם אֲנָשִׁים מְלֻמָּד"] },
-      // More nouns from the root
       { english: "a student (f.)", hebrew: "תַּלְמִידָה", wrong: ["תַּלְמִיד", "מְלַמֶּדֶת", "תַּלְמִידוֹת"] },
       { english: "students (m.)", hebrew: "תַּלְמִידִים", wrong: ["תַּלְמִיד", "לִמּוּדִים", "תַּלְמִידוֹת"] },
       { english: "the school year", hebrew: "שְׁנַת הַלִּמּוּדִים", wrong: ["שְׁנַת הַתַּלְמִידִים", "שְׁנַת הַלּוֹמְדִים", "שָׁנָה הַלִּמּוּדִים"] },
-      // Everyday sentences
       { english: "I learn math at school", hebrew: "אֲנִי לוֹמֵד מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", wrong: ["אֲנִי לוֹמֵד אֶת מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", "אֲנִי מְלַמֵּד מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", "אֲנִי לוֹמֵד מָתֵמָטִיקָה לְבֵית הַסֵּפֶר"], f: { hebrew: "אֲנִי לוֹמֶדֶת מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", wrong: ["אֲנִי לוֹמֶדֶת אֶת מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", "אֲנִי מְלַמֶּדֶת מָתֵמָטִיקָה בְּבֵית הַסֵּפֶר", "אֲנִי לוֹמֶדֶת מָתֵמָטִיקָה לְבֵית הַסֵּפֶר"] } },
       { english: "we study for the test", hebrew: "אֲנַחְנוּ לוֹמְדִים לַמִּבְחָן", wrong: ["אֲנַחְנוּ לוֹמְדִים אֶת הַמִּבְחָן", "אֲנַחְנוּ לוֹמְדִים עַל הַמִּבְחָן", "אֲנַחְנוּ מְלַמְּדִים לַמִּבְחָן"], f: { hebrew: "אֲנַחְנוּ לוֹמְדוֹת לַמִּבְחָן", wrong: ["אֲנַחְנוּ לוֹמְדוֹת אֶת הַמִּבְחָן", "אֲנַחְנוּ לוֹמְדוֹת עַל הַמִּבְחָן", "אֲנַחְנוּ מְלַמְּדוֹת לַמִּבְחָן"] } },
       { english: "I want to learn Arabic", hebrew: "אֲנִי רוֹצֶה לִלְמֹד עֲרָבִית", wrong: ["אֲנִי רוֹצֶה לְלַמֵּד עֲרָבִית", "אֲנִי רוֹצֶה לוֹמֵד עֲרָבִית", "אֲנִי רוֹצֶה לִלְמֹד אֶת עֲרָבִית"], f: { hebrew: "אֲנִי רוֹצָה לִלְמֹד עֲרָבִית", wrong: ["אֲנִי רוֹצָה לְלַמֵּד עֲרָבִית", "אֲנִי רוֹצָה לוֹמֶדֶת עֲרָבִית", "אֲנִי רוֹצָה לִלְמֹד אֶת עֲרָבִית"] } },
-      { english: "the teacher (m.) teaches us Hebrew", hebrew: "הַמּוֹרֶה מְלַמֵּד אוֹתָנוּ עִבְרִית", wrong: ["הַמּוֹרֶה לוֹמֵד אוֹתָנוּ עִבְרִית", "הַמּוֹרֶה מְלַמֵּד אוֹתָנוּ אֶת עִבְרִית", "הַמּוֹרֶה מְלַמֵּד אוֹתָם עִבְרִית"] },
-      { english: "she teaches him to read", hebrew: "הִיא מְלַמֶּדֶת אוֹתוֹ לִקְרֹא", wrong: ["הִיא לוֹמֶדֶת אוֹתוֹ לִקְרֹא", "הִיא מְלַמֶּדֶת אוֹתָהּ לִקְרֹא", "הִיא מְלַמֶּדֶת אוֹתוֹ קוֹרֵא"] },
-      { english: "Dad teaches me to cook", hebrew: "אַבָּא מְלַמֵּד אוֹתִי לְבַשֵּׁל", wrong: ["אַבָּא לוֹמֵד אוֹתִי לְבַשֵּׁל", "אַבָּא מְלַמֵּד אוֹתִי מְבַשֵּׁל", "אַבָּא מְלַמֵּד אוֹתָנוּ לְבַשֵּׁל"] },
-      { english: "who teaches English?", hebrew: "מִי מְלַמֵּד אַנְגְּלִית?", wrong: ["מִי לוֹמֵד אַנְגְּלִית?", "מִי מְלַמֵּד אֶת אַנְגְּלִית?", "מִי מְלֻמָּד אַנְגְּלִית?"] },
       { english: "the students (m.) study in the library", hebrew: "הַתַּלְמִידִים לוֹמְדִים בַּסִּפְרִיָּה", wrong: ["הַתַּלְמִידִים לוֹמְדִים לַסִּפְרִיָּה", "הַתַּלְמִידִים מְלַמְּדִים בַּסִּפְרִיָּה", "הַתַּלְמִידִים לוֹמְדוֹת בַּסִּפְרִיָּה"] },
       { english: "she studies at the university", hebrew: "הִיא לוֹמֶדֶת בָּאוּנִיבֶרְסִיטָה", wrong: ["הִיא לוֹמֶדֶת לָאוּנִיבֶרְסִיטָה", "הִיא מְלַמֶּדֶת בָּאוּנִיבֶרְסִיטָה", "הִיא לוֹמֶדֶת אֶת הָאוּנִיבֶרְסִיטָה"] },
       { english: "yesterday we learned about the Golan", hebrew: "אֶתְמוֹל לָמַדְנוּ עַל הַגּוֹלָן", wrong: ["אֶתְמוֹל נִלְמַד עַל הַגּוֹלָן", "אֶתְמוֹל לָמַדְנוּ בַּגּוֹלָן", "אֶתְמוֹל לִמַּדְנוּ עַל הַגּוֹלָן"] },
@@ -1142,7 +1123,33 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-dbr", kind: "root", icon: "🌱", english: "Root ד־ב־ר: speak", hebrew: "שֹׁרֶשׁ ד־ב־ר: לְדַבֵּר",
+    // לְלַמֵּד (teach) is the פִּעֵל pattern of ל־מ־ד. The wrong answers often use לִלְמֹד (learn), so the two don't get mixed up.
+    id: "root-lmd-teach", kind: "root", pattern: "piel", icon: "🌱", english: "Root ל־מ־ד: teach", hebrew: "שֹׁרֶשׁ ל־מ־ד: לְלַמֵּד",
+    words: [
+      // The describing word from the root (מְלֻמָּד = educated) vs. the action (מְלַמֵּד = teaches)
+      { english: "to teach", hebrew: "לְלַמֵּד", wrong: ["לִלְמֹד", "מְלַמֵּד", "מוֹרֶה"] },
+      { english: "she teaches", hebrew: "הִיא מְלַמֶּדֶת", wrong: ["הִיא לוֹמֶדֶת", "הִיא מְלַמֵּד", "הִיא לִמְּדָה"] },
+      { english: "they (f.) teach", hebrew: "הֵן מְלַמְּדוֹת", wrong: ["הֵן לוֹמְדוֹת", "הֵן מְלַמְּדִים", "הֵן מְלַמֶּדֶת"] },
+      { english: "the teacher (f.) teaches the class", hebrew: "הַמּוֹרָה מְלַמֶּדֶת אֶת הַכִּתָּה", wrong: ["הַמּוֹרָה לוֹמֶדֶת אֶת הַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת לַכִּתָּה", "הַמּוֹרָה מְלַמֶּדֶת הַכִּתָּה"] },
+      { english: "educated, learned (m.)", hebrew: "מְלֻמָּד", wrong: ["מְלַמֵּד", "לוֹמֵד", "מְלֻמֶּדֶת"] },
+      { english: "she is a very educated woman", hebrew: "הִיא אִשָּׁה מְלֻמֶּדֶת מְאוֹד", wrong: ["הִיא אִשָּׁה מְלַמֶּדֶת מְאוֹד", "הִיא אִשָּׁה מְלֻמָּד מְאוֹד", "הִיא אִשָּׁה לוֹמֶדֶת מְאוֹד"] },
+      { english: "I teach", hebrew: "אֲנִי מְלַמֵּד", wrong: ["אֲנִי מְלַמֶּדֶת", "אֲנִי לוֹמֵד", "אֲנִי מְלֻמָּד"], f: { hebrew: "אֲנִי מְלַמֶּדֶת", wrong: ["אֲנִי מְלַמֵּד", "אֲנִי לוֹמֶדֶת", "אֲנִי מְלֻמֶּדֶת"] } },
+      { english: "he teaches", hebrew: "הוּא מְלַמֵּד", wrong: ["הוּא לוֹמֵד", "הוּא מְלַמֶּדֶת", "הוּא לִמֵּד"] },
+      { english: "she taught", hebrew: "הִיא לִמְּדָה", wrong: ["הִיא לָמְדָה", "הִיא מְלַמֶּדֶת", "הִיא לִמֵּד"] },
+      { english: "he will teach", hebrew: "הוּא יְלַמֵּד", wrong: ["הוּא יִלְמַד", "הוּא לִמֵּד", "הוּא תְּלַמֵּד"] },
+      { english: "educated (f.)", hebrew: "מְלֻמֶּדֶת", wrong: ["מְלַמֶּדֶת", "מְלֻמָּד", "לוֹמֶדֶת"] },
+      { english: "educated (m. pl.)", hebrew: "מְלֻמָּדִים", wrong: ["מְלַמְּדִים", "מְלֻמָּדוֹת", "לוֹמְדִים"] },
+      { english: "educated (f. pl.)", hebrew: "מְלֻמָּדוֹת", wrong: ["מְלַמְּדוֹת", "מְלֻמָּדִים", "מְלֻמֶּדֶת"] },
+      { english: "he is an educated man", hebrew: "הוּא אִישׁ מְלֻמָּד", wrong: ["הוּא אִישׁ מְלַמֵּד", "הוּא אִישׁ מְלֻמֶּדֶת", "הוּא אִישׁ לוֹמֵד"] },
+      { english: "they are educated people", hebrew: "הֵם אֲנָשִׁים מְלֻמָּדִים", wrong: ["הֵם אֲנָשִׁים מְלַמְּדִים", "הֵם אֲנָשִׁים מְלֻמָּדוֹת", "הֵם אֲנָשִׁים מְלֻמָּד"] },
+      { english: "the teacher (m.) teaches us Hebrew", hebrew: "הַמּוֹרֶה מְלַמֵּד אוֹתָנוּ עִבְרִית", wrong: ["הַמּוֹרֶה לוֹמֵד אוֹתָנוּ עִבְרִית", "הַמּוֹרֶה מְלַמֵּד אוֹתָנוּ אֶת עִבְרִית", "הַמּוֹרֶה מְלַמֵּד אוֹתָם עִבְרִית"] },
+      { english: "she teaches him to read", hebrew: "הִיא מְלַמֶּדֶת אוֹתוֹ לִקְרֹא", wrong: ["הִיא לוֹמֶדֶת אוֹתוֹ לִקְרֹא", "הִיא מְלַמֶּדֶת אוֹתָהּ לִקְרֹא", "הִיא מְלַמֶּדֶת אוֹתוֹ קוֹרֵא"] },
+      { english: "Dad teaches me to cook", hebrew: "אַבָּא מְלַמֵּד אוֹתִי לְבַשֵּׁל", wrong: ["אַבָּא לוֹמֵד אוֹתִי לְבַשֵּׁל", "אַבָּא מְלַמֵּד אוֹתִי מְבַשֵּׁל", "אַבָּא מְלַמֵּד אוֹתָנוּ לְבַשֵּׁל"] },
+      { english: "who teaches English?", hebrew: "מִי מְלַמֵּד אַנְגְּלִית?", wrong: ["מִי לוֹמֵד אַנְגְּלִית?", "מִי מְלַמֵּד אֶת אַנְגְּלִית?", "מִי מְלֻמָּד אַנְגְּלִית?"] },
+    ],
+  },
+  {
+    id: "root-dbr", kind: "root", pattern: "piel", icon: "🌱", english: "Root ד־ב־ר: speak", hebrew: "שֹׁרֶשׁ ד־ב־ר: לְדַבֵּר",
     words: [
       { english: "to speak, to talk", hebrew: "לְדַבֵּר", wrong: ["מְדַבֵּר", "דָּבָר", "לְסַפֵּר"] },
       { english: "he speaks", hebrew: "הוּא מְדַבֵּר", wrong: ["הוּא מְדַבֶּרֶת", "הוּא מְדַבְּרִים", "הוּא דִּבֵּר"] },
@@ -1207,7 +1214,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-avd", kind: "root", icon: "🌱", english: "Root ע־ב־ד: work", hebrew: "שֹׁרֶשׁ ע־ב־ד: לַעֲבֹד",
+    id: "root-avd", kind: "root", pattern: "paal", icon: "🌱", english: "Root ע־ב־ד: work", hebrew: "שֹׁרֶשׁ ע־ב־ד: לַעֲבֹד",
     words: [
       { english: "to work", hebrew: "לַעֲבֹד", wrong: ["עוֹבֵד", "עֲבוֹדָה", "לַעֲשׂוֹת"] },
       { english: "he works", hebrew: "הוּא עוֹבֵד", wrong: ["הוּא עוֹבֶדֶת", "הוּא עוֹבְדִים", "הוּא עָבַד"] },
@@ -1274,55 +1281,62 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-spr", kind: "root", icon: "🌱", english: "Root ס־פ־ר: tell, count, book", hebrew: "שֹׁרֶשׁ ס־פ־ר: לְסַפֵּר, לִסְפֹּר",
+    // ס־פ־ר has two verbs in two patterns: לְסַפֵּר (tell, פִּעֵל) here, לִסְפֹּר (count, פָּעַל) in "root-spr-count".
+    // מְסַפֵּר + לְ (to whom) / עַל (about) / אֶת (what).
+    id: "root-spr", kind: "root", pattern: "piel", icon: "🌱", english: "Root ס־פ־ר: tell", hebrew: "שֹׁרֶשׁ ס־פ־ר: לְסַפֵּר",
     words: [
       { english: "to tell", hebrew: "לְסַפֵּר", wrong: ["לִסְפֹּר", "מְסַפֵּר", "סִפּוּר"] },
-      { english: "to count", hebrew: "לִסְפֹּר", wrong: ["לְסַפֵּר", "סוֹפֵר", "מִסְפָּר"] },
       { english: "he tells", hebrew: "הוּא מְסַפֵּר", wrong: ["הוּא סוֹפֵר", "הוּא מְסַפֶּרֶת", "הוּא סִפֵּר"] },
       { english: "she tells", hebrew: "הִיא מְסַפֶּרֶת", wrong: ["הִיא סוֹפֶרֶת", "הִיא מְסַפֵּר", "הִיא סִפְּרָה"] },
       { english: "they (m.) tell", hebrew: "הֵם מְסַפְּרִים", wrong: ["הֵם סוֹפְרִים", "הֵם מְסַפְּרוֹת", "הֵם מְסַפֵּר"] },
-      { english: "he counts", hebrew: "הוּא סוֹפֵר", wrong: ["הוּא מְסַפֵּר", "הוּא סוֹפֶרֶת", "הוּא סָפַר"] },
-      { english: "a book", hebrew: "סֵפֶר", wrong: ["סִפּוּר", "סִפְרִיָּה", "סְפָרִים"] },
       { english: "a story", hebrew: "סִפּוּר", wrong: ["סֵפֶר", "מִסְפָּר", "סִפְרִיָּה"] },
-      { english: "a library", hebrew: "סִפְרִיָּה", wrong: ["סֵפֶר", "סִפּוּר", "סַפָּר"] },
-      { english: "a number", hebrew: "מִסְפָּר", wrong: ["סִפּוּר", "סֵפֶר", "מְסַפֵּר"] },
-      { english: "a barber", hebrew: "סַפָּר", wrong: ["סֵפֶר", "סוֹפֵר", "סִפְרִיָּה"] },
-      // מְסַפֵּר + לְ (to whom) / עַל (about) / אֶת (what). סוֹפֵר (counts) + אֶת.
       { english: "she tells Dana a story", hebrew: "הִיא מְסַפֶּרֶת לְדָנָה סִפּוּר", wrong: ["הִיא מְסַפֶּרֶת אֶת דָּנָה סִפּוּר", "הִיא מְסַפֶּרֶת עַל דָּנָה סִפּוּר", "הִיא מְסַפֶּרֶת עִם דָּנָה סִפּוּר"] },
       { english: "he tells about the trip", hebrew: "הוּא מְסַפֵּר עַל הַטִּיּוּל", wrong: ["הוּא מְסַפֵּר לַטִּיּוּל", "הוּא מְסַפֵּר אֶת הַטִּיּוּל", "הוּא סוֹפֵר עַל הַטִּיּוּל"] },
       { english: "they (m.) tell the story", hebrew: "הֵם מְסַפְּרִים אֶת הַסִּפּוּר", wrong: ["הֵם מְסַפְּרִים הַסִּפּוּר", "הֵם מְסַפְּרִים לַסִּפּוּר", "הֵם סוֹפְרִים אֶת הַסִּפּוּר"] },
-      { english: "he counts the students", hebrew: "הוּא סוֹפֵר אֶת הַתַּלְמִידִים", wrong: ["הוּא מְסַפֵּר אֶת הַתַּלְמִידִים", "הוּא סוֹפֵר הַתַּלְמִידִים", "הוּא סוֹפֵר לַתַּלְמִידִים"] },
-      { english: "the books are in the library", hebrew: "הַסְּפָרִים בַּסִּפְרִיָּה", wrong: ["הַסְּפָרִים לַסִּפְרִיָּה", "הַסְּפָרִים מֵהַסִּפְרִיָּה", "הַסֵּפֶר בַּסִּפְרִיָּה"] },
-      // The describing word from the root (סָפוּר = counted; סְפוּרִים = only a few) vs. the action (סוֹפֵר = counts)
-      { english: "the money is counted", hebrew: "הַכֶּסֶף סָפוּר", wrong: ["הַכֶּסֶף סוֹפֵר", "הַכֶּסֶף סְפוּרָה", "הַכֶּסֶף סִפֵּר"] },
-      { english: "only a few days (counted days)", hebrew: "רַק יָמִים סְפוּרִים", wrong: ["רַק יָמִים סוֹפְרִים", "רַק יָמִים סִפּוּרִים", "רַק יָמִים סְפוּרוֹת"] },
-      // ----- More practice (2026-11-12) -----
-      // More present-tense forms: מְסַפֵּר (tells) and סוֹפֵר (counts)
       { english: "I tell", hebrew: "אֲנִי מְסַפֵּר", wrong: ["אֲנִי מְסַפֶּרֶת", "אֲנִי סוֹפֵר", "אֲנִי סִפַּרְתִּי"], f: { hebrew: "אֲנִי מְסַפֶּרֶת", wrong: ["אֲנִי מְסַפֵּר", "אֲנִי סוֹפֶרֶת", "אֲנִי סִפַּרְתִּי"] } },
       { english: "you (m.) tell", hebrew: "אַתָּה מְסַפֵּר", wrong: ["אַתָּה מְסַפֶּרֶת", "אַתָּה סוֹפֵר", "אַתָּה מְסַפְּרִים"] },
       { english: "you (f.) tell", hebrew: "אַתְּ מְסַפֶּרֶת", wrong: ["אַתְּ מְסַפֵּר", "אַתְּ סוֹפֶרֶת", "אַתְּ מְסַפְּרוֹת"] },
       { english: "we tell", hebrew: "אֲנַחְנוּ מְסַפְּרִים", wrong: ["אֲנַחְנוּ סוֹפְרִים", "אֲנַחְנוּ מְסַפֵּר", "אֲנַחְנוּ סִפַּרְנוּ"], f: { hebrew: "אֲנַחְנוּ מְסַפְּרוֹת", wrong: ["אֲנַחְנוּ סוֹפְרוֹת", "אֲנַחְנוּ מְסַפֶּרֶת", "אֲנַחְנוּ סִפַּרְנוּ"] } },
       { english: "they (f.) tell", hebrew: "הֵן מְסַפְּרוֹת", wrong: ["הֵן מְסַפְּרִים", "הֵן סוֹפְרוֹת", "הֵן מְסַפֶּרֶת"] },
-      { english: "I count", hebrew: "אֲנִי סוֹפֵר", wrong: ["אֲנִי סוֹפֶרֶת", "אֲנִי מְסַפֵּר", "אֲנִי סָפַרְתִּי"], f: { hebrew: "אֲנִי סוֹפֶרֶת", wrong: ["אֲנִי סוֹפֵר", "אֲנִי מְסַפֶּרֶת", "אֲנִי סָפַרְתִּי"] } },
-      { english: "she counts", hebrew: "הִיא סוֹפֶרֶת", wrong: ["הִיא מְסַפֶּרֶת", "הִיא סוֹפֵר", "הִיא סָפְרָה"] },
-      { english: "they (m.) count", hebrew: "הֵם סוֹפְרִים", wrong: ["הֵם מְסַפְּרִים", "הֵם סוֹפְרוֹת", "הֵם סָפְרוּ"] },
-      // Past and future
       { english: "I told", hebrew: "סִפַּרְתִּי", wrong: ["סָפַרְתִּי", "סִפַּרְנוּ", "אֲסַפֵּר"] },
-      { english: "he counted", hebrew: "הוּא סָפַר", wrong: ["הוּא סִפֵּר", "הוּא סוֹפֵר", "הוּא יִסְפֹּר"] },
       { english: "I'll tell you (m.) tomorrow", hebrew: "אֲנִי אֲסַפֵּר לְךָ מָחָר", wrong: ["אֲנִי אֲסַפֵּר אוֹתְךָ מָחָר", "אֲנִי סִפַּרְתִּי לְךָ מָחָר", "אֲנִי אֶסְפֹּר לְךָ מָחָר"] },
-      { english: "I'll count the money tomorrow", hebrew: "אֲנִי אֶסְפֹּר אֶת הַכֶּסֶף מָחָר", wrong: ["אֲנִי אֲסַפֵּר אֶת הַכֶּסֶף מָחָר", "אֲנִי סָפַרְתִּי אֶת הַכֶּסֶף מָחָר", "אֲנִי אֶסְפֹּר הַכֶּסֶף מָחָר"] },
       { english: "yesterday she told me a secret", hebrew: "אֶתְמוֹל הִיא סִפְּרָה לִי סוֹד", wrong: ["אֶתְמוֹל הִיא סִפְּרָה אוֹתִי סוֹד", "אֶתְמוֹל הִיא סָפְרָה לִי סוֹד", "אֶתְמוֹל הִיא תְּסַפֵּר לִי סוֹד"] },
       { english: "don't tell anyone! (to a boy)", hebrew: "אַל תְּסַפֵּר לְאַף אֶחָד!", wrong: ["אַל תְּסַפֵּר אַף אֶחָד!", "אַל תִּסְפֹּר לְאַף אֶחָד!", "לֹא סַפֵּר לְאַף אֶחָד!"] },
       { english: "tell me about the movie! (to a girl)", hebrew: "סַפְּרִי לִי עַל הַסֶּרֶט!", wrong: ["סַפְּרִי לִי לַסֶּרֶט!", "סַפֵּר לִי עַל הַסֶּרֶט!", "סַפְּרִי אוֹתִי עַל הַסֶּרֶט!"] },
+      { english: "stories", hebrew: "סִפּוּרִים", wrong: ["סִפּוּר", "סְפָרִים", "סִפְרִיּוֹת"] },
+      { english: "my grandfather tells stories", hebrew: "סַבָּא שֶׁלִּי מְסַפֵּר סִפּוּרִים", wrong: ["סַבָּא שֶׁלִּי סוֹפֵר סִפּוּרִים", "סַבָּא שֶׁלִּי מְסַפֵּר סְפָרִים", "סַבָּא שֶׁלִּי מְסַפֶּרֶת סִפּוּרִים"] },
+      { english: "they (f.) tell us about the trip", hebrew: "הֵן מְסַפְּרוֹת לָנוּ עַל הַטִּיּוּל", wrong: ["הֵן מְסַפְּרוֹת אוֹתָנוּ עַל הַטִּיּוּל", "הֵן מְסַפְּרוֹת לָנוּ לַטִּיּוּל", "הֵן מְסַפְּרִים לָנוּ עַל הַטִּיּוּל"] },
+      { english: "you (m.) tell good jokes", hebrew: "אַתָּה מְסַפֵּר בְּדִיחוֹת טוֹבוֹת", wrong: ["אַתָּה סוֹפֵר בְּדִיחוֹת טוֹבוֹת", "אַתָּה מְסַפֵּר בְּדִיחוֹת טוֹבִים", "אַתָּה מְסַפֶּרֶת בְּדִיחוֹת טוֹבוֹת"] },
+      { english: "the story is funny", hebrew: "הַסִּפּוּר מַצְחִיק", wrong: ["הַסִּפּוּר מַצְחִיקָה", "הַסֵּפֶר מַצְחִיק", "הַסִּפּוּרִים מַצְחִיק"] },
+    ],
+  },
+  {
+    // לִסְפֹּר (count) is the פָּעַל pattern of ס־פ־ר, plus the nouns from the root (book, library, number…).
+    // סוֹפֵר (counts) + אֶת.
+    id: "root-spr-count", kind: "root", pattern: "paal", icon: "🌱", english: "Root ס־פ־ר: count, book", hebrew: "שֹׁרֶשׁ ס־פ־ר: לִסְפֹּר",
+    words: [
+      { english: "to count", hebrew: "לִסְפֹּר", wrong: ["לְסַפֵּר", "סוֹפֵר", "מִסְפָּר"] },
+      { english: "he counts", hebrew: "הוּא סוֹפֵר", wrong: ["הוּא מְסַפֵּר", "הוּא סוֹפֶרֶת", "הוּא סָפַר"] },
+      { english: "a book", hebrew: "סֵפֶר", wrong: ["סִפּוּר", "סִפְרִיָּה", "סְפָרִים"] },
+      { english: "a library", hebrew: "סִפְרִיָּה", wrong: ["סֵפֶר", "סִפּוּר", "סַפָּר"] },
+      { english: "a number", hebrew: "מִסְפָּר", wrong: ["סִפּוּר", "סֵפֶר", "מְסַפֵּר"] },
+      { english: "a barber", hebrew: "סַפָּר", wrong: ["סֵפֶר", "סוֹפֵר", "סִפְרִיָּה"] },
+      { english: "he counts the students", hebrew: "הוּא סוֹפֵר אֶת הַתַּלְמִידִים", wrong: ["הוּא מְסַפֵּר אֶת הַתַּלְמִידִים", "הוּא סוֹפֵר הַתַּלְמִידִים", "הוּא סוֹפֵר לַתַּלְמִידִים"] },
+      { english: "the books are in the library", hebrew: "הַסְּפָרִים בַּסִּפְרִיָּה", wrong: ["הַסְּפָרִים לַסִּפְרִיָּה", "הַסְּפָרִים מֵהַסִּפְרִיָּה", "הַסֵּפֶר בַּסִּפְרִיָּה"] },
+      { english: "the money is counted", hebrew: "הַכֶּסֶף סָפוּר", wrong: ["הַכֶּסֶף סוֹפֵר", "הַכֶּסֶף סְפוּרָה", "הַכֶּסֶף סִפֵּר"] },
+      { english: "only a few days (counted days)", hebrew: "רַק יָמִים סְפוּרִים", wrong: ["רַק יָמִים סוֹפְרִים", "רַק יָמִים סִפּוּרִים", "רַק יָמִים סְפוּרוֹת"] },
+      { english: "I count", hebrew: "אֲנִי סוֹפֵר", wrong: ["אֲנִי סוֹפֶרֶת", "אֲנִי מְסַפֵּר", "אֲנִי סָפַרְתִּי"], f: { hebrew: "אֲנִי סוֹפֶרֶת", wrong: ["אֲנִי סוֹפֵר", "אֲנִי מְסַפֶּרֶת", "אֲנִי סָפַרְתִּי"] } },
+      { english: "she counts", hebrew: "הִיא סוֹפֶרֶת", wrong: ["הִיא מְסַפֶּרֶת", "הִיא סוֹפֵר", "הִיא סָפְרָה"] },
+      { english: "they (m.) count", hebrew: "הֵם סוֹפְרִים", wrong: ["הֵם מְסַפְּרִים", "הֵם סוֹפְרוֹת", "הֵם סָפְרוּ"] },
+      { english: "he counted", hebrew: "הוּא סָפַר", wrong: ["הוּא סִפֵּר", "הוּא סוֹפֵר", "הוּא יִסְפֹּר"] },
+      { english: "I'll count the money tomorrow", hebrew: "אֲנִי אֶסְפֹּר אֶת הַכֶּסֶף מָחָר", wrong: ["אֲנִי אֲסַפֵּר אֶת הַכֶּסֶף מָחָר", "אֲנִי סָפַרְתִּי אֶת הַכֶּסֶף מָחָר", "אֲנִי אֶסְפֹּר הַכֶּסֶף מָחָר"] },
       // The describing word סָפוּר (counted): feminine and plural
       { english: "counted (f.)", hebrew: "סְפוּרָה", wrong: ["סוֹפֶרֶת", "סָפוּר", "סְפוּרוֹת"] },
       { english: "counted (m. pl.)", hebrew: "סְפוּרִים", wrong: ["סוֹפְרִים", "סְפוּרוֹת", "סִפּוּרִים"] },
       { english: "counted (f. pl.)", hebrew: "סְפוּרוֹת", wrong: ["סוֹפְרוֹת", "סְפוּרִים", "סְפוּרָה"] },
       { english: "only a few minutes", hebrew: "רַק דַּקּוֹת סְפוּרוֹת", wrong: ["רַק דַּקּוֹת סְפוּרִים", "רַק דַּקּוֹת סוֹפְרוֹת", "רַק דַּקָּה סְפוּרוֹת"] },
       { english: "only a few people came", hebrew: "רַק אֲנָשִׁים סְפוּרִים בָּאוּ", wrong: ["רַק אֲנָשִׁים סְפוּרוֹת בָּאוּ", "רַק אֲנָשִׁים סוֹפְרִים בָּאוּ", "רַק אֲנָשִׁים סְפוּרִים בָּא"] },
-      // More nouns from the root
       { english: "books", hebrew: "סְפָרִים", wrong: ["סֵפֶר", "סִפּוּרִים", "סַפָּרִים"] },
-      { english: "stories", hebrew: "סִפּוּרִים", wrong: ["סִפּוּר", "סְפָרִים", "סִפְרִיּוֹת"] },
       { english: "numbers", hebrew: "מִסְפָּרִים", wrong: ["מִסְפָּר", "סְפָרִים", "מְסַפְּרִים"] },
       { english: "a writer, an author (f.)", hebrew: "סוֹפֶרֶת", wrong: ["סוֹפֵר", "סַפָּרִית", "סִפְרוּת"] },
       { english: "literature", hebrew: "סִפְרוּת", wrong: ["סִפְרִיָּה", "סִפּוּר", "סְפָרִים"] },
@@ -1330,8 +1344,6 @@ const TOPIC_DECKS = [
       { english: "a school", hebrew: "בֵּית סֵפֶר", wrong: ["בֵּית סְפָרִים", "בַּיִת סֵפֶר", "סֵפֶר בַּיִת"] },
       { english: "a bookstore", hebrew: "חֲנוּת סְפָרִים", wrong: ["חֲנוּת סֵפֶר", "סְפָרִים חֲנוּת", "חֲנוּת סִפּוּרִים"] },
       { english: "a phone number", hebrew: "מִסְפַּר טֶלֶפוֹן", wrong: ["סִפּוּר טֶלֶפוֹן", "טֶלֶפוֹן מִסְפָּר", "מִסְפָּרִים טֶלֶפוֹן"] },
-      // Everyday sentences
-      { english: "my grandfather tells stories", hebrew: "סַבָּא שֶׁלִּי מְסַפֵּר סִפּוּרִים", wrong: ["סַבָּא שֶׁלִּי סוֹפֵר סִפּוּרִים", "סַבָּא שֶׁלִּי מְסַפֵּר סְפָרִים", "סַבָּא שֶׁלִּי מְסַפֶּרֶת סִפּוּרִים"] },
       { english: "I'm reading an interesting book", hebrew: "אֲנִי קוֹרֵא סֵפֶר מְעַנְיֵן", wrong: ["אֲנִי קוֹרֵא סִפּוּר מְעַנְיֵן", "אֲנִי קוֹרֵא סֵפֶר מְעַנְיֶנֶת", "אֲנִי קוֹרֵאת סֵפֶר מְעַנְיֵן"], f: { hebrew: "אֲנִי קוֹרֵאת סֵפֶר מְעַנְיֵן", wrong: ["אֲנִי קוֹרֵאת סִפּוּר מְעַנְיֵן", "אֲנִי קוֹרֵאת סֵפֶר מְעַנְיֶנֶת", "אֲנִי קוֹרֵא סֵפֶר מְעַנְיֵן"] } },
       { english: "I borrow a book from the library", hebrew: "אֲנִי שׁוֹאֵל סֵפֶר מֵהַסִּפְרִיָּה", wrong: ["אֲנִי שׁוֹאֵל סֵפֶר לַסִּפְרִיָּה", "אֲנִי שׁוֹאֵל סִפּוּר מֵהַסִּפְרִיָּה", "אֲנִי שׁוֹאֶלֶת סֵפֶר מֵהַסִּפְרִיָּה"], f: { hebrew: "אֲנִי שׁוֹאֶלֶת סֵפֶר מֵהַסִּפְרִיָּה", wrong: ["אֲנִי שׁוֹאֶלֶת סֵפֶר לַסִּפְרִיָּה", "אֲנִי שׁוֹאֶלֶת סִפּוּר מֵהַסִּפְרִיָּה", "אֲנִי שׁוֹאֵל סֵפֶר מֵהַסִּפְרִיָּה"] } },
       { english: "the teacher (f.) counts the books", hebrew: "הַמּוֹרָה סוֹפֶרֶת אֶת הַסְּפָרִים", wrong: ["הַמּוֹרָה מְסַפֶּרֶת אֶת הַסְּפָרִים", "הַמּוֹרָה סוֹפֶרֶת הַסְּפָרִים", "הַמּוֹרָה סוֹפֵר אֶת הַסְּפָרִים"] },
@@ -1340,13 +1352,10 @@ const TOPIC_DECKS = [
       { english: "he goes to the barber", hebrew: "הוּא הוֹלֵךְ לַסַּפָּר", wrong: ["הוּא הוֹלֵךְ לַסֵּפֶר", "הוּא הוֹלֵךְ בַּסַּפָּר", "הוּא הוֹלֵךְ אֶת הַסַּפָּר"] },
       { english: "a new haircut", hebrew: "תִּסְפֹּרֶת חֲדָשָׁה", wrong: ["תִּסְפֹּרֶת חָדָשׁ", "סַפָּר חֲדָשָׁה", "תִּסְפֹּרֶת חֲדָשִׁים"] },
       { english: "the writer (f.) wrote a new book", hebrew: "הַסּוֹפֶרֶת כָּתְבָה סֵפֶר חָדָשׁ", wrong: ["הַסּוֹפֶרֶת כָּתַב סֵפֶר חָדָשׁ", "הַסַּפָּרִית כָּתְבָה סֵפֶר חָדָשׁ", "הַסּוֹפֶרֶת כָּתְבָה סֵפֶר חֲדָשָׁה"] },
-      { english: "they (f.) tell us about the trip", hebrew: "הֵן מְסַפְּרוֹת לָנוּ עַל הַטִּיּוּל", wrong: ["הֵן מְסַפְּרוֹת אוֹתָנוּ עַל הַטִּיּוּל", "הֵן מְסַפְּרוֹת לָנוּ לַטִּיּוּל", "הֵן מְסַפְּרִים לָנוּ עַל הַטִּיּוּל"] },
-      { english: "you (m.) tell good jokes", hebrew: "אַתָּה מְסַפֵּר בְּדִיחוֹת טוֹבוֹת", wrong: ["אַתָּה סוֹפֵר בְּדִיחוֹת טוֹבוֹת", "אַתָּה מְסַפֵּר בְּדִיחוֹת טוֹבִים", "אַתָּה מְסַפֶּרֶת בְּדִיחוֹת טוֹבוֹת"] },
-      { english: "the story is funny", hebrew: "הַסִּפּוּר מַצְחִיק", wrong: ["הַסִּפּוּר מַצְחִיקָה", "הַסֵּפֶר מַצְחִיק", "הַסִּפּוּרִים מַצְחִיק"] },
     ],
   },
   {
-    id: "root-akl-sht", kind: "root", icon: "🌱", english: "Roots א־כ־ל + ש־ת־ה: eat & drink", hebrew: "שָׁרָשִׁים א־כ־ל + ש־ת־ה: לֶאֱכֹל, לִשְׁתּוֹת",
+    id: "root-akl-sht", kind: "root", pattern: "paal", icon: "🌱", english: "Roots א־כ־ל + ש־ת־ה: eat & drink", hebrew: "שָׁרָשִׁים א־כ־ל + ש־ת־ה: לֶאֱכֹל, לִשְׁתּוֹת",
     words: [
       { english: "to eat", hebrew: "לֶאֱכֹל", wrong: ["לִשְׁתּוֹת", "אוֹכֵל", "אֹכֶל"] },
       { english: "to drink", hebrew: "לִשְׁתּוֹת", wrong: ["לֶאֱכֹל", "שׁוֹתֶה", "שְׁתִיָּה"] },
@@ -1421,7 +1430,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-hlk-bo", kind: "root", icon: "🌱", english: "Roots ה־ל־ך + ב־ו־א: go & come", hebrew: "שָׁרָשִׁים ה־ל־ך + ב־ו־א: לָלֶכֶת, לָבוֹא",
+    id: "root-hlk-bo", kind: "root", pattern: "paal", icon: "🌱", english: "Roots ה־ל־ך + ב־ו־א: go & come", hebrew: "שָׁרָשִׁים ה־ל־ך + ב־ו־א: לָלֶכֶת, לָבוֹא",
     words: [
       { english: "to go, to walk", hebrew: "לָלֶכֶת", wrong: ["לָבוֹא", "הוֹלֵךְ", "הֲלִיכָה"] },
       { english: "to come", hebrew: "לָבוֹא", wrong: ["לָלֶכֶת", "בָּא", "לָצֵאת"] },
@@ -1488,35 +1497,22 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-hkh-azr", kind: "root", icon: "🌱", english: "Roots ח־כ־ה + ע־ז־ר: wait & help", hebrew: "שָׁרָשִׁים ח־כ־ה + ע־ז־ר: לְחַכּוֹת, לַעֲזֹר",
+    // לְחַכּוֹת (wait) is the פִּעֵל pattern. It takes לְ for the person, NOT אֶת: מְחַכֶּה לִי (not אוֹתִי).
+    id: "root-hkh", kind: "root", pattern: "piel", icon: "🌱", english: "Root ח־כ־ה: wait", hebrew: "שֹׁרֶשׁ ח־כ־ה: לְחַכּוֹת",
     words: [
       { english: "to wait", hebrew: "לְחַכּוֹת", wrong: ["מְחַכֶּה", "לַעֲזֹר", "לָלֶכֶת"] },
-      { english: "to help", hebrew: "לַעֲזֹר", wrong: ["עוֹזֵר", "לְחַכּוֹת", "עֶזְרָה"] },
       { english: "he waits", hebrew: "הוּא מְחַכֶּה", wrong: ["הוּא מְחַכָּה", "הוּא מְחַכִּים", "הוּא חִכָּה"] },
       { english: "she waits", hebrew: "הִיא מְחַכָּה", wrong: ["הִיא מְחַכֶּה", "הִיא מְחַכּוֹת", "הִיא חִכְּתָה"] },
       { english: "they (m.) wait", hebrew: "הֵם מְחַכִּים", wrong: ["הֵם מְחַכּוֹת", "הֵם מְחַכֶּה", "הֵם חִכּוּ"] },
-      { english: "he helps", hebrew: "הוּא עוֹזֵר", wrong: ["הוּא עוֹזֶרֶת", "הוּא עוֹזְרִים", "הוּא עָזַר"] },
-      { english: "she helps", hebrew: "הִיא עוֹזֶרֶת", wrong: ["הִיא עוֹזֵר", "הִיא עוֹזְרוֹת", "הִיא עָזְרָה"] },
-      { english: "they (m.) help", hebrew: "הֵם עוֹזְרִים", wrong: ["הֵם עוֹזְרוֹת", "הֵם עוֹזֵר", "הֵם עָזְרוּ"] },
-      { english: "help (the noun)", hebrew: "עֶזְרָה", wrong: ["עוֹזֵר", "לַעֲזֹר", "עוֹזֶרֶת"] },
-      { english: "an assistant (m.)", hebrew: "עוֹזֵר", wrong: ["עֶזְרָה", "עוֹזֶרֶת", "עוֹזְרִים"] },
-      { english: "first aid", hebrew: "עֶזְרָה רִאשׁוֹנָה", wrong: ["עֶזְרָה רִאשׁוֹן", "עוֹזֵר רִאשׁוֹן", "רִאשׁוֹנָה עֶזְרָה"] },
-      // Both take לְ for the person, NOT אֶת: מְחַכֶּה לְ, עוֹזֵר לְ. So "help me" = עוֹזֵר לִי (not אוֹתִי).
       { english: "he waits for the bus", hebrew: "הוּא מְחַכֶּה לָאוֹטוֹבּוּס", wrong: ["הוּא מְחַכֶּה אֶת הָאוֹטוֹבּוּס", "הוּא מְחַכֶּה בָּאוֹטוֹבּוּס", "הוּא מְחַכֶּה עַל הָאוֹטוֹבּוּס"] },
       { english: "she waits at the bus stop", hebrew: "הִיא מְחַכָּה בַּתַּחֲנָה", wrong: ["הִיא מְחַכָּה לַתַּחֲנָה", "הִיא מְחַכָּה אֶת הַתַּחֲנָה", "הִיא מְחַכָּה מֵהַתַּחֲנָה"] },
       { english: "they (m.) wait for Dana", hebrew: "הֵם מְחַכִּים לְדָנָה", wrong: ["הֵם מְחַכִּים אֶת דָּנָה", "הֵם מְחַכִּים עִם דָּנָה", "הֵם מְחַכִּים בְּדָנָה"] },
       { english: "he waits for me", hebrew: "הוּא מְחַכֶּה לִי", wrong: ["הוּא מְחַכֶּה אוֹתִי", "הוּא מְחַכֶּה אֲנִי", "הוּא מְחַכֶּה לוֹ"] },
-      { english: "he helps Dana", hebrew: "הוּא עוֹזֵר לְדָנָה", wrong: ["הוּא עוֹזֵר אֶת דָּנָה", "הוּא עוֹזֵר עַל דָּנָה", "הוּא עוֹזֵר בְּדָנָה"] },
-      { english: "they (m.) help me", hebrew: "הֵם עוֹזְרִים לִי", wrong: ["הֵם עוֹזְרִים אוֹתִי", "הֵם עוֹזְרִים אֲנִי", "הֵם עוֹזְרִים לוֹ"] },
-      { english: "she helps with the homework", hebrew: "הִיא עוֹזֶרֶת בְּשִׁעוּרֵי הַבַּיִת", wrong: ["הִיא עוֹזֶרֶת אֶת שִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת לְשִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת מִשִּׁעוּרֵי הַבַּיִת"] },
-      // ----- More practice (2026-11-12) -----
-      // ח־כ־ה: the rest of the present tense
       { english: "I wait", hebrew: "אֲנִי מְחַכֶּה", wrong: ["אֲנִי מְחַכָּה", "אֲנִי מְחַכִּים", "אֲנִי חִכִּיתִי"], f: { hebrew: "אֲנִי מְחַכָּה", wrong: ["אֲנִי מְחַכֶּה", "אֲנִי מְחַכּוֹת", "אֲנִי חִכִּיתִי"] } },
       { english: "you (m.) wait", hebrew: "אַתָּה מְחַכֶּה", wrong: ["אַתָּה מְחַכָּה", "אַתָּה מְחַכִּים", "אַתָּה חִכִּיתָ"] },
       { english: "you (f.) wait", hebrew: "אַתְּ מְחַכָּה", wrong: ["אַתְּ מְחַכֶּה", "אַתְּ מְחַכּוֹת", "אַתְּ חִכִּית"] },
       { english: "we wait", hebrew: "אֲנַחְנוּ מְחַכִּים", wrong: ["אֲנַחְנוּ מְחַכֶּה", "אֲנַחְנוּ חִכִּינוּ", "הֵם מְחַכִּים"], f: { hebrew: "אֲנַחְנוּ מְחַכּוֹת", wrong: ["אֲנַחְנוּ מְחַכָּה", "אֲנַחְנוּ חִכִּינוּ", "הֵן מְחַכּוֹת"] } },
       { english: "they (f.) wait", hebrew: "הֵן מְחַכּוֹת", wrong: ["הֵן מְחַכִּים", "הֵן מְחַכָּה", "הֵן חִכּוּ"] },
-      // ח־כ־ה: past, future, "wait!"
       { english: "he waited", hebrew: "הוּא חִכָּה", wrong: ["הוּא מְחַכֶּה", "הוּא יְחַכֶּה", "הִיא חִכְּתָה"] },
       { english: "I waited", hebrew: "אֲנִי חִכִּיתִי", wrong: ["אֲנִי אֲחַכֶּה", "אֲנַחְנוּ חִכִּינוּ", "אֲנִי חִכָּה"] },
       { english: "she will wait", hebrew: "הִיא תְּחַכֶּה", wrong: ["הִיא חִכְּתָה", "הִיא מְחַכָּה", "הוּא יְחַכֶּה"] },
@@ -1531,13 +1527,27 @@ const TOPIC_DECKS = [
       { english: "how long have you (m.) been waiting?", hebrew: "כַּמָּה זְמַן אַתָּה מְחַכֶּה?", wrong: ["כַּמָּה זְמַן אַתָּה מְחַכָּה?", "כַּמָּה זְמַן אַתָּה עוֹזֵר?", "כַּמָּה זְמַן אַתָּה מְחַכִּים?"] },
       { english: "Dad is waiting for us in the car", hebrew: "אַבָּא מְחַכֶּה לָנוּ בַּמְּכוֹנִית", wrong: ["אַבָּא מְחַכֶּה אוֹתָנוּ בַּמְּכוֹנִית", "אַבָּא מְחַכֶּה לָנוּ לַמְּכוֹנִית", "אַבָּא מְחַכָּה לָנוּ בַּמְּכוֹנִית"] },
       { english: "I'm looking forward to the trip", hebrew: "אֲנִי מְחַכֶּה לַטִּיּוּל", wrong: ["אֲנִי מְחַכֶּה אֶת הַטִּיּוּל", "אֲנִי מְחַכֶּה בַּטִּיּוּל", "אֲנִי מְחַכָּה לַטִּיּוּל"], f: { hebrew: "אֲנִי מְחַכָּה לַטִּיּוּל", wrong: ["אֲנִי מְחַכָּה אֶת הַטִּיּוּל", "אֲנִי מְחַכָּה בַּטִּיּוּל", "אֲנִי מְחַכֶּה לַטִּיּוּל"] } },
-      // ע־ז־ר: the rest of the present tense
+    ],
+  },
+  {
+    // לַעֲזֹר (help) is the פָּעַל pattern. It takes לְ for the person, NOT אֶת: עוֹזֵר לִי (not אוֹתִי).
+    id: "root-azr", kind: "root", pattern: "paal", icon: "🌱", english: "Root ע־ז־ר: help", hebrew: "שֹׁרֶשׁ ע־ז־ר: לַעֲזֹר",
+    words: [
+      { english: "to help", hebrew: "לַעֲזֹר", wrong: ["עוֹזֵר", "לְחַכּוֹת", "עֶזְרָה"] },
+      { english: "he helps", hebrew: "הוּא עוֹזֵר", wrong: ["הוּא עוֹזֶרֶת", "הוּא עוֹזְרִים", "הוּא עָזַר"] },
+      { english: "she helps", hebrew: "הִיא עוֹזֶרֶת", wrong: ["הִיא עוֹזֵר", "הִיא עוֹזְרוֹת", "הִיא עָזְרָה"] },
+      { english: "they (m.) help", hebrew: "הֵם עוֹזְרִים", wrong: ["הֵם עוֹזְרוֹת", "הֵם עוֹזֵר", "הֵם עָזְרוּ"] },
+      { english: "help (the noun)", hebrew: "עֶזְרָה", wrong: ["עוֹזֵר", "לַעֲזֹר", "עוֹזֶרֶת"] },
+      { english: "an assistant (m.)", hebrew: "עוֹזֵר", wrong: ["עֶזְרָה", "עוֹזֶרֶת", "עוֹזְרִים"] },
+      { english: "first aid", hebrew: "עֶזְרָה רִאשׁוֹנָה", wrong: ["עֶזְרָה רִאשׁוֹן", "עוֹזֵר רִאשׁוֹן", "רִאשׁוֹנָה עֶזְרָה"] },
+      { english: "he helps Dana", hebrew: "הוּא עוֹזֵר לְדָנָה", wrong: ["הוּא עוֹזֵר אֶת דָּנָה", "הוּא עוֹזֵר עַל דָּנָה", "הוּא עוֹזֵר בְּדָנָה"] },
+      { english: "they (m.) help me", hebrew: "הֵם עוֹזְרִים לִי", wrong: ["הֵם עוֹזְרִים אוֹתִי", "הֵם עוֹזְרִים אֲנִי", "הֵם עוֹזְרִים לוֹ"] },
+      { english: "she helps with the homework", hebrew: "הִיא עוֹזֶרֶת בְּשִׁעוּרֵי הַבַּיִת", wrong: ["הִיא עוֹזֶרֶת אֶת שִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת לְשִׁעוּרֵי הַבַּיִת", "הִיא עוֹזֶרֶת מִשִּׁעוּרֵי הַבַּיִת"] },
       { english: "I help", hebrew: "אֲנִי עוֹזֵר", wrong: ["אֲנִי עוֹזֶרֶת", "אֲנִי עוֹזְרִים", "אֲנִי עָזַרְתִּי"], f: { hebrew: "אֲנִי עוֹזֶרֶת", wrong: ["אֲנִי עוֹזֵר", "אֲנִי עוֹזְרוֹת", "אֲנִי עָזַרְתִּי"] } },
       { english: "you (m.) help", hebrew: "אַתָּה עוֹזֵר", wrong: ["אַתָּה עוֹזֶרֶת", "אַתָּה עוֹזְרִים", "אַתָּה עָזַרְתָּ"] },
       { english: "you (f.) help", hebrew: "אַתְּ עוֹזֶרֶת", wrong: ["אַתְּ עוֹזֵר", "אַתְּ עוֹזְרוֹת", "אַתְּ עָזַרְתְּ"] },
       { english: "we help", hebrew: "אֲנַחְנוּ עוֹזְרִים", wrong: ["אֲנַחְנוּ עוֹזֵר", "אֲנַחְנוּ עָזַרְנוּ", "הֵם עוֹזְרִים"], f: { hebrew: "אֲנַחְנוּ עוֹזְרוֹת", wrong: ["אֲנַחְנוּ עוֹזֶרֶת", "אֲנַחְנוּ עָזַרְנוּ", "הֵן עוֹזְרוֹת"] } },
       { english: "they (f.) help", hebrew: "הֵן עוֹזְרוֹת", wrong: ["הֵן עוֹזְרִים", "הֵן עוֹזֶרֶת", "הֵן עָזְרוּ"] },
-      // ע־ז־ר: past and future
       { english: "she helped", hebrew: "הִיא עָזְרָה", wrong: ["הִיא עוֹזֶרֶת", "הִיא תַּעֲזֹר", "הוּא עָזַר"] },
       { english: "I will help you (m.)", hebrew: "אֲנִי אֶעֱזֹר לְךָ", wrong: ["אֲנִי אֶעֱזֹר אוֹתְךָ", "אֲנִי עָזַרְתִּי לְךָ", "אֲנִי אֶעֱזֹר לָךְ"] },
       { english: "they (m.) helped us", hebrew: "הֵם עָזְרוּ לָנוּ", wrong: ["הֵם עָזְרוּ אוֹתָנוּ", "הֵם עוֹזְרִים לָנוּ", "הֵם עָזְרוּ לָהֶם"] },
@@ -1560,7 +1570,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-kra", kind: "root", icon: "🌱", english: "Root ק־ר־א: read, call", hebrew: "שֹׁרֶשׁ ק־ר־א: לִקְרֹא",
+    id: "root-kra", kind: "root", pattern: "paal", icon: "🌱", english: "Root ק־ר־א: read, call", hebrew: "שֹׁרֶשׁ ק־ר־א: לִקְרֹא",
     words: [
       { english: "to read", hebrew: "לִקְרֹא", wrong: ["קוֹרֵא", "קְרִיאָה", "לִכְתֹּב"] },
       { english: "he reads", hebrew: "הוּא קוֹרֵא", wrong: ["הוּא קוֹרֵאת", "הוּא קוֹרְאִים", "הוּא קָרָא"] },
@@ -1630,7 +1640,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-shal", kind: "root", icon: "🌱", english: "Root ש־א־ל: ask, borrow", hebrew: "שֹׁרֶשׁ ש־א־ל: לִשְׁאֹל",
+    id: "root-shal", kind: "root", pattern: "paal", icon: "🌱", english: "Root ש־א־ל: ask, borrow", hebrew: "שֹׁרֶשׁ ש־א־ל: לִשְׁאֹל",
     words: [
       { english: "to ask", hebrew: "לִשְׁאֹל", wrong: ["שׁוֹאֵל", "שְׁאֵלָה", "לַעֲנוֹת"] },
       { english: "he asks", hebrew: "הוּא שׁוֹאֵל", wrong: ["הוּא שׁוֹאֶלֶת", "הוּא שׁוֹאֲלִים", "הוּא שָׁאַל"] },
@@ -1696,7 +1706,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-shma", kind: "root", icon: "🌱", english: "Root ש־מ־ע: hear", hebrew: "שֹׁרֶשׁ ש־מ־ע: לִשְׁמֹעַ",
+    id: "root-shma", kind: "root", pattern: "paal", icon: "🌱", english: "Root ש־מ־ע: hear", hebrew: "שֹׁרֶשׁ ש־מ־ע: לִשְׁמֹעַ",
     words: [
       { english: "to hear", hebrew: "לִשְׁמֹעַ", wrong: ["שׁוֹמֵעַ", "שְׁמוּעָה", "לְדַבֵּר"] },
       { english: "he hears", hebrew: "הוּא שׁוֹמֵעַ", wrong: ["הוּא שׁוֹמַעַת", "הוּא שׁוֹמְעִים", "הוּא שָׁמַע"] },
@@ -1767,7 +1777,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-rah", kind: "root", icon: "🌱", english: "Root ר־א־ה: see, look", hebrew: "שֹׁרֶשׁ ר־א־ה: לִרְאוֹת",
+    id: "root-rah", kind: "root", pattern: "paal", icon: "🌱", english: "Root ר־א־ה: see, look", hebrew: "שֹׁרֶשׁ ר־א־ה: לִרְאוֹת",
     words: [
       { english: "to see", hebrew: "לִרְאוֹת", wrong: ["רוֹאֶה", "מַרְאָה", "לִשְׁמֹעַ"] },
       { english: "he sees", hebrew: "הוּא רוֹאֶה", wrong: ["הוּא רוֹאָה", "הוּא רוֹאִים", "הוּא רָאָה"] },
@@ -1835,7 +1845,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-ntn", kind: "root", icon: "🌱", english: "Root נ־ת־ן: give", hebrew: "שֹׁרֶשׁ נ־ת־ן: לָתֵת",
+    id: "root-ntn", kind: "root", pattern: "paal", icon: "🌱", english: "Root נ־ת־ן: give", hebrew: "שֹׁרֶשׁ נ־ת־ן: לָתֵת",
     words: [
       { english: "to give", hebrew: "לָתֵת", wrong: ["נוֹתֵן", "מַתָּנָה", "לָקַחַת"] },
       { english: "he gives", hebrew: "הוּא נוֹתֵן", wrong: ["הוּא נוֹתֶנֶת", "הוּא נוֹתְנִים", "הוּא נָתַן"] },
@@ -1905,7 +1915,7 @@ const TOPIC_DECKS = [
   // ----- Roots with a describing word (2026-11-12): the action (פּוֹתֵחַ = opens) next to the
   // description made from the same root (פָּתוּחַ = open). The wrong answers swap them, and the gender.
   {
-    id: "root-pth-sgr", kind: "root", icon: "🌱", english: "Roots פ־ת־ח + ס־ג־ר: open & close", hebrew: "שָׁרָשִׁים פ־ת־ח + ס־ג־ר: לִפְתֹּחַ, לִסְגֹּר",
+    id: "root-pth-sgr", kind: "root", pattern: "paal", icon: "🌱", english: "Roots פ־ת־ח + ס־ג־ר: open & close", hebrew: "שָׁרָשִׁים פ־ת־ח + ס־ג־ר: לִפְתֹּחַ, לִסְגֹּר",
     words: [
       { english: "to open", hebrew: "לִפְתֹּחַ", wrong: ["פּוֹתֵחַ", "פָּתוּחַ", "לִסְגֹּר"] },
       { english: "to close", hebrew: "לִסְגֹּר", wrong: ["סוֹגֵר", "סָגוּר", "לִפְתֹּחַ"] },
@@ -1970,7 +1980,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-shbr", kind: "root", icon: "🌱", english: "Root ש־ב־ר: break", hebrew: "שֹׁרֶשׁ ש־ב־ר: לִשְׁבֹּר",
+    id: "root-shbr", kind: "root", pattern: "paal", icon: "🌱", english: "Root ש־ב־ר: break", hebrew: "שֹׁרֶשׁ ש־ב־ר: לִשְׁבֹּר",
     words: [
       { english: "to break", hebrew: "לִשְׁבֹּר", wrong: ["שׁוֹבֵר", "שָׁבוּר", "לְתַקֵּן"] },
       { english: "he breaks", hebrew: "הוּא שׁוֹבֵר", wrong: ["הוּא שָׁבוּר", "הוּא שׁוֹבֶרֶת", "הוּא שָׁבַר"] },
@@ -2033,7 +2043,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "root-lbsh-ahv", kind: "root", icon: "🌱", english: "Roots ל־ב־שׁ + א־ה־ב: wear & love", hebrew: "שָׁרָשִׁים ל־ב־שׁ + א־ה־ב: לִלְבֹּשׁ, לֶאֱהֹב",
+    id: "root-lbsh-ahv", kind: "root", pattern: "paal", icon: "🌱", english: "Roots ל־ב־שׁ + א־ה־ב: wear & love", hebrew: "שָׁרָשִׁים ל־ב־שׁ + א־ה־ב: לִלְבֹּשׁ, לֶאֱהֹב",
     words: [
       { english: "to wear, to put on", hebrew: "לִלְבֹּשׁ", wrong: ["לוֹבֵשׁ", "לָבוּשׁ", "לְבוּשׁ"] },
       { english: "to love", hebrew: "לֶאֱהֹב", wrong: ["אוֹהֵב", "אָהוּב", "אַהֲבָה"] },
@@ -2101,7 +2111,7 @@ const TOPIC_DECKS = [
   // ===== Conjugation decks: one verb in the past and future =====
   // Wrong answers: the same person in the other tense, the other gender (or I <-> we), and another person.
   {
-    id: "conj-ktv", kind: "conj", icon: "🔁", english: "Conjugate כ־ת־ב: wrote / will write", hebrew: "כ־ת־ב: לִכְתֹּב",
+    id: "conj-ktv", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate כ־ת־ב: wrote / will write", hebrew: "כ־ת־ב: לִכְתֹּב",
     words: [
       { english: "I wrote", hint: "לִכְתֹּב", hebrew: "אֲנִי כָּתַבְתִּי", wrong: ["אֲנִי אֶכְתֹּב", "אֲנִי כָּתַבְנוּ", "אֲנִי כָּתַב"] },
       { english: "you (m.) wrote", hint: "לִכְתֹּב", hebrew: "אַתָּה כָּתַבְתָּ", wrong: ["אַתָּה תִּכְתֹּב", "אַתָּה כָּתַבְתְּ", "אַתָּה כָּתַבְתִּי"] },
@@ -2124,7 +2134,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-lmd", kind: "conj", icon: "🔁", english: "Conjugate ל־מ־ד: learned / will learn", hebrew: "ל־מ־ד: לִלְמֹד",
+    id: "conj-lmd", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ל־מ־ד: learned / will learn", hebrew: "ל־מ־ד: לִלְמֹד",
     words: [
       { english: "I learned", hint: "לִלְמֹד", hebrew: "אֲנִי לָמַדְתִּי", wrong: ["אֲנִי אֶלְמַד", "אֲנִי לָמַדְנוּ", "אֲנִי לָמַד"] },
       { english: "you (m.) learned", hint: "לִלְמֹד", hebrew: "אַתָּה לָמַדְתָּ", wrong: ["אַתָּה תִּלְמַד", "אַתָּה לָמַדְתְּ", "אַתָּה לָמַדְתִּי"] },
@@ -2147,7 +2157,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-avd", kind: "conj", icon: "🔁", english: "Conjugate ע־ב־ד: worked / will work", hebrew: "ע־ב־ד: לַעֲבֹד",
+    id: "conj-avd", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ע־ב־ד: worked / will work", hebrew: "ע־ב־ד: לַעֲבֹד",
     words: [
       { english: "I worked", hint: "לַעֲבֹד", hebrew: "אֲנִי עָבַדְתִּי", wrong: ["אֲנִי אֶעֱבֹד", "אֲנִי עָבַדְנוּ", "אֲנִי עָבַד"] },
       { english: "you (m.) worked", hint: "לַעֲבֹד", hebrew: "אַתָּה עָבַדְתָּ", wrong: ["אַתָּה תַּעֲבֹד", "אַתָּה עָבַדְתְּ", "אַתָּה עָבַדְתִּי"] },
@@ -2170,7 +2180,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-akl", kind: "conj", icon: "🔁", english: "Conjugate א־כ־ל: ate / will eat", hebrew: "א־כ־ל: לֶאֱכֹל",
+    id: "conj-akl", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate א־כ־ל: ate / will eat", hebrew: "א־כ־ל: לֶאֱכֹל",
     words: [
       { english: "I ate", hint: "לֶאֱכֹל", hebrew: "אֲנִי אָכַלְתִּי", wrong: ["אֲנִי אֹכַל", "אֲנִי אָכַלְנוּ", "אֲנִי אָכַל"] },
       { english: "you (m.) ate", hint: "לֶאֱכֹל", hebrew: "אַתָּה אָכַלְתָּ", wrong: ["אַתָּה תֹּאכַל", "אַתָּה אָכַלְתְּ", "אַתָּה אָכַלְתִּי"] },
@@ -2193,7 +2203,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-sht", kind: "conj", icon: "🔁", english: "Conjugate ש־ת־ה: drank / will drink", hebrew: "ש־ת־ה: לִשְׁתּוֹת",
+    id: "conj-sht", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ש־ת־ה: drank / will drink", hebrew: "ש־ת־ה: לִשְׁתּוֹת",
     words: [
       { english: "I drank", hint: "לִשְׁתּוֹת", hebrew: "אֲנִי שָׁתִיתִי", wrong: ["אֲנִי אֶשְׁתֶּה", "אֲנִי שָׁתִינוּ", "אֲנִי שָׁתָה"] },
       { english: "you (m.) drank", hint: "לִשְׁתּוֹת", hebrew: "אַתָּה שָׁתִיתָ", wrong: ["אַתָּה תִּשְׁתֶּה", "אַתָּה שָׁתִית", "אַתָּה שָׁתִיתִי"] },
@@ -2216,7 +2226,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-dbr", kind: "conj", icon: "🔁", english: "Conjugate ד־ב־ר: spoke / will speak", hebrew: "ד־ב־ר: לְדַבֵּר",
+    id: "conj-dbr", kind: "conj", pattern: "piel", icon: "🔁", english: "Conjugate ד־ב־ר: spoke / will speak", hebrew: "ד־ב־ר: לְדַבֵּר",
     words: [
       { english: "I spoke", hint: "לְדַבֵּר", hebrew: "אֲנִי דִּבַּרְתִּי", wrong: ["אֲנִי אֲדַבֵּר", "אֲנִי דִּבַּרְנוּ", "אֲנִי דִּבֵּר"] },
       { english: "you (m.) spoke", hint: "לְדַבֵּר", hebrew: "אַתָּה דִּבַּרְתָּ", wrong: ["אַתָּה תְּדַבֵּר", "אַתָּה דִּבַּרְתְּ", "אַתָּה דִּבַּרְתִּי"] },
@@ -2239,7 +2249,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-spr", kind: "conj", icon: "🔁", english: "Conjugate ס־פ־ר: told / will tell", hebrew: "ס־פ־ר: לְסַפֵּר",
+    id: "conj-spr", kind: "conj", pattern: "piel", icon: "🔁", english: "Conjugate ס־פ־ר: told / will tell", hebrew: "ס־פ־ר: לְסַפֵּר",
     words: [
       { english: "I told", hint: "לְסַפֵּר", hebrew: "אֲנִי סִפַּרְתִּי", wrong: ["אֲנִי אֲסַפֵּר", "אֲנִי סִפַּרְנוּ", "אֲנִי סִפֵּר"] },
       { english: "you (m.) told", hint: "לְסַפֵּר", hebrew: "אַתָּה סִפַּרְתָּ", wrong: ["אַתָּה תְּסַפֵּר", "אַתָּה סִפַּרְתְּ", "אַתָּה סִפַּרְתִּי"] },
@@ -2262,7 +2272,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-hlk", kind: "conj", icon: "🔁", english: "Conjugate ה־ל־ך: went / will go", hebrew: "ה־ל־ך: לָלֶכֶת",
+    id: "conj-hlk", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ה־ל־ך: went / will go", hebrew: "ה־ל־ך: לָלֶכֶת",
     words: [
       { english: "I went", hint: "לָלֶכֶת", hebrew: "אֲנִי הָלַכְתִּי", wrong: ["אֲנִי אֵלֵךְ", "אֲנִי הָלַכְנוּ", "אֲנִי הָלַךְ"] },
       { english: "you (m.) went", hint: "לָלֶכֶת", hebrew: "אַתָּה הָלַכְתָּ", wrong: ["אַתָּה תֵּלֵךְ", "אַתָּה הָלַכְתְּ", "אַתָּה הָלַכְתִּי"] },
@@ -2285,7 +2295,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-bo", kind: "conj", icon: "🔁", english: "Conjugate ב־ו־א: came / will come", hebrew: "ב־ו־א: לָבוֹא",
+    id: "conj-bo", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ב־ו־א: came / will come", hebrew: "ב־ו־א: לָבוֹא",
     words: [
       { english: "I came", hint: "לָבוֹא", hebrew: "אֲנִי בָּאתִי", wrong: ["אֲנִי אָבוֹא", "אֲנִי בָּאנוּ", "אֲנִי בָּא"] },
       { english: "you (m.) came", hint: "לָבוֹא", hebrew: "אַתָּה בָּאתָ", wrong: ["אַתָּה תָּבוֹא", "אַתָּה בָּאת", "אַתָּה בָּאתִי"] },
@@ -2308,7 +2318,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-azr", kind: "conj", icon: "🔁", english: "Conjugate ע־ז־ר: helped / will help", hebrew: "ע־ז־ר: לַעֲזֹר",
+    id: "conj-azr", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ע־ז־ר: helped / will help", hebrew: "ע־ז־ר: לַעֲזֹר",
     words: [
       { english: "I helped", hint: "לַעֲזֹר", hebrew: "אֲנִי עָזַרְתִּי", wrong: ["אֲנִי אֶעֱזֹר", "אֲנִי עָזַרְנוּ", "אֲנִי עָזַר"] },
       { english: "you (m.) helped", hint: "לַעֲזֹר", hebrew: "אַתָּה עָזַרְתָּ", wrong: ["אַתָּה תַּעֲזֹר", "אַתָּה עָזַרְתְּ", "אַתָּה עָזַרְתִּי"] },
@@ -2331,7 +2341,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-hkh", kind: "conj", icon: "🔁", english: "Conjugate ח־כ־ה: waited / will wait", hebrew: "ח־כ־ה: לְחַכּוֹת",
+    id: "conj-hkh", kind: "conj", pattern: "piel", icon: "🔁", english: "Conjugate ח־כ־ה: waited / will wait", hebrew: "ח־כ־ה: לְחַכּוֹת",
     words: [
       { english: "I waited", hint: "לְחַכּוֹת", hebrew: "אֲנִי חִכִּיתִי", wrong: ["אֲנִי אֲחַכֶּה", "אֲנִי חִכִּינוּ", "אֲנִי חִכָּה"] },
       { english: "you (m.) waited", hint: "לְחַכּוֹת", hebrew: "אַתָּה חִכִּיתָ", wrong: ["אַתָּה תְּחַכֶּה", "אַתָּה חִכִּית", "אַתָּה חִכִּיתִי"] },
@@ -2357,7 +2367,7 @@ const TOPIC_DECKS = [
   // ----- Newer conjugation decks, built with conjWords() (see the top of TOPIC_DECKS) -----
   // Each table: I, you (m.), you (f.), he, she, we, you all (m.), they
   {
-    id: "conj-lmd-teach", kind: "conj", icon: "🔁", english: "Conjugate ל־מ־ד: taught / will teach", hebrew: "ל־מ־ד: לְלַמֵּד",
+    id: "conj-lmd-teach", kind: "conj", pattern: "piel", icon: "🔁", english: "Conjugate ל־מ־ד: taught / will teach", hebrew: "ל־מ־ד: לְלַמֵּד",
     words: [
       ...conjWords("לְלַמֵּד", "taught", "teach",
         ["לִמַּדְתִּי", "לִמַּדְתָּ", "לִמַּדְתְּ", "לִמֵּד", "לִמְּדָה", "לִמַּדְנוּ", "לִמַּדְתֶּם", "לִמְּדוּ"],
@@ -2367,7 +2377,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-kra", kind: "conj", icon: "🔁", english: "Conjugate ק־ר־א: read / will read", hebrew: "ק־ר־א: לִקְרֹא",
+    id: "conj-kra", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ק־ר־א: read / will read", hebrew: "ק־ר־א: לִקְרֹא",
     words: [
       ...conjWords("לִקְרֹא", "read (past)", "read",
         ["קָרָאתִי", "קָרָאתָ", "קָרָאת", "קָרָא", "קָרְאָה", "קָרָאנוּ", "קְרָאתֶם", "קָרְאוּ"],
@@ -2377,7 +2387,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-shal", kind: "conj", icon: "🔁", english: "Conjugate ש־א־ל: asked / will ask", hebrew: "ש־א־ל: לִשְׁאֹל",
+    id: "conj-shal", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ש־א־ל: asked / will ask", hebrew: "ש־א־ל: לִשְׁאֹל",
     words: [
       ...conjWords("לִשְׁאֹל", "asked", "ask",
         ["שָׁאַלְתִּי", "שָׁאַלְתָּ", "שָׁאַלְתְּ", "שָׁאַל", "שָׁאֲלָה", "שָׁאַלְנוּ", "שְׁאַלְתֶּם", "שָׁאֲלוּ"],
@@ -2387,7 +2397,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-shma", kind: "conj", icon: "🔁", english: "Conjugate ש־מ־ע: heard / will hear", hebrew: "ש־מ־ע: לִשְׁמֹעַ",
+    id: "conj-shma", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ש־מ־ע: heard / will hear", hebrew: "ש־מ־ע: לִשְׁמֹעַ",
     words: [
       ...conjWords("לִשְׁמֹעַ", "heard", "hear",
         ["שָׁמַעְתִּי", "שָׁמַעְתָּ", "שָׁמַעַתְּ", "שָׁמַע", "שָׁמְעָה", "שָׁמַעְנוּ", "שְׁמַעְתֶּם", "שָׁמְעוּ"],
@@ -2397,7 +2407,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-rah", kind: "conj", icon: "🔁", english: "Conjugate ר־א־ה: saw / will see", hebrew: "ר־א־ה: לִרְאוֹת",
+    id: "conj-rah", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate ר־א־ה: saw / will see", hebrew: "ר־א־ה: לִרְאוֹת",
     words: [
       ...conjWords("לִרְאוֹת", "saw", "see",
         ["רָאִיתִי", "רָאִיתָ", "רָאִית", "רָאָה", "רָאֲתָה", "רָאִינוּ", "רְאִיתֶם", "רָאוּ"],
@@ -2407,7 +2417,7 @@ const TOPIC_DECKS = [
     ],
   },
   {
-    id: "conj-ntn", kind: "conj", icon: "🔁", english: "Conjugate נ־ת־ן: gave / will give", hebrew: "נ־ת־ן: לָתֵת",
+    id: "conj-ntn", kind: "conj", pattern: "paal", icon: "🔁", english: "Conjugate נ־ת־ן: gave / will give", hebrew: "נ־ת־ן: לָתֵת",
     words: [
       ...conjWords("לָתֵת", "gave", "give",
         ["נָתַתִּי", "נָתַתָּ", "נָתַתְּ", "נָתַן", "נָתְנָה", "נָתַנּוּ", "נְתַתֶּם", "נָתְנוּ"],
@@ -2430,6 +2440,53 @@ for (const topic of TOPIC_DECKS) {
       homeLevelOf.set(word.feminine, topic);
     }
   }
+}
+
+// ---------- Sections of the premade list ----------
+// The verb patterns (בִּנְיָנִים), in the order they're shown. To add a pattern later
+// (נִפְעַל, הִפְעִיל, הִתְפַּעֵל), add a line here and give its decks that pattern id.
+const VERB_PATTERNS = [
+  { id: "paal", english: "Verb pattern: pa'al (like לִכְתֹּב)", hebrew: "בִּנְיַן פָּעַל" },
+  { id: "piel", english: "Verb pattern: pi'el (like לְדַבֵּר)", hebrew: "בִּנְיַן פִּעֵל" },
+];
+
+// Headings for the decks that don't have a verb pattern.
+const PREMADE_HEADINGS = {
+  theme: { english: "Themes", hebrew: "נוֹשְׂאִים" },
+  tense: { english: "Key concepts", hebrew: "מֻשָּׂגֵי מַפְתֵּחַ" },
+};
+
+// Which section a premade deck belongs to: { key, english, hebrew, order }.
+// order: themes first, then key concepts, then one section per verb pattern.
+function premadeSectionOf(deck) {
+  const index = VERB_PATTERNS.findIndex((pattern) => pattern.id === deck.pattern);
+  if (index >= 0) return { key: "pattern-" + deck.pattern, order: 10 + index, ...VERB_PATTERNS[index] };
+  const heading = PREMADE_HEADINGS[deck.kind] || { english: "More decks", hebrew: "עוֹד חֲפִיסוֹת" };
+  return { key: deck.kind, order: deck.kind === "theme" ? 0 : deck.kind === "tense" ? 1 : 99, ...heading };
+}
+
+// Put TOPIC_DECKS in order: by section, and inside a pattern the 🌱 root decks
+// before the 🔁 conjugation decks. (Otherwise they keep the order they're written in.)
+function sortPremadeDecks() {
+  const rank = (deck) => premadeSectionOf(deck).order * 2 + (deck.kind === "conj" ? 1 : 0);
+  TOPIC_DECKS.sort((a, b) => rank(a) - rank(b));
+}
+sortPremadeDecks();
+
+// The premade decks grouped by section, for the dashboard and the lobby list:
+// [{ key, english, hebrew, decks: [...] }, ...]
+function premadeSections() {
+  const sections = [];
+  for (const deck of TOPIC_DECKS) {
+    const section = premadeSectionOf(deck);
+    let last = sections[sections.length - 1];
+    if (!last || last.key !== section.key) {
+      last = { key: section.key, english: section.english, hebrew: section.hebrew, decks: [] };
+      sections.push(last);
+    }
+    last.decks.push(deck);
+  }
+  return sections;
 }
 
 // ---------- The deck being played right now ----------
