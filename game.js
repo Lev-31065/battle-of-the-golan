@@ -1099,3 +1099,28 @@ function loop(now) {
 }
 // Start the loop once EVERY file has loaded (the game's own file, like ctf-game.js, loads after this one).
 document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(loop));
+
+// ---------- Keeping the screen on ----------
+// A phone dims and locks its screen when nobody touches it for a while. That is exactly
+// what happens with tilt steering (you never touch the screen!), and a host whose phone
+// falls asleep closes the room for everyone. So while you're in a room, we ask the phone to
+// stay awake (a "wake lock"). The phone drops it whenever you leave the page, so we keep
+// checking, and ask again when you come back. (Very old phones can't do this.)
+let screenLock = null;       // the phone's promise to stay awake (null = we don't have one)
+let askingForScreenLock = false;
+function keepScreenAwake() {
+  if (!("wakeLock" in navigator)) return;
+  const wanted = Boolean(client.roomCode) && document.visibilityState === "visible";
+  if (wanted && !screenLock && !askingForScreenLock) {
+    askingForScreenLock = true;
+    navigator.wakeLock.request("screen").then((lock) => {
+      screenLock = lock;
+      lock.addEventListener("release", () => { if (screenLock === lock) screenLock = null; });
+    }).catch(() => {}).then(() => { askingForScreenLock = false; });
+  } else if (!wanted && screenLock) {
+    screenLock.release().catch(() => {});
+    screenLock = null;
+  }
+}
+setInterval(keepScreenAwake, 2000);
+document.addEventListener("visibilitychange", keepScreenAwake);

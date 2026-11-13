@@ -11,6 +11,8 @@
 //   - the mountain around it: sometimes walls rise on both sides (a valley), sometimes the
 //     ground falls away (a ridge with a view), all worked out from the path
 //   - trees, bushes, rocks, the gates, the sleds: small 3D models made of simple shapes
+//   - snow: soft shading and a fine snow picture on the ground, tracks behind every sled,
+//     and spray flying up from the runners (lots of little puffs)
 //   - far away: the valley floor, the Kinneret, hazy mountains and the sky
 //
 // The world is built in square pieces ("chunks") just ahead of you and thrown away behind
@@ -178,10 +180,19 @@ function edgeHeight(n, side) {
   return store[n];
 }
 
+// A big open snowfield isn't flat like a path: the snow rolls gently up and down.
+// (Only where the path is very wide, and fading out toward its edges. It's just for looks.)
+function fieldRoll(n, lat, half) {
+  const wide = smooth3(2.2 * RW3, 3.2 * RW3, half);
+  if (wide === 0) return 0;
+  const x = P3.x[n] + P3.cos[n] * lat, z = P3.z[n] + P3.sin[n] * lat;
+  return wide * smooth3(0, 16, half - Math.abs(lat)) * (rough2(x * 0.022, z * 0.022) * 1.3 + 0.3);
+}
+
 // The height of the path strip at point n, `lat` units sideways from the middle.
 function stripHeight(n, lat) {
   const a = Math.abs(lat), half = P3.half[n], y = P3.y[n];
-  if (a <= half) return y;
+  if (a <= half) return y + fieldRoll(n, lat, half);
   if (a <= half + 3) return y + 0.45 * (a - half) / 3; // the little bank of snow along the edge
   const edge = edgeHeight(n, lat > 0 ? 1 : -1);
   if (a >= half + SHOULDER3) return edge;
@@ -281,6 +292,42 @@ MeshBuilder.prototype.geometry = function () {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(this.p), 3));
   g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(this.c), 3));
+  return g;
+};
+
+// The same, for the GROUND (the path and the snow beside it). Trees and rocks look good
+// "carved" (every triangle its own shade), but snow should look soft. So here neighbouring
+// triangles share their light at each corner (a "smooth normal"), and every corner knows
+// where it is on the snow picture (see makeSnowPicture). ox, oz = where the piece is in the world.
+MeshBuilder.prototype.groundGeometry = function (ox, oz) {
+  const p = this.p, c = this.c, count = p.length / 3;
+  const normal = new Float32Array(p.length), uv = new Float32Array(count * 2);
+  const sums = new Map(), keys = new Array(count);
+  const swap = (arr, i, j) => { for (let k = 0; k < 3; k++) { const t = arr[i + k]; arr[i + k] = arr[j + k]; arr[j + k] = t; } };
+  for (let i = 0; i < count; i += 3) {
+    const a = i * 3, b = a + 3, d = a + 6;
+    // Which way this triangle faces (always made to face UP, so the light falls on its top).
+    let nx = (p[b + 1] - p[a + 1]) * (p[d + 2] - p[a + 2]) - (p[b + 2] - p[a + 2]) * (p[d + 1] - p[a + 1]);
+    let ny = (p[b + 2] - p[a + 2]) * (p[d] - p[a]) - (p[b] - p[a]) * (p[d + 2] - p[a + 2]);
+    let nz = (p[b] - p[a]) * (p[d + 1] - p[a + 1]) - (p[b + 1] - p[a + 1]) * (p[d] - p[a]);
+    if (ny < 0) { swap(p, b, d); swap(c, b, d); nx = -nx; ny = -ny; nz = -nz; }
+    for (let v = i; v < i + 3; v++) {
+      const key = Math.round(p[v * 3] * 16) + "_" + Math.round(p[v * 3 + 1] * 16) + "_" + Math.round(p[v * 3 + 2] * 16);
+      keys[v] = key;
+      let sum = sums.get(key);
+      if (!sum) { sum = [0, 0, 0]; sums.set(key, sum); }
+      sum[0] += nx; sum[1] += ny; sum[2] += nz;
+    }
+  }
+  const su = ((ox % SNOW_TILE) + SNOW_TILE) % SNOW_TILE, sv = ((oz % SNOW_TILE) + SNOW_TILE) % SNOW_TILE;
+  for (let v = 0; v < count; v++) {
+    const sum = sums.get(keys[v]), len = Math.hypot(sum[0], sum[1], sum[2]) || 1;
+    normal[v * 3] = sum[0] / len; normal[v * 3 + 1] = sum[1] / len; normal[v * 3 + 2] = sum[2] / len;
+    uv[v * 2] = (p[v * 3] + su) / SNOW_TILE; uv[v * 2 + 1] = (p[v * 3 + 2] + sv) / SNOW_TILE;
+  }
+  const g = this.geometry();
+  g.setAttribute("normal", new THREE.BufferAttribute(normal, 3));
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   return g;
 };
 
@@ -399,7 +446,7 @@ const MODELS = {
 const world3d = {
   failed: false, ready: false, quality: 1, slowFrames: 0, lastFrameAt: 0,
   landChunks: new Map(), pathChunks: new Map(), sleds: new Map(), labels: new Map(),
-  shaking: null, puffs: [],
+  shaking: null, spray: [], trails: new Map(),
 };
 
 function race3dAvailable() {
@@ -432,13 +479,55 @@ function initRace3d() {
   // One paint for everything made of colored triangles. "flatShading" gives each triangle
   // its own light or dark, which is what makes it look like carved, low-poly 3D.
   w3.paint = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+  // The ground's paint: soft (not carved), with a fine snow picture over it (grain, soft hollows, sparkles).
+  w3.groundPaint = new THREE.MeshLambertMaterial({ vertexColors: true, map: makeSnowPicture(), side: THREE.DoubleSide });
+  // Runner tracks in the snow behind each sled (see-through blue-gray, fading out).
+  w3.trailPaint = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   w3.shadowPaint = new THREE.MeshBasicMaterial({ color: 0x20324f, transparent: true, opacity: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 
   makeBackdrop();
   makeGates();
   makeSigns();
-  makePuffs();
+  makeSpray();
   w3.ready = true;
+}
+
+// The snow picture: one small square that repeats all over the ground (every SNOW_TILE units).
+// Mostly white, with soft blue-gray hollows, fine grain and tiny bright sparkles, so the
+// snow looks like snow instead of flat white paint. (It wraps round, so the repeats join up.)
+const SNOW_TILE = 25;
+function makeSnowPicture() {
+  const size = 256;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, size, size);
+  // Soft hollows (and wind ripples: long, thin ones).
+  for (let k = 0; k < 70; k++) {
+    const x = rand2(k, 11) * size, y = rand2(k, 23) * size, r = 10 + rand2(k, 37) * 34, long = k % 3 === 0 ? 3 : 1;
+    for (const dx of [-size, 0, size]) for (const dy of [-size, 0, size]) {
+      g.save();
+      g.translate(x + dx, y + dy);
+      g.scale(long, 1);
+      const soft = g.createRadialGradient(0, 0, 0, 0, 0, r);
+      soft.addColorStop(0, "rgba(150, 180, 220, 0.13)");
+      soft.addColorStop(1, "rgba(150, 180, 220, 0)");
+      g.fillStyle = soft;
+      g.fillRect(-r, -r, r * 2, r * 2);
+      g.restore();
+    }
+  }
+  // Grain: lots of tiny blue-gray specks, and fewer pure white ones (the sparkles).
+  for (let k = 0; k < 5200; k++) {
+    g.fillStyle = k % 4 === 0 ? "rgba(255, 255, 255, 0.95)" : "rgba(130, 165, 210, 0.16)";
+    const s = k % 4 === 0 ? 1.2 : 1.6;
+    g.fillRect(rand2(k, 51) * size, rand2(k, 67) * size, s, s);
+  }
+  const picture = new THREE.CanvasTexture(c);
+  picture.wrapS = picture.wrapT = THREE.RepeatWrapping;
+  picture.anisotropy = Math.min(4, world3d.renderer.capabilities.getMaxAnisotropy());
+  return picture;
 }
 
 // Paint for far-away things: instead of disappearing into the mist like the mountain
@@ -580,6 +669,7 @@ function buildLandChunk(cx, cz) {
     sunk[k] = L.h - 2.5 * (1 - smooth3(L.half + 18, L.half + 30, L.d));
   }
   const positions = new Float32Array(count * 3), colors = new Float32Array(count * 3);
+  const normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2); // (soft light + the snow picture)
   const steepness = new Float32Array(count);
   for (let gz = 0; gz < GRID; gz++) for (let gx = 0; gx < GRID; gx++) {
     const k = gz * GRID + gx;
@@ -587,6 +677,11 @@ function buildLandChunk(cx, cz) {
     const hz = height[Math.min(GRID - 1, gz + 1) * GRID + gx] - height[Math.max(0, gz - 1) * GRID + gx];
     const steep = Math.hypot(hx, hz) / (CELL * 2);
     steepness[k] = steep;
+    // Which way the ground faces here (for the light), from the slope.
+    const sx = hx / (CELL * (gx === 0 || gx === GRID - 1 ? 1 : 2)), sz = hz / (CELL * (gz === 0 || gz === GRID - 1 ? 1 : 2));
+    const nl = Math.hypot(sx, 1, sz);
+    normals[k * 3] = -sx / nl; normals[k * 3 + 1] = 1 / nl; normals[k * 3 + 2] = -sz / nl;
+    uvs[k * 2] = gx * CELL / SNOW_TILE; uvs[k * 2 + 1] = gz * CELL / SNOW_TILE;
     const c = landColor(x0 + gx * CELL, z0 + gz * CELL, snow[k], sand[k], steep, lift[k]);
     positions[k * 3] = gx * CELL; positions[k * 3 + 1] = sunk[k]; positions[k * 3 + 2] = gz * CELL;
     colors[k * 3] = c[0]; colors[k * 3 + 1] = c[1]; colors[k * 3 + 2] = c[2];
@@ -601,10 +696,12 @@ function buildLandChunk(cx, cz) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   geo.setIndex(index);
   const group = new THREE.Group();
   group.position.set(x0, 0, z0);
-  group.add(new THREE.Mesh(geo, world3d.paint));
+  group.add(new THREE.Mesh(geo, world3d.groundPaint));
 
   // Trees, bushes and rocks scattered over the mountainside (just to look at: you can't reach them).
   const B = new MeshBuilder();
@@ -665,7 +762,7 @@ function disposeGroup(group) {
 
 const PATH_PIECE = 40;
 const PATHC = {
-  path: rgb3("#dfeaf6"), pathDark: rgb3("#cfdded"), groove: rgb3("#b3c6dc"), bank: rgb3("#ffffff"),
+  path: rgb3("#eaf1f9"), pathDark: rgb3("#dce7f3"), groove: rgb3("#b3c6dc"), bank: rgb3("#ffffff"),
   sandPath: rgb3("#d9c48b"), sandPathDark: rgb3("#d1bb80"), lane: rgb3("#9fb6d0"),
 };
 
@@ -678,7 +775,18 @@ function buildPathPiece(piece) {
   const B = new MeshBuilder();
   // A spot on the strip: point n of the path, `lat` units sideways.
   const at = (n, lat, lift) => [P3.x[n] - ox + P3.cos[n] * lat, stripHeight(n, lat) + (lift || 0), P3.z[n] - oz + P3.sin[n] * lat];
-  const strip = (n, a0, a1, b0, b1, col, lift) => B.quad(at(n, a0, lift), at(n, a1, lift), at(n + 1, b1, lift), at(n + 1, b0, lift), col);
+  // A band of ground from point n to n + 1. Wide bands are cut into columns, so they can
+  // follow the rolling snow. `snowfield` (0 … 1) blends the color into natural, patchy snow.
+  const strip = (n, a0, a1, b0, b1, col, snowfield) => {
+    const cols = Math.max(1, Math.ceil(Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)) / 9));
+    for (let k = 0; k < cols; k++) {
+      const t0 = k / cols, t1 = (k + 1) / cols;
+      const A0 = at(n, a0 + (a1 - a0) * t0), A1 = at(n, a0 + (a1 - a0) * t1), B1 = at(n + 1, b0 + (b1 - b0) * t1), B0 = at(n + 1, b0 + (b1 - b0) * t0);
+      let color = col;
+      if (snowfield) color = mix3(col, mix3(LANDC.snow, LANDC.snow2, 0.5 + 0.5 * noise2((A0[0] + ox) * 0.05, (A0[2] + oz) * 0.05)), snowfield);
+      B.quad(A0, A1, B1, B0, color);
+    }
+  };
 
   for (let n = first; n < last; n++) {
     const seg = TRACK.segments[n];
@@ -701,14 +809,19 @@ function buildPathPiece(piece) {
     const lines = []; // [where at the near end, where at the far end, half its width, color], in road widths
     if (seg.line) {
       // The start and finish lines: black and white squares.
-      for (let row = 0; row < 2; row++) for (let c = 0; c < 14; c++) {
-        const l = c / 14 * 2 - 1, r = (c + 1) / 14 * 2 - 1;
+      const squares = Math.max(14, Math.round(14 * ha / (1.2 * RW3) / 2) * 2); // (more squares where the path is wide)
+      for (let row = 0; row < 2; row++) for (let c = 0; c < squares; c++) {
+        const l = c / squares * 2 - 1, r = (c + 1) / squares * 2 - 1;
         const p = (lat, f) => { const A = at(n, lat * ha), Bp = at(n + 1, lat * hb); return [A[0] + (Bp[0] - A[0]) * f, A[1] + (Bp[1] - A[1]) * f, A[2] + (Bp[2] - A[2]) * f]; };
         B.quad(p(l, row / 2), p(r, row / 2), p(r, (row + 1) / 2), p(l, (row + 1) / 2), (c + row) % 2 === 0 ? [0.07, 0.09, 0.15] : [1, 1, 1]);
       }
       continue;
     }
-    if (seg.width > RACE.gateWidth * 0.8) {
+    // (A big snowfield has no stripes or lines: it's just open snow.)
+    const snowfield = smooth3(2.2, 3.2, seg.width) * (1 - P3.sand[n]);
+    if (seg.width > 2.4) {
+      // nothing drawn on it
+    } else if (seg.width > RACE.gateWidth * 0.8) {
       if (!seg.dark) for (let lane = 1; lane < RACE.lanes; lane++) { const t = lane / RACE.lanes * 2 - 1; lines.push([t * seg.width, t * seg.width2, 0.035, PATHC.lane]); }
     } else if (seg.sand < 0.5) {
       // Grooves from sleds that went down before you.
@@ -720,13 +833,13 @@ function buildPathPiece(piece) {
     let fromA = -ha, fromB = -hb;
     for (const [la, lb, wide, col] of lines) {
       const a0 = (la - wide) * RW3, a1 = (la + wide) * RW3, b0 = (lb - wide) * RW3, b1 = (lb + wide) * RW3;
-      strip(n, fromA, a0, fromB, b0, base);
+      strip(n, fromA, a0, fromB, b0, base, snowfield);
       strip(n, a0, a1, b0, b1, col);
       fromA = a1; fromB = b1;
     }
-    strip(n, fromA, ha, fromB, hb, base);
+    strip(n, fromA, ha, fromB, hb, base, snowfield);
   }
-  group.add(new THREE.Mesh(B.geometry(), world3d.paint));
+  group.add(new THREE.Mesh(B.groundGeometry(ox, oz), world3d.groundPaint));
 
   // The trees, bushes, rocks, poles… standing on this piece, and a soft shadow under each.
   const T = new MeshBuilder(), S = new MeshBuilder();
@@ -849,7 +962,7 @@ function makeSigns() {
   // The banners over the start and the finish.
   TRACK.segments.forEach((seg, n) => {
     if (!seg.line) return;
-    const half = seg.width * RW3 * 1.1, tall = 20;
+    const half = Math.min(seg.width, 1.3) * RW3 * 1.1, tall = 20; // (on the big snowfield the banner stands in the middle)
     const group = new THREE.Group();
     const B = new MeshBuilder();
     B.box(-half, tall / 2, 0, 0.8, tall, 0.8, rgb3("#475569"));
@@ -1011,24 +1124,173 @@ function nameLabel(name) {
   return label;
 }
 
-// ---------- Crashing: the tree shakes, and snow (or leaves) bursts off it ----------
+// ---------- Snow spray ----------
+// Real snow flies up when a sled cuts through it. Here that's hundreds of soft little puffs:
+// each one is thrown up and out from a runner, keeps some of the sled's speed, slows down in
+// the air, falls, grows and fades away. Powder trails behind every moving sled; turning
+// throws a big sheet of snow out from the outside runner; deep snow flies up all around.
+// (Crashing into a tree uses the same puffs: snow up high, leaves and dust lower down.)
 
-function makePuffs() {
+const SPRAY_MAX = 450; // the most puffs in the air at once
+const SPRAY_SNOW = [1, 1, 1], SPRAY_DUST = rgb3("#cdbf9a"), SPRAY_SAND = rgb3("#e6d6a4"), SPRAY_LEAF = rgb3("#b9c79a");
+
+function makeSpray() {
   const w3 = world3d;
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(70 * 3), 3));
-  // (Each bit of snow is a soft round dot.)
-  const dot = document.createElement("canvas");
-  dot.width = dot.height = 32;
-  const dg = dot.getContext("2d");
-  dg.fillStyle = "#ffffff";
-  dg.beginPath(); dg.arc(16, 16, 14, 0, Math.PI * 2); dg.fill();
-  w3.puffPaint = new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, map: new THREE.CanvasTexture(dot), alphaTest: 0.3, transparent: true, opacity: 0.95, depthWrite: false });
-  w3.puffPoints = new THREE.Points(geo, w3.puffPaint);
-  w3.puffPoints.frustumCulled = false;
-  w3.puffPoints.visible = false;
-  w3.scene.add(w3.puffPoints);
+  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(SPRAY_MAX * 3), 3));
+  geo.setAttribute("tint", new THREE.BufferAttribute(new Float32Array(SPRAY_MAX * 3), 3)); // each puff's color
+  geo.setAttribute("look", new THREE.BufferAttribute(new Float32Array(SPRAY_MAX * 2), 2)); // each puff's size, and how see-through it is
+  // A tiny program for the graphics chip: draw each puff as a soft round dot, smaller when
+  // it's further away, white on top and a little blue underneath (so it shows up against white snow).
+  w3.sprayPaint = new THREE.ShaderMaterial({
+    uniforms: { scale: { value: 500 } },
+    vertexShader: [
+      "attribute vec3 tint; attribute vec2 look; uniform float scale;",
+      "varying vec3 vTint; varying float vAlpha;",
+      "void main() {",
+      "  vTint = tint; vAlpha = look.y;",
+      "  vec4 mv = modelViewMatrix * vec4(position, 1.0);",
+      "  gl_PointSize = min(look.x * scale / max(1.0, -mv.z), scale * 0.3);",
+      "  gl_Position = projectionMatrix * mv;",
+      "}"].join("\n"),
+    fragmentShader: [
+      "varying vec3 vTint; varying float vAlpha;",
+      "void main() {",
+      "  vec2 q = gl_PointCoord - 0.5;",
+      "  float a = (1.0 - smoothstep(0.3, 1.0, length(q) * 2.0)) * vAlpha;",
+      "  if (a < 0.02) discard;",
+      "  float top = 1.0 - smoothstep(-0.25, 0.4, q.y);",
+      "  gl_FragColor = vec4(mix(vTint * vec3(0.64, 0.75, 0.93), vTint, top), a);",
+      "}"].join("\n"),
+    transparent: true, depthWrite: false,
+  });
+  w3.sprayPoints = new THREE.Points(geo, w3.sprayPaint);
+  w3.sprayPoints.frustumCulled = false;
+  w3.sprayPoints.renderOrder = 5; // (drawn after the ground and the tracks)
+  w3.scene.add(w3.sprayPoints);
 }
+
+// One new puff: where it starts, how fast it flies (3D units per second), how long it lives
+// (seconds), how big it is and how fast it grows, how solid it looks (0 … 1) and its color.
+function addSpray(x, y, z, vx, vy, vz, life, size, grow, alpha, color) {
+  const list = world3d.spray;
+  if (list.length < SPRAY_MAX) list.push({ x, y, z, vx, vy, vz, age: 0, life, size, grow, alpha, color });
+}
+
+// Every frame: the puffs fly, slow down, fall, grow and fade. Then they're handed to the graphics chip.
+function updateSpray(dt) {
+  const w3 = world3d, list = w3.spray, geo = w3.sprayPoints.geometry;
+  const pos = geo.attributes.position.array, tint = geo.attributes.tint.array, look = geo.attributes.look.array;
+  const drag = Math.max(0, 1 - 1.3 * dt);
+  let n = 0;
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    p.age += dt;
+    if (p.age >= p.life) continue; // (melted away)
+    p.vx *= drag; p.vz *= drag; p.vy = p.vy * drag - 18 * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.size += p.grow * dt;
+    pos[n * 3] = p.x; pos[n * 3 + 1] = p.y; pos[n * 3 + 2] = p.z;
+    tint[n * 3] = p.color[0]; tint[n * 3 + 1] = p.color[1]; tint[n * 3 + 2] = p.color[2];
+    look[n * 2] = p.size; look[n * 2 + 1] = p.alpha * (1 - p.age / p.life);
+    list[n++] = p;
+  }
+  list.length = n;
+  geo.setDrawRange(0, n);
+  geo.attributes.position.needsUpdate = geo.attributes.tint.needsUpdate = geo.attributes.look.needsUpdate = true;
+  w3.sprayPoints.visible = n > 0;
+}
+
+// Snow flying up from one sled. pointing = which way the sled points (radians); speed = 0 … 1;
+// carve = how hard it is being steered right now (-1 … 1); deep = off the path, in deep snow;
+// index = which piece of path it's on; amount = 1 for my sled, less for the others.
+function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount) {
+  if (speed < 0.08 || dt <= 0) return;
+  const fx = Math.sin(pointing), fz = -Math.cos(pointing); // forward
+  const rx = Math.cos(pointing), rz = Math.sin(pointing);  // to the sled's right
+  const px = sled.position.x, py = sled.position.y + 0.3, pz = sled.position.z;
+  const v = speed * RACE.maxSpeed * U3; // the sled's speed in 3D units per second
+  const color = P3.sand[index] > 0.5 ? SPRAY_SAND : deep && P3.snow[index] < 0.3 ? SPRAY_DUST : SPRAY_SNOW;
+  const many = (perSecond) => Math.floor(perSecond * amount * dt + Math.random());
+  // 1. Powder trailing from the back of both runners, whenever the sled is moving.
+  for (let k = many(80 * speed); k > 0; k--) {
+    const s = Math.random() < 0.5 ? -1 : 1, keep = 0.55 + Math.random() * 0.25, out = s * Math.random() * 2;
+    addSpray(px + rx * s * 2.4, py, pz + rz * s * 2.4, fx * v * keep + rx * out, 1.5 + Math.random() * 3.5, fz * v * keep + rz * out,
+      0.45 + Math.random() * 0.45, 1.3 + Math.random() * 1.0, 2.6, 0.75, color);
+  }
+  // 2. Turning: a sheet of snow thrown out from the OUTSIDE runner (turn right = snow flies left).
+  const hard = Math.abs(carve);
+  if (hard > 0.08) {
+    const side = -Math.sign(carve);
+    for (let k = many(270 * hard * (0.3 + speed)); k > 0; k--) {
+      const along = Math.random() * 6.5, keep = 0.6 + Math.random() * 0.25, fling = side * (5 + Math.random() * 11) * (0.5 + speed * 0.6);
+      addSpray(px + rx * side * 2.6 + fx * along, py, pz + rz * side * 2.6 + fz * along, fx * v * keep + rx * fling, 3 + Math.random() * 8, fz * v * keep + rz * fling,
+        0.55 + Math.random() * 0.5, 1.5 + Math.random() * 1.5, 3.4, 0.95, color);
+    }
+  }
+  // 3. Deep snow (off the path): it flies up on both sides, all along the sled.
+  if (deep) {
+    for (let k = many(200 * (0.3 + speed)); k > 0; k--) {
+      const s = Math.random() < 0.5 ? -1 : 1, along = Math.random() * 7.5, keep = 0.55 + Math.random() * 0.3, fling = s * (2 + Math.random() * 7);
+      addSpray(px + rx * s * 2.6 + fx * along, py, pz + rz * s * 2.6 + fz * along, fx * v * keep + rx * fling, 4 + Math.random() * 7, fz * v * keep + rz * fling,
+        0.5 + Math.random() * 0.5, 1.4 + Math.random() * 1.4, 3, 0.8, color);
+    }
+  }
+}
+
+// ---------- Runner tracks ----------
+// Every sled leaves two thin tracks in the snow behind it, which slowly fade away. A track
+// is a ribbon through the last few spots the sled was at (a new spot every TRAIL_STEP units).
+
+const TRAIL_POINTS = 44, TRAIL_STEP = 1.8;
+
+function sledTrail(id, sled, groundY, pointing, index) {
+  const w3 = world3d;
+  let trail = w3.trails.get(id);
+  if (!trail) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array((TRAIL_POINTS - 1) * 12 * 3), 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array((TRAIL_POINTS - 1) * 12 * 4), 4)); // (red, green, blue + how solid)
+    const mesh = new THREE.Mesh(geo, w3.trailPaint);
+    mesh.frustumCulled = false;
+    w3.scene.add(mesh);
+    trail = { mesh, points: [] };
+    w3.trails.set(id, trail);
+  }
+  const pts = trail.points;
+  // (No tracks on the sand of the beach.)
+  const here = { x: sled.position.x, y: groundY + 0.08, z: sled.position.z, rx: Math.cos(pointing), rz: Math.sin(pointing), solid: 1 - P3.sand[index] };
+  // The sled jumped somewhere else (a new race)? Start a new track.
+  if (pts.length && Math.hypot(here.x - pts[0].x, here.z - pts[0].z) > 40) pts.length = 0;
+  if (pts.length === 0) pts.push(here, Object.assign({}, here));
+  // pts[0] is always where the sled is NOW; once it's a step away from the last fixed spot, that becomes a fixed spot too.
+  pts[0] = here;
+  if (Math.hypot(here.x - pts[1].x, here.z - pts[1].z) > TRAIL_STEP) {
+    pts.unshift(Object.assign({}, here));
+    if (pts.length > TRAIL_POINTS) pts.pop();
+  }
+  const pos = trail.mesh.geometry.attributes.position.array, col = trail.mesh.geometry.attributes.color.array;
+  let v = 0;
+  const corner = (p, runner, edge, fade) => {
+    const lat = runner * 2.4 + edge * 0.17;
+    pos[v * 3] = p.x + p.rx * lat; pos[v * 3 + 1] = p.y; pos[v * 3 + 2] = p.z + p.rz * lat;
+    col[v * 4] = 0.56; col[v * 4 + 1] = 0.67; col[v * 4 + 2] = 0.84; col[v * 4 + 3] = fade * p.solid * 0.55;
+    v++;
+  };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const fa = Math.pow(1 - i / (TRAIL_POINTS - 1), 1.6), fb = Math.pow(1 - (i + 1) / (TRAIL_POINTS - 1), 1.6); // fading toward the far end
+    for (const runner of [-1, 1]) {
+      corner(a, runner, -1, fa); corner(a, runner, 1, fa); corner(b, runner, 1, fb);
+      corner(a, runner, -1, fa); corner(b, runner, 1, fb); corner(b, runner, -1, fb);
+    }
+  }
+  trail.mesh.geometry.setDrawRange(0, v);
+  trail.mesh.geometry.attributes.position.needsUpdate = trail.mesh.geometry.attributes.color.needsUpdate = true;
+  trail.mesh.visible = true;
+}
+
+// ---------- Crashing: the tree shakes, and snow (or leaves) bursts off it ----------
 
 // Called by race-game.js when my sled hits something. segIndex + offset say which thing;
 // dir = which way my sled bounced (-1 left, 1 right); time = the game clock.
@@ -1043,19 +1305,15 @@ function race3dCrash(segIndex, offset, dir, time) {
     if (thing) w3.shaking = { group, thing, startedAt: time, dx: -dir * P3.cos[segIndex] - P3.sin[segIndex] * 0.6, dz: -dir * P3.sin[segIndex] + P3.cos[segIndex] * 0.6 };
   }
   // A burst of snow up high, of leaves and dust lower down.
-  const snowy = TRACK.segments[segIndex].snow > 0.3;
-  w3.puffPaint.color.set(snowy ? 0xffffff : 0xb9c79a);
-  w3.puffs = [];
-  for (let k = 0; k < 70; k++) {
-    w3.puffs.push({
-      x: x + (Math.random() - 0.5) * 4, y: y + 1 + Math.random() * 9, z: z + (Math.random() - 0.5) * 4,
-      vx: (Math.random() - 0.5) * 16, vy: 2 + Math.random() * 10, vz: (Math.random() - 0.5) * 16,
-    });
+  const color = TRACK.segments[segIndex].snow > 0.3 ? SPRAY_SNOW : SPRAY_LEAF;
+  for (let k = 0; k < 80; k++) {
+    addSpray(x + (Math.random() - 0.5) * 4, y + 1 + Math.random() * 9, z + (Math.random() - 0.5) * 4,
+      (Math.random() - 0.5) * 18, 2 + Math.random() * 10, (Math.random() - 0.5) * 18,
+      0.8 + Math.random() * 0.6, 1 + Math.random() * 1.4, 1.6, 0.95, color);
   }
-  w3.puffsAt = time;
 }
 
-function updateCrashEffects(time, dt) {
+function updateCrashEffects(time) {
   const w3 = world3d;
   // The tree rocks back and forth, less and less.
   if (w3.shaking) {
@@ -1072,20 +1330,6 @@ function updateCrashEffects(time, dt) {
     attr.needsUpdate = true;
     if (!alive) w3.shaking = null;
   }
-  // The burst of snow flies out and falls.
-  const age = time - (w3.puffsAt || -99);
-  if (w3.puffs.length && age >= 0 && age < 1.3) {
-    const attr = w3.puffPoints.geometry.attributes.position;
-    w3.puffs.forEach((p, k) => {
-      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy -= 22 * dt;
-      attr.array[k * 3] = p.x; attr.array[k * 3 + 1] = p.y; attr.array[k * 3 + 2] = p.z;
-    });
-    attr.needsUpdate = true;
-    w3.puffPaint.opacity = 0.95 * (1 - age / 1.3);
-    w3.puffPoints.visible = true;
-  } else {
-    w3.puffPoints.visible = false;
-  }
 }
 
 // ---------- Drawing one frame ----------
@@ -1095,7 +1339,8 @@ function updateCrashEffects(time, dt) {
 //   racing:       false = no sleds (the lobby: the camera just glides down the path)
 //   color:        my sled's color;  bounce: my sled bumping up and down (3D units)
 //   wobble:       my sled rocking after a crash;  shake: the camera shaking after a crash (0 … 1)
-//   sleds:        the other sleds: [{ id, y, x, turn, color, name }]
+//   speed, carve, deep:  for the snow spray: how fast I'm going (0 … 1), how hard I'm steering (-1 … 1), am I off the path
+//   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed }]
 //   gate:         the question on the next gate ({ number, english, choices }) or null
 //   time:         the game clock
 // }
@@ -1121,7 +1366,9 @@ function drawRace3d(view, w, h) {
   w3.lastFrameAt = now;
   if (took > 36 && took < 250) w3.slowFrames += 1; else w3.slowFrames = Math.max(0, w3.slowFrames - 0.5);
   if (w3.slowFrames > 70 && w3.quality > 0.45) { w3.quality *= 0.8; w3.slowFrames = 0; }
-  const dt = Math.min(0.05, Math.max(0, took / 1000));
+  // How much game time went by since the last picture (for the snow spray).
+  const dt = Math.min(0.05, Math.max(0, view.time - (w3.lastTime === undefined ? view.time : w3.lastTime)));
+  w3.lastTime = view.time;
 
   const ratio = Math.max(0.75, Math.min(window.devicePixelRatio || 1, RACE.sharpness) * Math.min(1, w3.quality * 1.25));
   if (w3.w !== w || w3.h !== h || w3.ratio !== ratio) {
@@ -1131,6 +1378,8 @@ function drawRace3d(view, w, h) {
     w3.camera.aspect = w / h;
     w3.camera.fov = w >= h ? 58 : 80; // (an upright phone sees less to the sides, so it gets a wider lens)
     w3.camera.updateProjectionMatrix();
+    // (So a puff of snow is the right size on this screen.)
+    w3.sprayPaint.uniforms.scale.value = h * ratio / (2 * Math.tan(w3.camera.fov * Math.PI / 360));
   }
   const reach = RACE.viewDistance * Math.max(0.55, w3.quality); // how far we can see, in 3D units
   w3.scene.fog.near = reach * 0.25;
@@ -1176,11 +1425,14 @@ function drawRace3d(view, w, h) {
 
   // The sleds.
   const seen = new Set();
-  const place = (id, color, along, side, turn, bounce, wobble, name) => {
+  const place = (id, color, along, side, turn, bounce, wobble, name, speed, carve, deep, amount) => {
     let sled = w3.sleds.get(id);
     if (sled && sled.userData.color !== color) { disposeGroup(sled); sled = null; }
     if (!sled) { sled = makeSled(color); w3.sleds.set(id, sled); }
     poseSled(sled, along, side, turn, view.time, wobble);
+    // Its tracks in the snow, and the snow it sprays up.
+    sledTrail(id, sled, SPOT.y, SPOT.heading + turn, SPOT.index);
+    sledSpray(sled, SPOT.heading + turn, speed, carve, deep, SPOT.index, dt, amount * Math.max(0.5, w3.quality));
     sled.position.y += bounce || 0;
     seen.add(id);
     if (name) {
@@ -1191,13 +1443,24 @@ function drawRace3d(view, w, h) {
     }
   };
   if (view.racing) {
-    place("me", view.color, view.along, view.side, view.turn, view.bounce, view.wobble, null);
-    for (const other of view.sleds) place(other.id, other.color, other.y, other.x, other.turn, 0, 0, other.name);
+    place("me", view.color, view.along, view.side, view.turn, view.bounce, view.wobble, null, view.speed || 0, view.carve || 0, view.deep, 1);
+    for (const other of view.sleds) {
+      // (Nobody tells us how hard another sled is steering, so we work it out from how fast it's turning.)
+      const sled = w3.sleds.get(other.id), before = sled ? sled.userData : null;
+      const turning = before && before.lastTurn !== undefined && dt > 0 ? (other.turn - before.lastTurn) / dt / (RACE.turnRate * RACE.maxTurn) : 0;
+      const carve = ((before && before.carve) || 0) * 0.85 + Math.max(-1, Math.min(1, turning)) * 0.15;
+      const deep = Math.abs(other.x) > findSegment(other.y).width;
+      place(other.id, other.color, other.y, other.x, other.turn, 0, 0, other.name, other.speed || 0, carve, deep, 0.6);
+      const now = w3.sleds.get(other.id).userData;
+      now.lastTurn = other.turn; now.carve = carve;
+    }
   }
   for (const [id, sled] of w3.sleds) if (!seen.has(id)) sled.visible = false;
+  for (const [id, trail] of w3.trails) if (!seen.has(id)) { trail.mesh.visible = false; trail.points.length = 0; }
   for (const [name, label] of w3.labels) if (!seen.has("label:" + name)) label.visible = false;
 
-  updateCrashEffects(view.time, dt);
+  updateCrashEffects(view.time);
+  updateSpray(dt);
   w3.renderer.render(w3.scene, w3.camera);
 
   // Where my sled ended up on the screen.

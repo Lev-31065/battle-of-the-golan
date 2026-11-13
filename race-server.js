@@ -34,15 +34,16 @@ function raceNewPlayer(p) {
   p.lastMoveAt = server.time;
 }
 
-// The host tapped Start: line everyone up behind the start line, two sleds per row,
+// The host tapped Start: line everyone up behind the start line, four sleds per row
+// (the start is a big open snowfield, so there is room),
 // and start the 3… 2… 1… countdown.
 function raceStartGame() {
   raceAddBots(); // computer sleds, so there's always someone to race
   const everyone = Object.values(server.players);
   everyone.forEach((p, i) => {
-    const row = Math.floor(i / 2);
-    p.x = everyone.length === 1 ? 0 : (i % 2 === 0 ? -0.45 : 0.45);
-    p.y = TRACK.startZ - RACE.segmentLength * 8 - row * RACE.segmentLength * 4; // behind the start line (far enough to see the banner)
+    const row = Math.floor(i / 4), inRow = Math.min(4, everyone.length - row * 4);
+    p.x = (i % 4 - (inRow - 1) / 2) * 0.8;
+    p.y = TRACK.startZ - RACE.segmentLength * 8 - row * RACE.segmentLength * 7; // behind the start line (far enough to see the banner)
     p.speed = 0;
     p.steer = 0;
     p.finished = false;
@@ -132,6 +133,7 @@ function raceAddBots() {
       boostUntil: LONG_AGO,
       slowUntil: LONG_AGO,
       crashAt: LONG_AGO,
+      bumpAt: LONG_AGO,
       crashDir: 1,
     };
     raceNewPlayer(p);
@@ -209,6 +211,16 @@ function raceMoveBot(p, dt) {
     }
   }
   if (server.time - p.crashAt < RACE.crashShoveTime) p.x += p.crashDir * RACE.crashShove * dt;
+
+  // Sleds are solid: a bot that touches another sled gets pushed aside, just like a player.
+  for (const other of Object.values(server.players)) {
+    if (other === p) continue;
+    const touch = sledsTouch(p, other);
+    if (!touch) continue;
+    p.x += touch.side * RACE.bumpShove * dt;
+    if (touch.lined && touch.behind) p.speed = Math.min(p.speed, Math.max(0, other.speed) * 0.92);
+    else if (touch.lined && server.time - p.bumpAt > 0.5) { p.bumpAt = server.time; p.speed += RACE.bumpBoost; }
+  }
 
   p.y += p.speed * dt;
   raceCheckFinish(p);

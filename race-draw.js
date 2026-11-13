@@ -279,7 +279,7 @@ function drawSegment(ctx, w, seg, mist) {
         polygon(ctx, xA + wA * l, yA, xA + wA * r, yA, xB + wB * r, yB, xB + wB * l, yB, color);
       }
     }
-  } else if (!seg.dark && seg.width > RACE.gateWidth * 0.8) {
+  } else if (!seg.dark && seg.width > RACE.gateWidth * 0.8 && seg.width < 2.4) { // (no lane lines on the big snowfields)
     // Where the path is wide (at the gates), dashed lines show the 3 lanes.
     const lineA = a.unit / 30, lineB = b.unit / 30;
     for (let lane = 1; lane < RACE.lanes; lane++) {

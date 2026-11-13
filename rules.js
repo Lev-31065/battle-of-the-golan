@@ -318,6 +318,8 @@ const RACE = {
   pathWidth: 1.05,        // half the width of the normal path (most of the way)
   narrowWidth: 0.5,       // half the width in the few narrow places
   wideWidth: 1.8,         // half the width in the very wide places
+  fieldWidth: 4.2,        // half the width of the big open snowfields (the start is one): lots of room to pick your own way down
+  fieldTrees: 0.55,       // how many trees and rocks are scattered over a snowfield (0 = none, 1 = lots)
   hills: 1,               // how big the hills and dips are (0 = none, 1 = normal, 2 = huge)
   gateWidth: 1.7,         // half the width of the path at an answer gate
   startWidth: 1.2,        // half the width at the start and the finish
@@ -330,18 +332,22 @@ const RACE = {
   offTrackSlowdown: 6000, // how fast going off the path slows you down
   steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
   slowSteer: 0.35,        // even when you're barely moving, you steer at least this much of that (so you can get unstuck after a crash)
-  turnSpeed: 4,           // how quickly the sled swings round when you steer (higher = snappier)
+  turnRate: 1.5,          // steering TURNS the sled, and it keeps going that way until you steer back. This is how fast it turns (1.5 = from straight to turned all the way in about 2/3 of a second)
+  steerReturn: 0,         // 0 = the sled keeps its direction when you stop steering. Higher = it slowly straightens out by itself (try 0.5 if it feels too slippery)
+  turnSpeed: 4,           // how quickly a BOT's sled swings round (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
   cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
   tiltFull: 16,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way (lower = more sensitive). Was 25
   tiltDeadZone: 2,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0.1,        // how hard curves push you toward the outside
-  maxSide: 4,         // the farthest from the middle any sled can be (the referee checks this)
+  maxSide: 6,         // the farthest from the middle any sled can be (the referee checks this)
   crashBounce: 1300,      // hitting a tree, bush or rock stops you dead and knocks you BACK at this speed
   crashShove: 1.1,        // …and shoves you sideways, away from it, this fast (road widths per second)…
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
+  bumpShove: 2.5,         // sleds are solid: two that touch get pushed apart sideways this fast (road widths per second)
+  bumpBoost: 250,         // bumped from behind, the sled in front gets this little push forward
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Bots: computer sleds, so even one player has someone to race (the referee drives them: race-server.js)
   bots: 4,                // bots join until there are this many sleds (4 = one player gets 3 bots; 0 = no bots)
@@ -377,7 +383,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-13b";
+const GAME_VERSION = "2026-11-13c";
 
 // ---------- Helpers ----------
 

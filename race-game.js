@@ -9,6 +9,9 @@
 let raceInfo = { startAt: Infinity, finishers: [] }; // from the referee
 let mySpeed = 0;          // how fast my sled is going (track units per second)
 let mySteer = 0;          // which way my sled points: -1 = turned fully left, 0 = straight down the path, 1 = fully right
+let myCarve = 0;          // how hard I am steering right now (-1 … 1): for the snow spray
+let bumpAt = -Infinity;   // when I last bumped into another sled
+let bumpDir = 1;          // which way that bump pushed me
 let raceTurn = 0;         // goes up and down as the track turns (slides the mountains)
 let crashAt = -Infinity;  // when I last hit a tree (for the screen shake)
 let crashDir = 1;         // which way that crash shoved me: -1 = left, 1 = right
@@ -127,8 +130,13 @@ function raceUpdate(dt) {
 
   const started = gameTime >= raceInfo.startAt;
   const steer = started ? steerInput() : 0;
-  // The sled swings round toward where you steer (not instantly, like a real sled).
-  mySteer += (steer - mySteer) * Math.min(1, dt * RACE.turnSpeed);
+  // Steering TURNS the sled, slowly, like a real one. When you stop steering it does NOT
+  // swing back to straight: it keeps gliding the way it points until you steer the other way.
+  // (RACE.steerReturn above 0 would make it straighten out by itself, slowly.)
+  myCarve = steer;
+  mySteer += steer * RACE.turnRate * dt;
+  mySteer -= mySteer * Math.min(1, RACE.steerReturn * dt);
+  mySteer = Math.max(-1, Math.min(1, mySteer));
 
   if (started) {
     const segment = findSegment(me.y);
@@ -138,6 +146,25 @@ function raceUpdate(dt) {
     me.x += mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * dt;
     // …and curves push you toward the outside, so you have to steer into them.
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
+
+    // Other sleds are solid: if mine touches one, we get pushed apart sideways. (Every phone
+    // does this for its own sled, so both move.) The sled at the back can't drive through the
+    // one in front: it is held to that sled's speed until it has slid out from behind it.
+    for (const other of Object.values(players)) {
+      if (other.id === client.myId) continue;
+      const touch = sledsTouch(me, other);
+      if (!touch) continue;
+      me.x += touch.side * RACE.bumpShove * dt;
+      if (touch.lined && touch.behind) mySpeed = Math.min(mySpeed, Math.max(0, other.speed || 0) * 0.92);
+      if (gameTime - bumpAt > 0.5) {
+        // The first touch: a thump, a little knock off course, and a push for the sled in front.
+        bumpAt = gameTime;
+        bumpDir = touch.side;
+        mySteer = Math.max(-1, Math.min(1, mySteer + touch.side * 0.15));
+        if (touch.lined && !touch.behind) mySpeed += RACE.bumpBoost;
+        playSound("bump");
+      }
+    }
     // You can go off the path, but not past the edge of the mountainside.
     const farthest = segment.width + RACE.shoulder * 0.8;
     me.x = Math.max(-farthest, Math.min(farthest, me.x));
@@ -170,6 +197,7 @@ function raceUpdate(dt) {
           crashDir = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
           mySpeed = -RACE.crashBounce * Math.max(0.4, fraction);
           crashAt = gameTime;
+          mySteer = crashDir * 0.3; // (the sled ends up pointing away from what it hit)
           playSound("crash");
           if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
           break;
@@ -183,7 +211,8 @@ function raceUpdate(dt) {
     me.y += mySpeed * dt;
 
     // Snow spraying up from the runners when turning or in deep snow.
-    if (mySpeed > 1500 && (Math.abs(steer) > 0 || inDeepSnow) && snowPuffs.length < 60) {
+    // (This is the flat drawing's spray. In 3D the spray is real 3D snow: see race-3d.js.)
+    if (!race3dAvailable() && mySpeed > 1500 && (Math.abs(steer) > 0 || inDeepSnow) && snowPuffs.length < 60) {
       for (const side of [-1, 1]) {
         if (!inDeepSnow && side === Math.sign(steer)) continue; // turning: spray from the outside runner
         snowPuffs.push({
@@ -326,12 +355,13 @@ function raceRender() {
 
   // A little shake right after a crash.
   const sinceCrash = Math.max(0, gameTime - crashAt);
+  const sinceBump = Math.max(0, gameTime - bumpAt);
   const shake = sinceCrash < 0.3 ? (1 - sinceCrash / 0.3) * 8 : 0;
   if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
   const sleds = !racing ? [] : Object.values(players)
     .filter((p) => p.id !== client.myId)
-    .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn }));
+    .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed }));
   const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   const viewTurn = racing ? mySteer * RACE.maxTurn * RACE.cameraTurn : 0;
@@ -346,7 +376,9 @@ function raceRender() {
       color: (me && me.color) || RACE.colors[0],
       sleds: sleds.map((sled, i) => Object.assign({ id: "other" + i }, sled)),
       bounce: inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
-      wobble: sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0, // rocking after a crash
+      wobble: (sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0) // rocking after a crash…
+        + (sinceBump < 0.5 ? Math.exp(-7 * sinceBump) * Math.sin(sinceBump * 26) * 0.14 * bumpDir : 0),      // …and a little after bumping a sled
+      speed: fraction, carve: myCarve, deep: inDeepSnow, // (for the snow spray)
       shake: shake / 8,
     }, w, h);
   }
@@ -480,6 +512,8 @@ function raceOnPhase(phase) {
   if (phase === "playing") {
     mySpeed = 0;
     mySteer = 0;
+    myCarve = 0;
+    bumpAt = -Infinity;
     crashAt = -Infinity;
     myFinishedPlace = 0;
     lastCountdown = null;

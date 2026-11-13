@@ -72,7 +72,7 @@ function trackProgress(z) {
   const easeInOut = (a, b, t) => a + (b - a) * (-Math.cos(t * Math.PI) / 2 + 0.5);
   const smooth = (t) => t * t * (3 - 2 * t);
 
-  let pieceWidth = RACE.startWidth; // how wide the pieces being built are
+  let pieceWidth = RACE.fieldWidth; // how wide the pieces being built are (the start is a big open snowfield)
 
   function lastY() {
     return segments.length === 0 ? 0 : segments[segments.length - 1].p2.world.y;
@@ -135,7 +135,12 @@ function trackProgress(z) {
       lastCurve = (sameWay ? Math.sign(lastCurve) || 1 : -Math.sign(lastCurve) || 1) * turnAmount;
       // How wide: mostly wide, sometimes very wide, now and then narrow (never right before a gate).
       const wr = random();
-      pieceWidth = wr < 0.15 && !lastPiece ? RACE.narrowWidth
+      // …and some pieces are big open SNOWFIELDS: lots of room to pick your own way down (and gentler bends).
+      // (The start is one too: the first pieces carry on from the field at the top.)
+      const field = (g === 0 && made < 100) || wr > 0.82;
+      if (field) lastCurve *= 0.3;
+      pieceWidth = field ? RACE.fieldWidth
+        : wr < 0.15 && !lastPiece ? RACE.narrowWidth
         : wr < 0.4 ? RACE.wideWidth
         : RACE.pathWidth + (random() - 0.5) * 0.3;
       downhill(n, lastCurve, 0.1 + random() * 0.16);
@@ -183,6 +188,10 @@ function trackProgress(z) {
     for (let k = n - 20; k <= n + 20; k++) { if (segments[k]) { sum += segments[k].baseWidth; count++; } }
     return sum / count;
   });
+  // A snowfield closes in to a normal path slowly (and opens out a bit quicker), like a funnel,
+  // so there is time to steer back toward the middle.
+  for (let n = segments.length - 2; n >= 0; n--) smoothWidth[n] = Math.min(smoothWidth[n], smoothWidth[n + 1] + 0.045);
+  for (let n = 1; n < segments.length; n++) smoothWidth[n] = Math.min(smoothWidth[n], smoothWidth[n - 1] + 0.08);
   for (const seg of segments) {
     const progress = trackProgress(seg.p1.world.z);
     // The ground beside the path: all snow at the top, melting away between 12% and 40% of the way down.
@@ -239,9 +248,10 @@ function trackProgress(z) {
   }
   // Snowmen cheering and a ski cabin at the start.
   const startIndex = Math.floor(TRACK.startZ / L);
-  add(startIndex + 4, "snowman", -(RACE.startWidth + 0.45));
-  add(startIndex + 4, "snowman", RACE.startWidth + 0.45);
-  add(startIndex + 30, "cabin", -(RACE.startWidth + 1.3));
+  // (Beside the start banner, which stands in the middle of the big snowfield, and at the field's edge.)
+  add(startIndex + 4, "snowman", -1.9);
+  add(startIndex + 4, "snowman", 1.9);
+  add(startIndex + 30, "cabin", -(segments[startIndex + 30].width + 1.3));
   // A wooden sign pointing to the Kinneret, shortly before the beach.
   add(finishIndex - 160, "sign", RACE.pathWidth + 0.9);
 
@@ -261,6 +271,17 @@ function trackProgress(z) {
     if (seg.width > 1.5 && random() < 0.5) add(n + 8, random() < 0.5 ? "bush" : seg.snow > 0.5 ? "bushSnow" : "rock", spot > 0 ? spot - 1.3 : spot + 1.3);
   }
 
+  // The snowfields: trees, rocks and bushes scattered all over them, with plenty of room in
+  // between, so everyone picks their own way through. (Not right after the start, or near a gate.)
+  for (let n = startIndex + 30; n < finishIndex - 260; n += 5) {
+    const seg = segments[n];
+    if (seg.width < 2.4 || !clearOfGates(n) || random() > RACE.fieldTrees) continue;
+    const r = random();
+    const snowy = seg.snow > 0.3;
+    const type = r < 0.35 ? (snowy ? "oakSnow" : "oak") : r < 0.65 ? (snowy ? "rockSnow" : "rock") : r < 0.92 ? (snowy ? "bushSnow" : "bush") : snowy ? "snowman" : "almond";
+    add(n, type, (random() * 2 - 1) * (seg.width - 0.5));
+  }
+
   // Keep the gates clear, so their poles are easy to see.
   for (const gate of TRACK.gates) {
     for (let k = gate.index - 4; k <= gate.index + 4; k++) {
@@ -270,3 +291,15 @@ function trackProgress(z) {
   const finish = segments[finishIndex];
   finish.sprites = finish.sprites.filter((s) => Math.abs(s.offset) > RACE.startWidth + 0.6);
 })();
+
+// Sleds are solid: two sleds can't be in the same spot. Is sled `a` touching sled `b`?
+// No: null. Yes: { side: which way `a` should slide to get clear (-1 left, 1 right),
+// lined: true if they're one behind the other (nose to tail) rather than side by side,
+// behind: true if `a` is the one at the back }.
+// (Every phone checks this for its own sled, and the referee for the bots, so both sleds move apart.)
+function sledsTouch(a, b) {
+  const dx = (a.x - b.x) * RACE.roadWidth, dy = a.y - b.y;
+  if (Math.abs(dx) >= SLED_WIDTH || Math.abs(dy) >= RACE.sledLength) return null;
+  const side = dx > 0 ? 1 : dx < 0 ? -1 : (String(a.id) < String(b.id) ? -1 : 1);
+  return { side, lined: Math.abs(dx) < SLED_WIDTH * 0.6, behind: dy < 0 };
+}

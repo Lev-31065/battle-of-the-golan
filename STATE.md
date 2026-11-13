@@ -69,7 +69,7 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13b)
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13c)
 - **Daniel tried it on v 12p: "its great!"** Steps 1–3 of 6 done (1 road + driving, 2 answer gates, 3 bots), plus real 3D. Still to do: 4 gift boxes (🍌 dropped behind, 🥭 thrown forward), 5 multiplayer polish, 6 polish (sounds, podium).
 - **Real 3D (2026-11-13, v 2026-11-13a), headless-tested, NOT yet tried on a phone:**
   - `race-3d.js` + three.js: a real 3D mountain. Valley walls rise in the path's dips, the ground falls away on hilltops (views of the valley and the Kinneret), low-poly trees/rocks/cabin/snowmen, 3D sled and rider, 3D gates, far mountains, sky, lake.
@@ -77,6 +77,12 @@
   - **Crashes are solid now:** the sled's NOSE hits (`RACE.sledLength`), only a tree's trunk counts (`hit` in `SPRITE_SIZES`), the sled stops, bounces back (`crashBounce`) and is shoved sideways (`crashShove`, `crashShoveTime`); in 3D the tree rocks and snow/leaves burst off. New `crash` sound.
   - Multiplayer data is unchanged (still 10 tiny "where I am" messages a second), so 3D can't add network lag.
   - Known rough edges: a tree right beside the camera can fill a corner of the screen; other sleds' crashes show no tree shake.
+- **Daniel raced the bots (v 13b): "Awesome, the racing was great."** He then asked for 5 things, all built 2026-11-13 (v 2026-11-13c), headless-tested, not yet tried by him:
+  - **Steering keeps its direction:** steering TURNS the sled (`RACE.turnRate` 1.5) and it keeps gliding that way until you steer back (no swinging back to straight). `RACE.steerReturn` (0) above 0 makes it straighten slowly, if it's too slippery. Bots still use `turnSpeed`. A crash leaves the sled pointing away from what it hit.
+  - **Sleds are solid:** `sledsTouch()` (race-track.js). Each phone pushes its OWN sled aside (`bumpShove`), the referee does it for bots. The sled behind is held to the front one's speed until it slides out; the front one gets `bumpBoost`. Phones see each other ~0.1 s late, so it's "a bit of bumping", not exact.
+  - **Snowfields:** `RACE.fieldWidth` 4.2 (half-width). The start is one, plus about 1 piece in 5 (`wr > 0.82` in race-track.js, gentler bends there). Trees/rocks are scattered across them (`fieldTrees`). Widths narrow slowly (funnel). `maxSide` is 6 now. Start grid: 4 sleds per row.
+  - **Screen stays on:** a wake lock while you're in a room (end of game.js). Not on very old phones.
+  - **Snow look (race-3d.js):** the ground uses `groundPaint` (smooth shading + a repeating snow picture, `makeSnowPicture`); snowfields roll gently (`fieldRoll`); every sled leaves runner tracks (`sledTrail`); spray is real 3D puffs (`makeSpray` / `sledSpray`: powder behind, a sheet from the outside runner when turning, lots in deep snow; crash bursts use it too).
 - **Bots = race step 3 (2026-11-13, v 2026-11-13b), headless-tested, not yet tried by Daniel:**
   - Computer sleds join when the host taps Start, until there are `RACE.bots` (4) sleds; they leave when everyone returns to the lobby. Names 🤖 גַּל / נֹעָה / טַל.
   - The referee drives them (`raceMoveBot` in race-server.js; players with `bot: true`, ids `robot1`…): lanes, dodging trees (better bots look further ahead), 60% right at gates (`botRight`), speeds from `botSkill`, and they ease off / push harder to stay near the best player (`botCatchUp`).
@@ -96,7 +102,7 @@
   - Answers are saved through `recordAnswer` and `autoLevelAnswer`. A compact panel at the top repeats the question.
 - **Steering:**
   - Hold the left or right half of the screen, OR tilt the phone (👆/📱 button; the choice is saved).
-  - Steering turns the sled (`turnSpeed`, `maxTurn`), and the view turns part of the way with it (`cameraTurn` 0.35; Daniel: 0.6 was "a little too much").
+  - Steering turns the sled (`turnRate`, `maxTurn`; it keeps its direction, see above), and the view turns part of the way with it (`cameraTurn` 0.35; Daniel: 0.6 was "a little too much").
   - Curves push you outward a little.
 - **The sled:** rustic wood, tipped nose-down (`nose` in `drawSled`; Daniel asked for it). The rider has a knitted kippah, a tallit-striped scarf, tzitzit, and an Israeli flag.
 - **Tilt steering: Daniel says great, better than tapping (2026-11-13).** Not tested yet: 3D on real phones (speed!), 2 phones racing each other, tilt on an iPhone.
