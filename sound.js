@@ -80,6 +80,11 @@ const SOUNDS = {
   plant:   () => melody([392, 523, 659], 0.06, { type: "triangle", volume: 0.12 }), // planting a tree
   tick:    () => tone(620, 0.16, { type: "sine", volume: 0.18 }),              // race countdown: 3… 2… 1…
   go:      () => tone(990, 0.45, { type: "sine", volume: 0.2 }),               // race countdown: Go!
+  jump:    () => tone(260, 0.5, { type: "triangle", slideTo: 880, volume: 0.12 }),   // a sled flying off a ramp
+  land:    () => tone(120, 0.16, { type: "sine", slideTo: 60, volume: 0.25 }),       // …and coming down: a soft thump
+  splash:  () => { tone(900, 0.5, { type: "sawtooth", slideTo: 90, volume: 0.12 }); tone(1400, 0.7, { type: "triangle", slideTo: 200, volume: 0.1, delay: 0.05 }); tone(70, 0.5, { type: "sine", slideTo: 40, volume: 0.3 }); }, // into the Kinneret!
+  item:    () => melody([784, 988, 1175, 1568], 0.06, { type: "triangle", volume: 0.14 }), // driving through a gift box
+  spin:    () => { tone(700, 0.7, { type: "sawtooth", slideTo: 120, volume: 0.1 }); melody([500, 420, 500, 420, 340], 0.09, { type: "square", volume: 0.07 }); }, // slipping on a banana peel
 };
 
 function playSound(name) {

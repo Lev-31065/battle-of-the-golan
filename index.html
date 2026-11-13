@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-13c">
+  <link rel="stylesheet" href="style.css?v=2026-11-13d">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -55,6 +55,8 @@
   <button id="fullscreen-button" class="mute-button fullscreen-button" type="button" aria-label="Full screen on or off" hidden>⛶</button>
   <!-- Mt Hermon Racing only: steer by touch (👆) or by tilting the phone (📱). race-game.js. -->
   <button id="tilt-button" class="mute-button tilt-button" type="button" aria-label="Steer by touch or by tilting the phone" data-game-button="race" hidden>👆</button>
+  <!-- Mt Hermon Racing only: the gift I'm holding (a banana peel or a mango). Tap to use it. race-game.js. -->
+  <button id="item-button" class="item-button" type="button" aria-label="Use your banana peel or mango" data-game-button="race" hidden><span id="item-icon" class="item-icon">🍌</span><span id="item-label" class="item-label"></span></button>
   <!-- Leave the game (asks "Are you sure?" first). -->
   <button id="leave-button" class="mute-button leave-button" type="button" aria-label="Leave the game" hidden>🚪</button>
 
@@ -391,27 +393,27 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-13c"></script>
-  <script src="rules.js?v=2026-11-13c"></script>
-  <script src="sound.js?v=2026-11-13c"></script>
-  <script src="speech.js?v=2026-11-13c"></script>
-  <script src="levels-b.js?v=2026-11-13c"></script>
-  <script src="words.js?v=2026-11-13c"></script>
-  <script src="progress.js?v=2026-11-13c"></script>
-  <script src="account.js?v=2026-11-13c"></script>
-  <script src="decks.js?v=2026-11-13c"></script>
-  <script src="quiz.js?v=2026-11-13c"></script>
-  <script src="ctf-draw.js?v=2026-11-13c"></script>
-  <script src="race-track.js?v=2026-11-13c"></script>
-  <script src="race-draw.js?v=2026-11-13c"></script>
-  <script src="three.min.js?v=2026-11-13c"></script>
-  <script src="race-3d.js?v=2026-11-13c"></script>
-  <script src="network.js?v=2026-11-13c"></script>
-  <script src="server.js?v=2026-11-13c"></script>
-  <script src="ctf-server.js?v=2026-11-13c"></script>
-  <script src="race-server.js?v=2026-11-13c"></script>
-  <script src="game.js?v=2026-11-13c"></script>
-  <script src="ctf-game.js?v=2026-11-13c"></script>
-  <script src="race-game.js?v=2026-11-13c"></script>
+  <script src="map.js?v=2026-11-13d"></script>
+  <script src="rules.js?v=2026-11-13d"></script>
+  <script src="sound.js?v=2026-11-13d"></script>
+  <script src="speech.js?v=2026-11-13d"></script>
+  <script src="levels-b.js?v=2026-11-13d"></script>
+  <script src="words.js?v=2026-11-13d"></script>
+  <script src="progress.js?v=2026-11-13d"></script>
+  <script src="account.js?v=2026-11-13d"></script>
+  <script src="decks.js?v=2026-11-13d"></script>
+  <script src="quiz.js?v=2026-11-13d"></script>
+  <script src="ctf-draw.js?v=2026-11-13d"></script>
+  <script src="race-track.js?v=2026-11-13d"></script>
+  <script src="race-draw.js?v=2026-11-13d"></script>
+  <script src="three.min.js?v=2026-11-13d"></script>
+  <script src="race-3d.js?v=2026-11-13d"></script>
+  <script src="network.js?v=2026-11-13d"></script>
+  <script src="server.js?v=2026-11-13d"></script>
+  <script src="ctf-server.js?v=2026-11-13d"></script>
+  <script src="race-server.js?v=2026-11-13d"></script>
+  <script src="game.js?v=2026-11-13d"></script>
+  <script src="ctf-game.js?v=2026-11-13d"></script>
+  <script src="race-game.js?v=2026-11-13d"></script>
 </body>
 </html>

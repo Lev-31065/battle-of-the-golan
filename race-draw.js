@@ -279,7 +279,7 @@ function drawSegment(ctx, w, seg, mist) {
         polygon(ctx, xA + wA * l, yA, xA + wA * r, yA, xB + wB * r, yB, xB + wB * l, yB, color);
       }
     }
-  } else if (!seg.dark && seg.width > RACE.gateWidth * 0.8 && seg.width < 2.4) { // (no lane lines on the big snowfields)
+  } else if (!seg.dark && seg.width > RACE.gateWidth * 0.8 && seg.width < 2.4 && !seg.island) { // (no lane lines on the big snowfields)
     // Where the path is wide (at the gates), dashed lines show the 3 lanes.
     const lineA = a.unit / 30, lineB = b.unit / 30;
     for (let lane = 1; lane < RACE.lanes; lane++) {
@@ -287,6 +287,23 @@ function drawSegment(ctx, w, seg, mist) {
       const xA = a.x + a.w * t, xB = b.x + b.w * t;
       polygon(ctx, xA - lineA / 2, a.y, xA + lineA / 2, a.y, xB + lineB / 2, b.y, xB - lineB / 2, b.y, fade(C.pathEdge));
     }
+  }
+}
+
+// Extras lying on a piece of path: the island where the path splits (rocky ground down the
+// middle) and snow ramps (bright bands, so you can see them coming). The flat drawing keeps
+// these simple; the real 3D drawing (race-3d.js) builds them properly.
+function drawSegmentExtras(ctx, seg, mist) {
+  const a = seg.p1.screen, b = seg.p2.screen;
+  const fade = (c) => rgbText(mixRgb(c, C.haze, mist));
+  if (seg.island > 0.02) {
+    const rocky = mixRgb(C.slopeRock, C.slopeSnow, seg.snow * 0.7);
+    polygon(ctx, a.x - seg.island * a.unit, a.y, a.x + seg.island * a.unit, a.y, b.x + seg.island2 * b.unit, b.y, b.x - seg.island2 * b.unit, b.y, fade(rocky));
+  }
+  for (const ramp of seg.ramps || []) {
+    const l = ramp.offset - ramp.half, r = ramp.offset + ramp.half;
+    const color = ramp.kind === "pier" ? hexToRgb(seg.index % 2 ? "#b98a55" : "#9f6f42") : hexToRgb(seg.index >= ramp.index + ramp.length - 2 ? "#f97316" : seg.index % 2 ? "#a9d2f3" : "#ffffff");
+    polygon(ctx, a.x + l * a.unit, a.y, a.x + r * a.unit, a.y, b.x + r * b.unit, b.y, b.x + l * b.unit, b.y, fade(color));
   }
 }
 
@@ -594,6 +611,16 @@ function drawRaceScene(ctx, w, h, scene) {
     sledsOn.get(index).push(sled);
   }
 
+  // Gift boxes (🎁), banana peels and mangoes: which piece of path each one is on.
+  const extrasOn = new Map();
+  const putExtra = (z, x, icon, lift) => {
+    const index = findSegment(z).index;
+    if (!extrasOn.has(index)) extrasOn.set(index, []);
+    extrasOn.get(index).push({ z, x, icon, lift });
+  };
+  for (const box of TRACK.boxes) if (!(scene.gone && scene.gone.has(box.id))) putExtra(box.z, box.offset, "🎁", 350);
+  for (const thing of scene.things || []) putExtra(thing.y, thing.x, thing.kind === "banana" ? "🍌" : "🥭", thing.kind === "banana" ? 0 : 250);
+
   // Then paint them far to near, each piece with the things standing on it.
   for (let i = shown.length - 1; i >= 0; i--) {
     const seg = shown[i];
@@ -609,6 +636,7 @@ function drawRaceScene(ctx, w, h, scene) {
       ctx.clip();
     }
     if (!seg.hidden) drawSegment(ctx, w, seg, Math.min(0.85, far * far * 0.9));
+    if (!seg.hidden && !seg.water) drawSegmentExtras(ctx, seg, Math.min(0.85, far * far * 0.9));
     for (const sprite of seg.sprites) {
       const size = SPRITE_SIZES[sprite.type];
       const width = size.w * a.scale * w / 2;
@@ -626,12 +654,22 @@ function drawRaceScene(ctx, w, h, scene) {
     if (seg.line === "start") drawBanner(ctx, w, seg, "מֵרוֹץ הַחֶרְמוֹן · MT HERMON RACING", "#1d4ed8");
     if (seg.line === "finish") drawBanner(ctx, w, seg, "🏁 כִּנֶּרֶת · KINNERET 🏁", "#0e7490");
     if (seg.gate) drawGate(ctx, w, seg, scene.gate && scene.gate.number === seg.gate.number ? scene.gate : null);
+    for (const extra of extrasOn.get(seg.index) || []) {
+      const t = clamp01((extra.z - seg.p1.world.z) / L);
+      const s = lerp(a.scale, b.scale, t);
+      const big = 520 * s * w / 2;
+      if (big < 4) continue;
+      ctx.font = `${big}px Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(extra.icon, lerp(a.x, b.x, t) + s * extra.x * RACE.roadWidth * w / 2, lerp(a.y, b.y, t) - extra.lift * s * w / 2);
+    }
     for (const sled of sledsOn.get(seg.index) || []) {
       const t = clamp01((sled.y - seg.p1.world.z) / L);
       const s = lerp(a.scale, b.scale, t);
-      const sy = lerp(a.y, b.y, t);
+      const sy = lerp(a.y, b.y, t) - (sled.air || 0) * s * w / 2; // (higher up while it is flying)
       const sx = lerp(a.x, b.x, t) + s * sled.x * RACE.roadWidth * w / 2;
-      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, (sled.turn || 0) - viewTurn, scene.time, sled.name);
+      drawSled(ctx, sx, sy, SLED_WIDTH * s * w / 2, sled.color, (sled.turn || 0) - viewTurn + (sled.spin || 0), scene.time, sled.name);
     }
     ctx.restore();
   }
@@ -1033,7 +1071,9 @@ function drawRaceHud(ctx, w, h, info) {
   const cornerX = Math.max(70, w * 0.1);
   drawBilingualText(ctx, `מָקוֹם ${info.place}`, `${ordinal(info.place)} of ${info.racers}`, cornerX, h - size * 1.2, size * 1.2, "#fde047");
   drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - cornerX, h - size * 1.2, size);
-  if (info.boosting) drawBilingualText(ctx, "⚡ טוּרְבּוֹ!", "Boost!", w - cornerX, h - size * 3.2, size * 0.9, "#fde047");
+  if (info.spinning) drawBilingualText(ctx, "🌀 מִסְתּוֹבְבִים!", "Spinning out!", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
+  else if (info.flying) drawBilingualText(ctx, "🛷 קְפִיצָה!", "Jump!", w - cornerX, h - size * 3.2, size * 0.9, "#bae6fd");
+  else if (info.boosting) drawBilingualText(ctx, "⚡ טוּרְבּוֹ!", "Boost!", w - cornerX, h - size * 3.2, size * 0.9, "#fde047");
   else if (info.slowed) drawBilingualText(ctx, "🐢 אִטִּי…", "Slowed down", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
   if (info.deepSnow && !info.finishedPlace) {
     drawBilingualText(ctx, "מִחוּץ לַשְּׁבִיל — אִטִּי!", "❄️ Off the path — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");

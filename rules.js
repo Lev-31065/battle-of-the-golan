@@ -327,12 +327,11 @@ const RACE = {
   lanes: 3,               // lanes at the gates (one answer over each lane)
   maxSpeed: 5500,         // top speed (track units per second). Was 10000, then 6000
   accel: 1800,            // how fast you speed up on the path
-  brake: 3000,            // how fast you slow down after the finish line (so you stop on the beach)
   offTrackSpeed: 0.3,     // off the path, your top speed drops to 30%
   offTrackSlowdown: 6000, // how fast going off the path slows you down
   steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
   slowSteer: 0.35,        // even when you're barely moving, you steer at least this much of that (so you can get unstuck after a crash)
-  turnRate: 1.5,          // steering TURNS the sled, and it keeps going that way until you steer back. This is how fast it turns (1.5 = from straight to turned all the way in about 2/3 of a second)
+  turnRate: 1.8,          // steering TURNS the sled, and it keeps going that way until you steer back. This is how fast it turns (1.8 = from straight to turned all the way in about half a second). Was 1.5
   steerReturn: 0,         // 0 = the sled keeps its direction when you stop steering. Higher = it slowly straightens out by itself (try 0.5 if it feels too slippery)
   turnSpeed: 4,           // how quickly a BOT's sled swings round (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
@@ -340,8 +339,40 @@ const RACE = {
   tiltFull: 16,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way (lower = more sensitive). Was 25
   tiltDeadZone: 2,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
-  curvePush: 0.1,        // how hard curves push you toward the outside
-  maxSide: 6,         // the farthest from the middle any sled can be (the referee checks this)
+  curvePush: 0,           // an extra sideways push in bends (was 0.1; `curveSteer` below does this job now)
+  maxSide: 6,             // the farthest from the middle any sled can be (the referee checks this)
+  // Steering feel: a bit like a kart racing game (race-game.js)
+  curveSteer: 0.5,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself (the old way), 1 = fully real (hard!)
+  grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
+  airSteer: 0.35,         // in the air you can only turn this much of normal
+  carveCurve: 1.5,        // "carve boost": bends at least this sharp count…
+  carveAfter: 0.9,        // …stay on the path at speed for this many seconds of a bend, and you get a boost when it ends (blue snow = ready)
+  carveBig: 1.8,          // …and for this many seconds, a longer boost (golden snow)
+  carveBoost: [0.5, 0.9], // how long those two boosts last (seconds)
+  // Snow jumps (the ramps are placed in race-track.js)
+  gravity: 3000,          // how fast a flying sled falls. Lower = longer, floatier jumps
+  rampEvery: 90,          // about one snow ramp every this many segments (lower = more jumps)
+  rampLength: 12,         // how long a ramp is, in segments
+  rampHeight: 450,        // how high its top is (a sled is 600 wide)
+  rampWidth: 0.42,        // half the width of a small ramp (some ramps go right across the path)
+  landBoostTime: 0.8,     // land a jump on the path = a boost for this many seconds
+  lakeRampLength: 16,     // the big wooden ramp at the end, into the Kinneret
+  lakeRampHeight: 700,
+  waterDrag: 9000,        // how fast the lake stops a sled
+  afterFinish: 4.5,       // seconds after the last player finishes before the results show (time for the splash!)
+  // Alternate paths: the path splits in two around an island of rocks and trees, then joins up again
+  forkWidth: 2.4,         // half the width of the whole split (both ways + the island)
+  forkIsland: 1.1,        // half the width of the island in the middle
+  forkLength: 150,        // how long a split is, in segments
+  // Gift boxes: drive through one to get a banana peel (dropped behind you) or a mango (thrown ahead)
+  boxEvery: 240,          // a row of gift boxes about every this many segments
+  boxRespawn: 5,          // a taken box comes back after this many seconds
+  spinTime: 1.0,          // hit by a banana peel or a mango: you spin round for this many seconds…
+  spinSpeed: 0.35,        // …and drop to this much of your speed
+  itemSafeTime: 2.5,      // after being hit, nothing can hit you again for this many seconds
+  mangoSpeed: 4500,       // a thrown mango flies this much faster than the sled that threw it
+  mangoRange: 18000,      // …and this far before it lands and splats
+  bananaLife: 60,         // a banana peel that nobody hits melts away after this many seconds
   crashBounce: 1300,      // hitting a tree, bush or rock stops you dead and knocks you BACK at this speed
   crashShove: 1.1,        // …and shoves you sideways, away from it, this fast (road widths per second)…
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
@@ -383,7 +414,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-13c";
+const GAME_VERSION = "2026-11-13d";
 
 // ---------- Helpers ----------
 

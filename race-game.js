@@ -3,6 +3,8 @@
 //
 // The sled goes forward by itself. Hold the left half of the screen to steer left,
 // the right half to steer right (or use the arrow keys / A and D on a computer).
+// Also here: flying off the snow ramps, the gift boxes (banana peel / mango), spinning out,
+// and the splash into the Kinneret at the end.
 // The drawing is in race-draw.js and the track in race-track.js.
 // The referee's side is race-server.js. (The questions game.js asks are at the bottom: PHONE_GAMES.race.)
 
@@ -26,6 +28,26 @@ let gateFeedback = null;  // after a gate: { kind: "right" / "wrong" / "missed",
 let lastGateZ = -Infinity; // the last gate I went through (its distance along the race)
 let boostUntil = -Infinity; // right answer: faster until this time
 let slowUntil = -Infinity;  // wrong answer: slower until this time
+let mySlide = 0;          // how fast my sled is sliding sideways right now (road widths per second)
+let myAir = 0;            // how high my sled is above the ground (0 = on the ground)
+let myVy = 0;             // how fast it is going up (minus = coming down)
+let carveTime = 0;        // how long I have been carving round this bend (for the carve boost)
+let spinAt = -Infinity;   // when a banana peel or a mango last hit me
+let mySpinCount = 0;      // how many hits the referee has counted for me (when it goes up, I spin)
+let inWater = false;      // my sled has landed in the Kinneret
+let itemUsedAt = -Infinity; // when I last used a gift (so the button hides straight away)
+let itemTips = 0;         // how many times the "tap to use it" tip was shown
+let lastItem = null;      // the gift I was holding a moment ago
+const boxClaims = new Map(); // gift boxes I just drove through: box id → when (so they vanish straight away)
+const otherSleds = new Map(); // what this phone remembers about the other sleds: id → { air, spinCount, spinAt }
+const flight = { y: 0, x: 0, speed: 0, air: 0, vy: 0 }; // (my sled, the way sledFlight in race-track.js wants it)
+const itemButton = document.getElementById("item-button");
+const itemIcon = document.getElementById("item-icon");
+const itemLabel = document.getElementById("item-label");
+const ITEM_NAMES = {
+  banana: { icon: "🍌", en: "Banana peel", he: "קְלִפַּת בָּנָנָה", tipEn: "🍌 A banana peel! Tap the button to drop it behind you", tipHe: "🍌 קְלִפַּת בָּנָנָה!" },
+  mango: { icon: "🥭", en: "Mango", he: "מַנְגּוֹ", tipEn: "🥭 A mango! Tap the button to throw it ahead", tipHe: "🥭 מַנְגּוֹ!" },
+};
 const raceWinnerEl = document.getElementById("winner");
 
 // ---------- Steering ----------
@@ -105,6 +127,27 @@ window.addEventListener("pointerdown", () => {
   DeviceOrientationEvent.requestPermission().catch(() => {});
 });
 
+// ---------- Using a gift (the banana peel or the mango from a gift box) ----------
+// Tap the big round button (or press Space). The referee decides what happens next.
+function useMyItem() {
+  const me = myPlayer();
+  if (!me || !me.item || client.mode !== "race" || client.phase !== "playing" || gameTime - itemUsedAt < 0.5) return;
+  itemUsedAt = gameTime;
+  sendToServer({ type: "use" });
+  playSound("throw");
+}
+itemButton.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  useMyItem();
+});
+
+// How far round a sled has spun, this long after being hit (two full turns, slowing down).
+function spinAngle(since) {
+  if (since < 0 || since >= RACE.spinTime) return 0;
+  const t = since / RACE.spinTime;
+  return (1 - (1 - t) * (1 - t)) * Math.PI * 4;
+}
+
 // -1 = full left, 0 = straight, 1 = full right.
 function steerInput() {
   let steer = keyboardDirection().x + (steerByTilt ? tiltSteer : 0);
@@ -129,27 +172,73 @@ function raceUpdate(dt) {
   if (!me || client.phase !== "playing") return;
 
   const started = gameTime >= raceInfo.startAt;
-  const steer = started ? steerInput() : 0;
-  // Steering TURNS the sled, slowly, like a real one. When you stop steering it does NOT
-  // swing back to straight: it keeps gliding the way it points until you steer the other way.
+
+  // The other sleds: glide their height (jumps look smooth), and notice when one gets hit.
+  for (const other of Object.values(players)) {
+    if (other.id === client.myId) continue;
+    let seen = otherSleds.get(other.id);
+    if (!seen) { seen = { air: 0, spinCount: other.spinCount || 0, spinAt: -Infinity }; otherSleds.set(other.id, seen); }
+    seen.air += ((other.air || 0) - seen.air) * Math.min(1, dt * 12);
+    if ((other.spinCount || 0) > seen.spinCount) seen.spinAt = gameTime;
+    seen.spinCount = other.spinCount || 0;
+  }
+
+  // Was I hit by a banana peel or a mango? (The referee counts the hits; when the count goes up, I spin out.)
+  if ((me.spinCount || 0) !== mySpinCount) {
+    if ((me.spinCount || 0) > mySpinCount && started) {
+      spinAt = gameTime;
+      mySpeed *= RACE.spinSpeed;
+      carveTime = 0;
+      playSound("spin");
+    }
+    mySpinCount = me.spinCount || 0;
+  }
+  const spinning = gameTime - spinAt < RACE.spinTime;
+
+  // A new gift in my hands? Say what it is (the first few times, also how to use it).
+  if (me.item !== lastItem) {
+    lastItem = me.item;
+    const names = ITEM_NAMES[me.item];
+    if (names && itemTips < 4) { itemTips += 1; showToast(names.tipEn, names.tipHe); }
+  }
+
+  const flying = myAir > 0;
+  const steer = started && !spinning && !inWater ? steerInput() : 0;
+  // Steering TURNS the sled, like a real one. When you stop steering it does NOT swing back
+  // to straight: it keeps gliding the way it points until you steer the other way.
   // (RACE.steerReturn above 0 would make it straighten out by itself, slowly.)
-  myCarve = steer;
-  mySteer += steer * RACE.turnRate * dt;
+  // In the air there is nothing to push against, so it only turns a little.
+  mySteer += steer * RACE.turnRate * (flying ? RACE.airSteer : 1) * dt;
   mySteer -= mySteer * Math.min(1, RACE.steerReturn * dt);
   mySteer = Math.max(-1, Math.min(1, mySteer));
 
   if (started) {
     const segment = findSegment(me.y);
     const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
+    const oldY = me.y, oldX = me.x;
+
+    // A sled keeps going STRAIGHT, so in a bend the path turns away under it and you have
+    // to steer round, like in a kart. (RACE.curveSteer = how much of that is real.)
+    // (Much less while flying, so a jump in a bend still lands on the path.)
+    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * dt / RACE.maxTurn * RACE.curveSteer * (flying ? 0.3 : 1);
+    mySteer = Math.max(-1, Math.min(1, mySteer));
+
     // The way the sled points moves you sideways (faster when you're going fast)…
     // (Even when you're crawling you can still steer a bit: RACE.slowSteer. Otherwise you'd be stuck after a crash.)
-    me.x += mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * dt;
-    // …and curves push you toward the outside, so you have to steer into them.
+    // …but not at once: snow is slippery, so the sled slides for a moment before it goes
+    // where it points (RACE.grip). In the air it just keeps going the way it was going.
+    const wanted = mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer);
+    if (inWater) mySlide = 0;
+    else if (!flying) mySlide += (wanted - mySlide) * Math.min(1, RACE.grip * dt);
+    me.x += mySlide * dt;
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
+    // (For the snow spray: steering, sliding or going round a bend all throw snow out sideways.)
+    myCarve = flying ? 0 : Math.max(-1, Math.min(1, steer * 0.7 + (wanted - mySlide) * 0.6 + Math.sign(segment.curve) * Math.min(1, Math.abs(segment.curve) / 6) * fraction * 0.6));
 
     // Other sleds are solid: if mine touches one, we get pushed apart sideways. (Every phone
     // does this for its own sled, so both move.) The sled at the back can't drive through the
     // one in front: it is held to that sled's speed until it has slid out from behind it.
+    me.air = myAir; // (a sled that is flying goes right over the others)
     for (const other of Object.values(players)) {
       if (other.id === client.myId) continue;
       const touch = sledsTouch(me, other);
@@ -169,15 +258,30 @@ function raceUpdate(dt) {
     const farthest = segment.width + RACE.shoulder * 0.8;
     me.x = Math.max(-farthest, Math.min(farthest, me.x));
 
-    // Off the path = much slower (deep snow up high, rough ground lower down).
+    // Off the path = much slower (deep snow up high, rough ground lower down). The island
+    // in the middle of a split counts as off the path too.
     // A right answer at a gate = a boost (faster for a moment); a wrong one = slowed down.
-    inDeepSnow = Math.abs(me.x) > segment.width;
+    inDeepSnow = !flying && !inWater && offThePath(segment, me.x);
     const boosting = gameTime < boostUntil, slowed = gameTime < slowUntil;
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
-      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1)
-      * (me.finished || me.y > TRACK.finishZ ? 0 : 1); // past the finish line: slow down and stop on the beach
-    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - (top === 0 ? RACE.brake : RACE.offTrackSlowdown) * dt);
+      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1) * (spinning ? RACE.spinSpeed : 1);
+    if (inWater) mySpeed = Math.max(0, mySpeed - RACE.waterDrag * dt); // the lake stops the sled
+    else if (flying) { /* in the air it just keeps its speed */ }
+    else if (mySpeed > top) mySpeed = Math.max(top, mySpeed - RACE.offTrackSlowdown * dt);
     else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
+
+    // Carve boost: go round a whole bend on the path, at speed, and the snow under the
+    // runners turns blue (ready), then golden (even better). When the bend ends: whoosh!
+    const bend = Math.abs(segment.curve);
+    if (inDeepSnow || fraction < 0.6 || spinning) carveTime = 0;
+    else if (!flying && bend >= RACE.carveCurve) carveTime += dt;
+    else if (bend < RACE.carveCurve * 0.5) {
+      if (carveTime >= RACE.carveAfter) {
+        boostUntil = Math.max(boostUntil, gameTime + RACE.carveBoost[carveTime >= RACE.carveBig ? 1 : 0]);
+        playSound("boost");
+      }
+      carveTime = 0;
+    }
 
     // Crashing into a tree, a snowman, a rock or a cabin.
     // (Trees and rocks stand beside the path, and a few right on it, so watch out!)
@@ -185,12 +289,13 @@ function raceUpdate(dt) {
     // moment the nose touches (not after it's already halfway through). A hit stops the sled
     // dead, knocks it back a little and shoves it sideways, so it never goes through anything.
     // (Only the solid middle counts, like a tree's trunk: `hit` in SPRITE_SIZES. You can slip under the leaves.)
+    // (A sled that is flying high enough goes right over it.)
     if (gameTime - crashAt > 0.5 && mySpeed > 0) {
       const noseIndex = findSegment(me.y + RACE.sledLength).index;
       for (let i = segment.index; i <= noseIndex && gameTime !== crashAt; i++) {
         for (const sprite of TRACK.segments[i].sprites) {
           const size = SPRITE_SIZES[sprite.type];
-          if (!size.solid) continue;
+          if (!size.solid || myAir > size.h * 0.5) continue;
           const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth;
           if (Math.abs(me.x - sprite.offset) >= reach) continue;
           // Bounce off, away from it. (If it stands beside the path, always back TOWARD the path.)
@@ -198,6 +303,8 @@ function raceUpdate(dt) {
           mySpeed = -RACE.crashBounce * Math.max(0.4, fraction);
           crashAt = gameTime;
           mySteer = crashDir * 0.3; // (the sled ends up pointing away from what it hit)
+          mySlide = 0;
+          carveTime = 0;
           playSound("crash");
           if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
           break;
@@ -210,9 +317,39 @@ function raceUpdate(dt) {
     raceTurn += segment.curve * (mySpeed * dt / RACE.segmentLength) * 0.003;
     me.y += mySpeed * dt;
 
+    // Jumps: riding off the top of a ramp throws the sled into the air, and gravity brings
+    // it back down (sledFlight in race-track.js). Landing on the path = a little boost.
+    // The last ramp throws it into the Kinneret: splash!
+    flight.y = me.y; flight.x = me.x; flight.speed = mySpeed; flight.air = myAir; flight.vy = myVy;
+    const flew = sledFlight(flight, oldY, oldX, dt);
+    myAir = flight.air; myVy = flight.vy;
+    if (flew === "launched") playSound("jump");
+    if (me.y >= TRACK.waterZ && myAir === 0 && !inWater) {
+      inWater = true;
+      playSound("splash");
+      if (race3dAvailable()) race3dSplash(me.y, me.x, true);
+    } else if (flew === "landed") {
+      playSound("land");
+      if (race3dAvailable()) race3dSplash(me.y, me.x, false); // (a puff of snow)
+      if (!offThePath(findSegment(me.y), me.x)) boostUntil = Math.max(boostUntil, gameTime + RACE.landBoostTime);
+    }
+
+    // Gift boxes: drive through one (with empty hands) and the referee puts something in them.
+    // (The box vanishes at once on this phone; the referee makes it vanish for everyone.)
+    if (!me.item && myAir < 200 && gameTime - itemUsedAt > 0.5) {
+      for (const box of TRACK.boxes) {
+        if (box.z < oldY || box.z > me.y + RACE.sledLength || Math.abs(me.x - box.offset) > 0.28) continue;
+        if ((raceInfo.gone || []).includes(box.id) || gameTime - (boxClaims.has(box.id) ? boxClaims.get(box.id) : -Infinity) < 1.5) continue;
+        boxClaims.set(box.id, gameTime);
+        sendToServer({ type: "box", id: box.id });
+        playSound("item");
+        break;
+      }
+    }
+
     // Snow spraying up from the runners when turning or in deep snow.
     // (This is the flat drawing's spray. In 3D the spray is real 3D snow: see race-3d.js.)
-    if (!race3dAvailable() && mySpeed > 1500 && (Math.abs(steer) > 0 || inDeepSnow) && snowPuffs.length < 60) {
+    if (!race3dAvailable() && !flying && !inWater && mySpeed > 1500 && (Math.abs(steer) > 0 || inDeepSnow) && snowPuffs.length < 60) {
       for (const side of [-1, 1]) {
         if (!inDeepSnow && side === Math.sign(steer)) continue; // turning: spray from the outside runner
         snowPuffs.push({
@@ -228,7 +365,7 @@ function raceUpdate(dt) {
     // Tell the referee where I am, 10 times a second.
     if (gameTime - lastRaceSend > RACE.sendEvery / 1000) {
       lastRaceSend = gameTime;
-      sendToServer({ type: "move", x: me.x, y: me.y, speed: mySpeed, steer: mySteer });
+      sendToServer({ type: "move", x: me.x, y: me.y, speed: mySpeed, steer: mySteer, air: Math.round(myAir) });
     }
   }
 
@@ -361,7 +498,21 @@ function raceRender() {
 
   const sleds = !racing ? [] : Object.values(players)
     .filter((p) => p.id !== client.myId)
-    .map((p) => ({ y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed }));
+    .map((p) => {
+      const seen = otherSleds.get(p.id) || { air: 0, spinAt: -Infinity };
+      return {
+        id: p.id, y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed,
+        air: seen.air, spin: spinAngle(gameTime - seen.spinAt), float: p.y >= TRACK.waterZ && seen.air < 20,
+      };
+    });
+  // Gift boxes that are gone right now, and the banana peels and mangoes on the path.
+  // (A mango flies fast, so between the referee's messages we move it along ourselves.)
+  const gone = new Set(raceInfo.gone || []);
+  for (const [id, at] of boxClaims) { if (gameTime - at < 1.5) gone.add(id); else boxClaims.delete(id); }
+  const things = (raceInfo.things || []).map((thing) => ({
+    id: thing.id, kind: thing.kind, x: thing.x,
+    y: thing.y + (thing.speed || 0) * Math.max(0, Math.min(0.2, gameTime - raceInfo.thingsAt)),
+  }));
   const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   const viewTurn = racing ? mySteer * RACE.maxTurn * RACE.cameraTurn : 0;
@@ -374,8 +525,10 @@ function raceRender() {
     sledOnScreen = drawRace3d({
       along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate,
       color: (me && me.color) || RACE.colors[0],
-      sleds: sleds.map((sled, i) => Object.assign({ id: "other" + i }, sled)),
-      bounce: inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
+      sleds, gone, things,
+      air: racing ? myAir : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
+      charge: carveTime >= RACE.carveBig ? 2 : carveTime >= RACE.carveAfter ? 1 : 0,            // the carve boost building up (blue, then golden snow)
+      bounce: myAir > 0 || inWater ? 0 : inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
       wobble: (sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0) // rocking after a crash…
         + (sinceBump < 0.5 ? Math.exp(-7 * sinceBump) * Math.sin(sinceBump * 26) * 0.14 * bumpDir : 0),      // …and a little after bumping a sled
       speed: fraction, carve: myCarve, deep: inDeepSnow, // (for the snow spray)
@@ -385,7 +538,7 @@ function raceRender() {
   if (sledOnScreen) ctx.clearRect(-10, -10, w + 20, h + 20); // (see-through, so the 3D world shows)
   else {
     hideRace3d();
-    drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate });
+    drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate, gone, things });
   }
   // Snow falling up high (it stops lower down, where the snow has melted).
   drawSnowfall(ctx, w, h, gameTime, findSegment(myY).snow, racing ? mySpeed / RACE.maxSpeed : 0.5, -viewTurn * w);
@@ -398,7 +551,7 @@ function raceRender() {
   // (In 3D the sled is part of the 3D world; here we only need to know where it is, for the snow spray.)
   const size = sledOnScreen ? sledOnScreen.size : Math.min(SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2, h * 0.3);
   const bounce = inDeepSnow ? Math.sin(gameTime * 30) * size * 0.025 : Math.sin(gameTime * 18) * size * 0.006 * fraction;
-  const bottom = sledOnScreen ? sledOnScreen.y : h * (RACE.horizon + 0.5) + bounce;
+  const bottom = sledOnScreen ? sledOnScreen.y : h * (RACE.horizon + 0.5) + bounce - myAir * size / SLED_WIDTH; // (higher up the screen while flying)
   const middle = sledOnScreen ? sledOnScreen.x : w / 2;
   mySledSize = size;
   ctx.fillStyle = "#ffffff";
@@ -410,7 +563,7 @@ function raceRender() {
   }
   ctx.globalAlpha = 1;
   // (The sled points a bit further round than the view, so you can see it turning.)
-  if (!sledOnScreen) drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer * RACE.maxTurn - viewTurn * 0.5, gameTime, null);
+  if (!sledOnScreen) drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer * RACE.maxTurn - viewTurn * 0.5 + spinAngle(gameTime - spinAt), gameTime, null);
 
   // The race info on top.
   const order = raceOrder();
@@ -437,6 +590,9 @@ function raceRender() {
     feedback: gateFeedback && gameTime < gateFeedback.until ? gateFeedback : null,
     boosting,
     slowed: gameTime < slowUntil,
+    flying: myAir > 120,
+    spinning: gameTime - spinAt < RACE.spinTime,
+    inWater,
   });
 }
 
@@ -480,6 +636,10 @@ function showRaceWinner() {
 function raceResetTimers() {
   crashAt = -Infinity;
   lastRaceSend = -Infinity;
+  spinAt = -Infinity;
+  itemUsedAt = -Infinity;
+  boxClaims.clear();
+  for (const seen of otherSleds.values()) seen.spinAt = -Infinity;
   forgetGates();
 }
 
@@ -500,11 +660,17 @@ function raceClear() {
   steerFingers.clear();
   forgetGates();
   snowPuffs.length = 0;
+  otherSleds.clear();
+  boxClaims.clear();
+  myAir = 0;
+  inWater = false;
   raceWinnerEl.hidden = true;
 }
 
 function raceApplySnapshot(snap) {
-  if (snap.race) raceInfo = snap.race;
+  if (!snap.race) return;
+  raceInfo = snap.race;
+  raceInfo.thingsAt = gameTime; // (when we heard where the mangoes are)
 }
 
 function raceOnPhase(phase) {
@@ -513,6 +679,18 @@ function raceOnPhase(phase) {
     mySpeed = 0;
     mySteer = 0;
     myCarve = 0;
+    mySlide = 0;
+    myAir = 0;
+    myVy = 0;
+    carveTime = 0;
+    inWater = false;
+    spinAt = -Infinity;
+    itemUsedAt = -Infinity;
+    lastItem = null;
+    boxClaims.clear();
+    otherSleds.clear();
+    const me = myPlayer();
+    mySpinCount = me ? me.spinCount || 0 : 0;
     bumpAt = -Infinity;
     crashAt = -Infinity;
     myFinishedPlace = 0;
@@ -532,6 +710,13 @@ function raceUpdateHud(p, playing) {
   hudEl.hidden = true;
   tiltButton.hidden = !playing; // 👆 / 📱: touch or tilt steering
   joystickBase.hidden = true;
+  // The gift button: only while I'm holding a banana peel or a mango.
+  const names = playing && p.item && gameTime - itemUsedAt > 0.5 ? ITEM_NAMES[p.item] : null;
+  itemButton.hidden = !names;
+  if (names) {
+    itemIcon.textContent = names.icon;
+    setBilingual(itemLabel, names.en, names.he);
+  }
 }
 
 PHONE_GAMES.race = {
@@ -539,7 +724,7 @@ PHONE_GAMES.race = {
   startText: { en: "Start the race!", he: "מַתְחִילִים אֶת הַמֵּרוֹץ!" },
   resetTimers: raceResetTimers,
   clear: raceClear,
-  onKey: () => {},
+  onKey: (key) => { if (key === " ") useMyItem(); }, // Space = use my banana peel / mango
   applySnapshot: raceApplySnapshot,
   onEvent: () => {},
   onPhase: raceOnPhase,

@@ -71,7 +71,7 @@ const P3 = (function buildPath3d() {
   const make = () => new Float32Array(N + 1);
   const p = {
     N, x: make(), y: make(), z: make(), heading: make(), cos: make(), sin: make(),
-    half: make(), snow: make(), sand: make(), yLand: make(), wallL: make(), wallR: make(),
+    half: make(), island: make(), snow: make(), sand: make(), yLand: make(), wallL: make(), wallR: make(),
     edgeL: make().fill(NaN), edgeR: make().fill(NaN),
     waterIndex: N, finishIndex: Math.floor(TRACK.finishZ / RACE.segmentLength),
   };
@@ -83,6 +83,7 @@ const P3 = (function buildPath3d() {
     p.sin[n] = Math.sin(heading);
     p.y[n] = (n < N ? seg.p1.world.y : seg.p2.world.y) * U3;
     p.half[n] = seg.width * RW3;
+    p.island[n] = seg.island * RW3; // (where the path splits: half the width of the island in the middle)
     p.snow[n] = seg.snow;
     p.sand[n] = seg.sand;
     if (seg.water && n < p.waterIndex) p.waterIndex = n;
@@ -189,10 +190,17 @@ function fieldRoll(n, lat, half) {
   return wide * smooth3(0, 16, half - Math.abs(lat)) * (rough2(x * 0.022, z * 0.022) * 1.3 + 0.3);
 }
 
+// Where the path splits in two, the island in the middle is a low bank of rocky ground.
+function islandMound(n, a) {
+  const island = P3.island[n];
+  if (island <= 0 || a >= island) return 0;
+  return 2.4 * smooth3(0, 5, island - a) * Math.min(1, island / 8);
+}
+
 // The height of the path strip at point n, `lat` units sideways from the middle.
 function stripHeight(n, lat) {
   const a = Math.abs(lat), half = P3.half[n], y = P3.y[n];
-  if (a <= half) return y + fieldRoll(n, lat, half);
+  if (a <= half) return y + fieldRoll(n, lat, half) + islandMound(n, a);
   if (a <= half + 3) return y + 0.45 * (a - half) / 3; // the little bank of snow along the edge
   const edge = edgeHeight(n, lat > 0 ? 1 : -1);
   if (a >= half + SHOULDER3) return edge;
@@ -201,7 +209,9 @@ function stripHeight(n, lat) {
 
 // Where a spot on the path is in the world. along = distance along the path (track units),
 // side = how far left/right (in road widths, like a sled's x). Fills in `out`.
-function pathSpot(along, side, out) {
+// A snow ramp there lifts it (that is where a sled really is); `plain` = true leaves ramps out
+// (the camera uses that, so it glides past a ramp instead of nodding at it).
+function pathSpot(along, side, out, plain) {
   const f0 = Math.max(0, Math.min(P3.N - 0.001, along / RACE.segmentLength));
   const i = Math.floor(f0), f = f0 - i, lat = side * RW3;
   const heading = P3.heading[i] + (P3.heading[i + 1] - P3.heading[i]) * f;
@@ -209,7 +219,7 @@ function pathSpot(along, side, out) {
   out.x = P3.x[i] + (P3.x[i + 1] - P3.x[i]) * f + c * lat;
   out.z = P3.z[i] + (P3.z[i + 1] - P3.z[i]) * f + s * lat;
   const y0 = stripHeight(i, lat), y1 = stripHeight(i + 1, lat);
-  out.y = y0 + (y1 - y0) * f;
+  out.y = y0 + (y1 - y0) * f + (plain ? 0 : rampHeightAt(along, side) * U3);
   out.heading = heading;
   const a = Math.max(0, i - 1), b = Math.min(P3.N, i + 3);
   out.slope = (P3.y[b] - P3.y[a]) / ((b - a) * SEG3); // minus = downhill
@@ -446,7 +456,7 @@ const MODELS = {
 const world3d = {
   failed: false, ready: false, quality: 1, slowFrames: 0, lastFrameAt: 0,
   landChunks: new Map(), pathChunks: new Map(), sleds: new Map(), labels: new Map(),
-  shaking: null, spray: [], trails: new Map(),
+  shaking: null, spray: [], trails: new Map(), things: new Map(),
 };
 
 function race3dAvailable() {
@@ -489,6 +499,7 @@ function initRace3d() {
   makeGates();
   makeSigns();
   makeSpray();
+  makeItems();
   w3.ready = true;
 }
 
@@ -777,8 +788,8 @@ function buildPathPiece(piece) {
   const at = (n, lat, lift) => [P3.x[n] - ox + P3.cos[n] * lat, stripHeight(n, lat) + (lift || 0), P3.z[n] - oz + P3.sin[n] * lat];
   // A band of ground from point n to n + 1. Wide bands are cut into columns, so they can
   // follow the rolling snow. `snowfield` (0 … 1) blends the color into natural, patchy snow.
-  const strip = (n, a0, a1, b0, b1, col, snowfield) => {
-    const cols = Math.max(1, Math.ceil(Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)) / 9));
+  const strip = (n, a0, a1, b0, b1, col, snowfield, fine) => {
+    const cols = Math.max(1, Math.ceil(Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)) / (fine ? 3 : 9)));
     for (let k = 0; k < cols; k++) {
       const t0 = k / cols, t1 = (k + 1) / cols;
       const A0 = at(n, a0 + (a1 - a0) * t0), A1 = at(n, a0 + (a1 - a0) * t1), B1 = at(n + 1, b0 + (b1 - b0) * t1), B0 = at(n + 1, b0 + (b1 - b0) * t0);
@@ -819,7 +830,10 @@ function buildPathPiece(piece) {
     }
     // (A big snowfield has no stripes or lines: it's just open snow.)
     const snowfield = smooth3(2.2, 3.2, seg.width) * (1 - P3.sand[n]);
-    if (seg.width > 2.4) {
+    if (seg.island > 0.02 || seg.island2 > 0.02) {
+      // Where the path splits: the island in the middle (rocky ground, cut finely so it can be a rounded bank).
+      lines.push([0, 0, seg.island, landColor(mid, midZ, P3.snow[n], 0, 0.8, 0), seg.island2, true]);
+    } else if (seg.width > 2.4) {
       // nothing drawn on it
     } else if (seg.width > RACE.gateWidth * 0.8) {
       if (!seg.dark) for (let lane = 1; lane < RACE.lanes; lane++) { const t = lane / RACE.lanes * 2 - 1; lines.push([t * seg.width, t * seg.width2, 0.035, PATHC.lane]); }
@@ -831,15 +845,23 @@ function buildPathPiece(piece) {
     }
     lines.sort((a, b) => a[0] - b[0]);
     let fromA = -ha, fromB = -hb;
-    for (const [la, lb, wide, col] of lines) {
-      const a0 = (la - wide) * RW3, a1 = (la + wide) * RW3, b0 = (lb - wide) * RW3, b1 = (lb + wide) * RW3;
+    for (const [la, lb, wide, col, wideFar, fine] of lines) {
+      const wideB = wideFar === undefined ? wide : wideFar; // (the island gets wider and narrower along the way)
+      const a0 = (la - wide) * RW3, a1 = (la + wide) * RW3, b0 = (lb - wideB) * RW3, b1 = (lb + wideB) * RW3;
       strip(n, fromA, a0, fromB, b0, base, snowfield);
-      strip(n, a0, a1, b0, b1, col);
+      strip(n, a0, a1, b0, b1, col, 0, fine);
       fromA = a1; fromB = b1;
     }
     strip(n, fromA, ha, fromB, hb, base, snowfield);
   }
   group.add(new THREE.Mesh(B.groundGeometry(ox, oz), world3d.groundPaint));
+
+  // The snow ramps that start on this piece (and the wooden one into the lake).
+  const R = new MeshBuilder();
+  for (const ramp of TRACK.ramps) {
+    if (Math.floor(ramp.index / PATH_PIECE) === piece) buildRamp(R, ramp, ox, oz);
+  }
+  if (R.p.length) group.add(new THREE.Mesh(R.geometry(), world3d.paint));
 
   // The trees, bushes, rocks, poles… standing on this piece, and a soft shadow under each.
   const T = new MeshBuilder(), S = new MeshBuilder();
@@ -878,6 +900,52 @@ function buildPathPiece(piece) {
   }
   group.userData = { things, treeMesh, still: treeMesh ? treeMesh.geometry.attributes.position.array.slice() : null };
   return group;
+}
+
+// A spot on the path strip BETWEEN the path's points (f = 12.5 is halfway from point 12 to 13),
+// `lat` units sideways, lifted by `lift`. ox, oz = where the piece being built is in the world.
+function stripSpot(f, lat, ox, oz, lift) {
+  const n = Math.max(0, Math.min(P3.N - 1, Math.floor(f))), t = f - n;
+  const c = P3.cos[n] + (P3.cos[n + 1] - P3.cos[n]) * t, s = P3.sin[n] + (P3.sin[n + 1] - P3.sin[n]) * t;
+  return [
+    P3.x[n] + (P3.x[n + 1] - P3.x[n]) * t - ox + c * lat,
+    stripHeight(n, lat) * (1 - t) + stripHeight(n + 1, lat) * t + lift,
+    P3.z[n] + (P3.z[n + 1] - P3.z[n]) * t - oz + s * lat,
+  ];
+}
+
+// A jump: a wedge standing on the path. It starts flat, gets steeper, and ends in a drop
+// (the same shape as rampHeightAt in race-track.js, which is what the sleds really ride on).
+// Snow ramps have blue and white bands and an orange edge with two marker posts, so you can
+// see them coming. The one at the lake is a wooden pier.
+function buildRamp(B, ramp, ox, oz) {
+  const pier = ramp.kind === "pier";
+  const steps = ramp.length * 2, cols = Math.max(2, Math.ceil(ramp.half * 2 * RW3 / 6));
+  const lat0 = (ramp.offset - ramp.half) * RW3, lat1 = (ramp.offset + ramp.half) * RW3;
+  const high = (i) => ramp.height * U3 * Math.pow(i / steps, 1.6);
+  const spot = (i, k, top) => stripSpot(ramp.index + i / 2, lat0 + (lat1 - lat0) * k / cols, ox, oz, top ? high(i) + 0.08 : -0.4);
+  const white = rgb3("#ffffff"), blue = rgb3("#a9d2f3"), orange = rgb3("#f97316"), side = rgb3("#c9dcef");
+  const plankA = rgb3("#b98a55"), plankB = rgb3("#9f6f42"), woodSide = rgb3("#6b4423");
+  for (let i = 0; i < steps; i++) {
+    for (let k = 0; k < cols; k++) {
+      let col;
+      if (pier) col = i % 2 ? plankA : plankB;
+      else if (i >= steps - 3) col = (i + k) % 2 ? orange : white; // the edge you fly off: orange and white squares
+      else col = i % 4 < 2 ? white : blue;
+      B.quad(spot(i, k, true), spot(i, k + 1, true), spot(i + 1, k + 1, true), spot(i + 1, k, true), col);
+    }
+    for (const k of [0, cols]) B.quad(spot(i, k, false), spot(i + 1, k, false), spot(i + 1, k, true), spot(i, k, true), pier ? woodSide : side);
+  }
+  for (let k = 0; k < cols; k++) B.quad(spot(steps, k, false), spot(steps, k + 1, false), spot(steps, k + 1, true), spot(steps, k, true), pier ? woodSide : shade3(side, 0.9));
+  // Marker posts at the two corners of the top edge.
+  const n = Math.min(P3.N, ramp.index + ramp.length);
+  for (const k of [0, cols]) {
+    const p = spot(steps, k, true);
+    B.place(p[0], p[1], p[2], -P3.heading[n], 1);
+    B.box(0, 2.0, 0, 0.4, 4.0, 0.4, pier ? woodSide : COL.dark);
+    B.box(0, 4.6, 0, 0.7, 1.2, 0.7, pier ? rgb3("#0e7490") : COL.orange);
+  }
+  B.place(0, 0, 0, 0, 1);
 }
 
 function updatePath(index, ahead) {
@@ -1085,20 +1153,62 @@ function makeSled(color) {
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set(0, 0.1, -4.4);
   sled.add(shadow);
-  sled.userData = { flagHolder, color };
+  sled.userData = { flagHolder, shadow, color };
   w3.scene.add(sled);
   return sled;
 }
 
-// Put a sled model where its sled is. turn = which way it points compared to the path (radians, plus = right).
-const SPOT = {};
-function poseSled(sled, along, side, turn, time, wobble) {
-  pathSpot(along, side, SPOT);
-  sled.position.set(SPOT.x, SPOT.y + 0.05, SPOT.z);
-  sled.rotation.y = -(SPOT.heading + turn) + (wobble || 0);
-  sled.rotation.x = Math.atan(SPOT.slope) + Math.abs(wobble || 0) * 0.5; // nose down on the way down, kicked up by a crash
-  sled.rotation.z = -turn * 0.35 + (wobble || 0) * 0.6;                  // leaning into the turn
-  sled.userData.flagHolder.rotation.y = 0.7 + Math.sin(time * 9) * 0.25;
+// Put a sled model where its sled is. o = {
+//   along, side:  where it is (like a sled's y and x)
+//   turn:         which way it points compared to the path (radians, plus = right)
+//   air:          how high it is flying (track units; 0 = on the ground)
+//   spin:         how far round it has spun after being hit (radians)
+//   float:        true = it is floating in the Kinneret
+//   speed:        0 … 1;  wobble: rocking after a crash
+// }
+// The sled SITS on the ground under it: we look how high the ground is under its nose, its
+// tail and its two runners, and tip the sled to match (nose down on a slope, leaning where
+// the ground leans, nose up on a ramp). It does not lean over just because it is turning.
+// In the air its nose follows its flight: up on the way up, down on the way down.
+const SPOT = {}, NOSE = {}, LEFT = {}, RIGHT = {};
+function poseSled(sled, o, time, dt) {
+  const u = sled.userData;
+  const c = Math.cos(o.turn), s = Math.sin(o.turn);
+  const len = RACE.sledLength, wide = 300; // (track units: nose to tail, and from the middle to a runner)
+  pathSpot(o.along + c * len, o.side + s * len / RACE.roadWidth, NOSE);
+  pathSpot(o.along + c * len / 2 + s * wide, o.side + (s * len / 2 - c * wide) / RACE.roadWidth, LEFT);
+  pathSpot(o.along + c * len / 2 - s * wide, o.side + (s * len / 2 + c * wide) / RACE.roadWidth, RIGHT);
+  pathSpot(o.along, o.side, SPOT); // (last, so SPOT is left holding the sled's own spot)
+  const air = (o.air || 0) * U3;
+  let y = SPOT.y + air, pitch, roll;
+  if (o.float) {
+    // Bobbing in the lake, half under the water.
+    y = P3.lakeY - 1.1 + Math.sin(time * 2.4) * 0.18;
+    pitch = Math.sin(time * 1.7) * 0.05;
+    roll = Math.sin(time * 2.1 + 1) * 0.07;
+  } else if (air > 0.3) {
+    const rising = dt > 0 && u.lastY !== undefined ? (y - u.lastY) / dt : 0;
+    pitch = Math.max(-0.55, Math.min(0.55, Math.atan2(rising, Math.max(8, (o.speed || 0) * RACE.maxSpeed * U3))));
+    roll = 0;
+  } else {
+    pitch = Math.atan2(NOSE.y - SPOT.y, len * U3);
+    roll = Math.atan2(RIGHT.y - LEFT.y, wide * 2 * U3);
+  }
+  // (Tipping smoothly, not in jerks.)
+  const ease = u.pitch === undefined || dt <= 0 ? 1 : Math.min(1, dt * 12);
+  u.pitch = (u.pitch || 0) + (pitch - (u.pitch || 0)) * ease;
+  u.roll = (u.roll || 0) + (roll - (u.roll || 0)) * ease;
+  u.lastY = y;
+  const wobble = o.wobble || 0;
+  sled.position.set(SPOT.x, y + 0.05, SPOT.z);
+  sled.rotation.y = -(SPOT.heading + o.turn) + wobble - (o.spin || 0);
+  sled.rotation.x = u.pitch + Math.abs(wobble) * 0.5; // (kicked up by a crash)
+  sled.rotation.z = u.roll + wobble * 0.6;
+  u.flagHolder.rotation.y = 0.7 + Math.sin(time * 9) * 0.25;
+  // Its shadow stays on the ground while it flies (and gets smaller the higher it is).
+  u.shadow.visible = !o.float;
+  u.shadow.position.y = 0.1 - air;
+  u.shadow.scale.setScalar(Math.max(0.45, 1 - air / 22));
   sled.visible = true;
 }
 
@@ -1124,6 +1234,103 @@ function nameLabel(name) {
   return label;
 }
 
+// ---------- Gift boxes, banana peels and mangoes ----------
+// The gift boxes float just above the path, turning slowly. A banana peel lies on the snow.
+// A mango tumbles through the air, down the path. (Where they are comes from the referee.)
+
+function makeItems() {
+  const w3 = world3d;
+  const gold = rgb3("#fde047");
+  // A wrapped present with a golden ribbon and a bow, in four colors.
+  const boxShapes = ["#ef4444", "#3b82f6", "#a855f7", "#22c55e"].map((hex) => {
+    const B = new MeshBuilder(), wrap = rgb3(hex);
+    B.box(0, 0, 0, 3.2, 3.2, 3.2, wrap);
+    B.box(0, 0, 0, 3.32, 3.32, 0.7, gold);
+    B.box(0, 0, 0, 0.7, 3.32, 3.32, gold);
+    B.blob(-0.75, 2.0, 0, 0.85, 0.5, 0.5, gold, 1, 0.1);
+    B.blob(0.75, 2.0, 0, 0.85, 0.5, 0.5, gold, 2, 0.1);
+    return B.geometry();
+  });
+  w3.boxes = TRACK.boxes.map((box) => {
+    const mesh = new THREE.Mesh(boxShapes[box.id % boxShapes.length], w3.paint);
+    pathSpot(box.z, box.offset, SPOT);
+    mesh.position.set(SPOT.x, SPOT.y + 3.6, SPOT.z);
+    mesh.userData = { id: box.id, index: SPOT.index, baseY: SPOT.y + 3.6 };
+    mesh.visible = false;
+    w3.scene.add(mesh);
+    return mesh;
+  });
+  // A banana peel: four flaps lying open on the snow, and the stalk standing up.
+  const P = new MeshBuilder(), yellow = rgb3("#facc15"), pale = rgb3("#fef3c7");
+  for (let k = 0; k < 4; k++) {
+    const an = k / 4 * Math.PI * 2 + 0.4, c = Math.cos(an), s = Math.sin(an);
+    P.tube([c * 0.3, 1.2, s * 0.3], 0.5, [c * 1.6, 0.8, s * 1.6], 0.45, 5, yellow);
+    P.tube([c * 1.6, 0.8, s * 1.6], 0.45, [c * 2.6, 0.15, s * 2.6], 0.14, 5, k % 2 ? yellow : pale, true);
+  }
+  P.tube([0, 1.0, 0], 0.55, [0, 2.0, 0], 0.32, 5, yellow);
+  P.tube([0, 2.0, 0], 0.32, [0.15, 2.6, 0], 0.24, 5, rgb3("#713f12"), true);
+  w3.bananaShape = P.geometry();
+  // A mango: orange with a red cheek, a short stalk and a green leaf.
+  const M = new MeshBuilder();
+  M.blob(0, 0, 0, 1.5, 1.9, 1.4, rgb3("#fb923c"), 3, 0.12, rgb3("#ef4444"));
+  M.blob(0.5, -0.8, 0.3, 0.9, 0.9, 0.9, rgb3("#fbbf24"), 5, 0.1);
+  M.tube([0, 1.8, 0], 0.16, [0.1, 2.5, 0], 0.12, 4, rgb3("#713f12"), true);
+  M.tri([0.1, 2.4, 0], [1.3, 2.9, 0.3], [0.9, 2.2, -0.3], rgb3("#16a34a"));
+  w3.mangoShape = M.geometry();
+}
+
+// Every frame: show the boxes that are nearby and not taken, and put each peel and mango where it is.
+function updateItems(view, index, reach) {
+  const w3 = world3d;
+  for (const mesh of w3.boxes) {
+    const u = mesh.userData;
+    mesh.visible = u.index > index - 20 && u.index < index + reach / SEG3 && !(view.gone && view.gone.has(u.id));
+    if (!mesh.visible) continue;
+    mesh.rotation.y = view.time * 1.8 + u.id;
+    mesh.position.y = u.baseY + Math.sin(view.time * 3 + u.id) * 0.4;
+  }
+  const live = new Set();
+  for (const thing of view.things || []) {
+    let mesh = w3.things.get(thing.id);
+    if (!mesh) {
+      mesh = new THREE.Mesh(thing.kind === "banana" ? w3.bananaShape : w3.mangoShape, w3.paint);
+      mesh.scale.setScalar(1.4); // (a bit bigger than life, so you can see it coming)
+      w3.scene.add(mesh);
+      w3.things.set(thing.id, mesh);
+    }
+    pathSpot(thing.y, thing.x, SPOT);
+    if (thing.kind === "banana") {
+      mesh.position.set(SPOT.x, SPOT.y + 0.05, SPOT.z);
+      mesh.rotation.y = thing.id * 1.7;
+    } else {
+      mesh.position.set(SPOT.x, SPOT.y + 2.6 + Math.sin(view.time * 9 + thing.id) * 0.5, SPOT.z);
+      mesh.rotation.set(-view.time * 13, -SPOT.heading, 0);
+    }
+    live.add(thing.id);
+  }
+  for (const [id, mesh] of w3.things) {
+    if (live.has(id)) continue;
+    w3.scene.remove(mesh); // (its shape is shared with the others, so that stays)
+    w3.things.delete(id);
+  }
+}
+
+// A sled just came down: a puff of snow where it landed, or (water = true) a big splash in the lake.
+// Called by race-game.js. along, side = where (like a sled's y and x).
+function race3dSplash(along, side, water) {
+  if (!world3d.ready) return;
+  pathSpot(along, side, SPOT);
+  const fx = Math.sin(SPOT.heading), fz = -Math.cos(SPOT.heading);
+  const x = SPOT.x + fx * 4.5, z = SPOT.z + fz * 4.5, y = water ? P3.lakeY - 0.4 : SPOT.y + 0.3;
+  const color = water ? SPRAY_WATER : P3.sand[SPOT.index] > 0.5 ? SPRAY_SAND : P3.snow[SPOT.index] > 0.3 ? SPRAY_SNOW : SPRAY_DUST;
+  for (let k = water ? 190 : 45; k > 0; k--) {
+    const an = Math.random() * Math.PI * 2, out = water ? 3 + Math.random() * 15 : 3 + Math.random() * 8, from = Math.random() * 3.5;
+    addSpray(x + Math.cos(an) * from, y, z + Math.sin(an) * from,
+      Math.cos(an) * out + fx * 6, water ? 7 + Math.random() * 24 : 1.5 + Math.random() * 6, Math.sin(an) * out + fz * 6,
+      water ? 0.9 + Math.random() * 0.9 : 0.45 + Math.random() * 0.4, water ? 1.8 + Math.random() * 2.6 : 1.4 + Math.random() * 1.4, 3, 0.95, color);
+  }
+}
+
 // ---------- Snow spray ----------
 // Real snow flies up when a sled cuts through it. Here that's hundreds of soft little puffs:
 // each one is thrown up and out from a runner, keeps some of the sled's speed, slows down in
@@ -1133,6 +1340,7 @@ function nameLabel(name) {
 
 const SPRAY_MAX = 450; // the most puffs in the air at once
 const SPRAY_SNOW = [1, 1, 1], SPRAY_DUST = rgb3("#cdbf9a"), SPRAY_SAND = rgb3("#e6d6a4"), SPRAY_LEAF = rgb3("#b9c79a");
+const SPRAY_WATER = rgb3("#cfe8ff"), SPRAY_BLUE = rgb3("#38bdf8"), SPRAY_GOLD = rgb3("#fbbf24"); // the splash in the lake; the carve boost getting ready
 
 function makeSpray() {
   const w3 = world3d;
@@ -1203,8 +1411,9 @@ function updateSpray(dt) {
 
 // Snow flying up from one sled. pointing = which way the sled points (radians); speed = 0 … 1;
 // carve = how hard it is being steered right now (-1 … 1); deep = off the path, in deep snow;
-// index = which piece of path it's on; amount = 1 for my sled, less for the others.
-function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount) {
+// index = which piece of path it's on; amount = 1 for my sled, less for the others;
+// charge = the carve boost building up (0 = no, 1 = ready: blue snow, 2 = even better: golden snow).
+function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount, charge) {
   if (speed < 0.08 || dt <= 0) return;
   const fx = Math.sin(pointing), fz = -Math.cos(pointing); // forward
   const rx = Math.cos(pointing), rz = Math.sin(pointing);  // to the sled's right
@@ -1212,6 +1421,15 @@ function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount) {
   const v = speed * RACE.maxSpeed * U3; // the sled's speed in 3D units per second
   const color = P3.sand[index] > 0.5 ? SPRAY_SAND : deep && P3.snow[index] < 0.3 ? SPRAY_DUST : SPRAY_SNOW;
   const many = (perSecond) => Math.floor(perSecond * amount * dt + Math.random());
+  // 0. The carve boost is ready: bright sparks from the back of both runners.
+  if (charge) {
+    const glow = charge > 1 ? SPRAY_GOLD : SPRAY_BLUE;
+    for (let k = many(90); k > 0; k--) {
+      const s = Math.random() < 0.5 ? -1 : 1;
+      addSpray(px + rx * s * 2.4, py, pz + rz * s * 2.4, fx * v * 0.7 + rx * s * Math.random() * 5, 2 + Math.random() * 6, fz * v * 0.7 + rz * s * Math.random() * 5,
+        0.3 + Math.random() * 0.3, 0.9 + Math.random() * 0.8, 1.2, 1, glow);
+    }
+  }
   // 1. Powder trailing from the back of both runners, whenever the sled is moving.
   for (let k = many(80 * speed); k > 0; k--) {
     const s = Math.random() < 0.5 ? -1 : 1, keep = 0.55 + Math.random() * 0.25, out = s * Math.random() * 2;
@@ -1244,7 +1462,7 @@ function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount) {
 
 const TRAIL_POINTS = 44, TRAIL_STEP = 1.8;
 
-function sledTrail(id, sled, groundY, pointing, index) {
+function sledTrail(id, sled, groundY, pointing, index, off) {
   const w3 = world3d;
   let trail = w3.trails.get(id);
   if (!trail) {
@@ -1259,7 +1477,7 @@ function sledTrail(id, sled, groundY, pointing, index) {
   }
   const pts = trail.points;
   // (No tracks on the sand of the beach.)
-  const here = { x: sled.position.x, y: groundY + 0.08, z: sled.position.z, rx: Math.cos(pointing), rz: Math.sin(pointing), solid: 1 - P3.sand[index] };
+  const here = { x: sled.position.x, y: groundY + 0.08, z: sled.position.z, rx: Math.cos(pointing), rz: Math.sin(pointing), solid: off ? 0 : 1 - P3.sand[index] }; // (off = flying or floating: no tracks)
   // The sled jumped somewhere else (a new race)? Start a new track.
   if (pts.length && Math.hypot(here.x - pts[0].x, here.z - pts[0].z) > 40) pts.length = 0;
   if (pts.length === 0) pts.push(here, Object.assign({}, here));
@@ -1340,7 +1558,11 @@ function updateCrashEffects(time) {
 //   color:        my sled's color;  bounce: my sled bumping up and down (3D units)
 //   wobble:       my sled rocking after a crash;  shake: the camera shaking after a crash (0 … 1)
 //   speed, carve, deep:  for the snow spray: how fast I'm going (0 … 1), how hard I'm steering (-1 … 1), am I off the path
-//   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed }]
+//   air, spin, float:    my sled flying (how high), spinning out (how far round), floating in the lake
+//   charge:       the carve boost building up (0, 1 or 2)
+//   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed, air, spin, float }]
+//   gone:         a Set of the gift boxes that are taken right now (their ids)
+//   things:       banana peels and mangoes: [{ id, kind, x, y }]
 //   gate:         the question on the next gate ({ number, english, choices }) or null
 //   time:         the game clock
 // }
@@ -1392,15 +1614,16 @@ function drawRace3d(view, w, h) {
   const camHeading = SPOT.heading + (view.viewTurn || 0);
   const fx = Math.sin(camHeading), fz = -Math.cos(camHeading);
   const back = w >= h ? 1 : 1.5; // (an upright phone is narrow, so the camera sits further back)
-  let camX = sledX - fx * 13.5 * back, camZ = sledZ - fz * 13.5 * back, camY = sledY + 6.6 * back;
+  const air = (view.air || 0) * U3; // (when my sled flies, the camera rises part of the way with it)
+  let camX = sledX - fx * 13.5 * back, camZ = sledZ - fz * 13.5 * back, camY = sledY + 6.6 * back + air * 0.85;
   // Never inside the mountain (a wall beside a bend, or a hilltop just behind me).
   camY = Math.max(camY, landAt(camX, camZ).h + 2.6);
-  pathSpot(view.along - 1500, view.side, CAM);
+  pathSpot(view.along - 1500, view.side, CAM, true);
   camY = Math.max(camY, CAM.y + 3.2);
-  pathSpot(view.along + 1900, view.side * 0.6, CAM);
+  pathSpot(view.along + 1900, view.side * 0.6, CAM, true);
   const shake = (view.shake || 0) * 0.5;
   w3.camera.position.set(camX + (Math.random() - 0.5) * shake, camY + (Math.random() - 0.5) * shake, camZ);
-  LOOK.set(sledX + fx * 19, CAM.y + 2.4, sledZ + fz * 19);
+  LOOK.set(sledX + fx * 19, CAM.y + 2.4 + air * 0.6, sledZ + fz * 19);
   w3.camera.lookAt(LOOK);
   w3.sky.position.copy(w3.camera.position);
 
@@ -1422,18 +1645,20 @@ function drawRace3d(view, w, h) {
     }
   }
   for (const sign of w3.signs) sign.group.visible = sign.index > index - 30 && sign.index < index + reach / SEG3 + 20;
+  updateItems(view, index, reach);
 
   // The sleds.
   const seen = new Set();
-  const place = (id, color, along, side, turn, bounce, wobble, name, speed, carve, deep, amount) => {
+  const place = (id, color, o, name, carve, deep, amount, charge) => {
     let sled = w3.sleds.get(id);
     if (sled && sled.userData.color !== color) { disposeGroup(sled); sled = null; }
     if (!sled) { sled = makeSled(color); w3.sleds.set(id, sled); }
-    poseSled(sled, along, side, turn, view.time, wobble);
-    // Its tracks in the snow, and the snow it sprays up.
-    sledTrail(id, sled, SPOT.y, SPOT.heading + turn, SPOT.index);
-    sledSpray(sled, SPOT.heading + turn, speed, carve, deep, SPOT.index, dt, amount * Math.max(0.5, w3.quality));
-    sled.position.y += bounce || 0;
+    poseSled(sled, o, view.time, dt);
+    // Its tracks in the snow, and the snow it sprays up (not while it is flying, or floating in the lake).
+    const off = o.air > 30 || Boolean(o.float);
+    sledTrail(id, sled, SPOT.y, SPOT.heading + o.turn, SPOT.index, off);
+    if (!off) sledSpray(sled, SPOT.heading + o.turn, o.speed, carve, deep, SPOT.index, dt, amount * Math.max(0.5, w3.quality), charge);
+    sled.position.y += o.bounce || 0;
     seen.add(id);
     if (name) {
       const label = nameLabel(name);
@@ -1443,14 +1668,20 @@ function drawRace3d(view, w, h) {
     }
   };
   if (view.racing) {
-    place("me", view.color, view.along, view.side, view.turn, view.bounce, view.wobble, null, view.speed || 0, view.carve || 0, view.deep, 1);
+    place("me", view.color, {
+      along: view.along, side: view.side, turn: view.turn, wobble: view.wobble, bounce: view.bounce,
+      air: view.air || 0, spin: view.spin || 0, float: view.float, speed: view.speed || 0,
+    }, null, view.carve || 0, view.deep, 1, view.charge || 0);
     for (const other of view.sleds) {
       // (Nobody tells us how hard another sled is steering, so we work it out from how fast it's turning.)
       const sled = w3.sleds.get(other.id), before = sled ? sled.userData : null;
       const turning = before && before.lastTurn !== undefined && dt > 0 ? (other.turn - before.lastTurn) / dt / (RACE.turnRate * RACE.maxTurn) : 0;
       const carve = ((before && before.carve) || 0) * 0.85 + Math.max(-1, Math.min(1, turning)) * 0.15;
-      const deep = Math.abs(other.x) > findSegment(other.y).width;
-      place(other.id, other.color, other.y, other.x, other.turn, 0, 0, other.name, other.speed || 0, carve, deep, 0.6);
+      const deep = offThePath(findSegment(other.y), other.x);
+      place(other.id, other.color, {
+        along: other.y, side: other.x, turn: other.turn, wobble: 0, bounce: 0,
+        air: other.air || 0, spin: other.spin || 0, float: other.float, speed: other.speed || 0,
+      }, other.name, carve, deep, 0.6, 0);
       const now = w3.sleds.get(other.id).userData;
       now.lastTurn = other.turn; now.carve = carve;
     }
