@@ -69,8 +69,14 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-12p)
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13a)
 - **Daniel tried it on v 12p: "its great!"** Steps 1–2 of 6 done (1 road + driving, 2 answer gates), plus 3 rounds of visual and gameplay changes. Still to do: 3 bots, 4 gift boxes (🍌 dropped behind, 🥭 thrown forward), 5 multiplayer polish, 6 polish (sounds, podium).
+- **Real 3D (2026-11-13, v 2026-11-13a), headless-tested, NOT yet tried on a phone:**
+  - `race-3d.js` + three.js: a real 3D mountain. Valley walls rise in the path's dips, the ground falls away on hilltops (views of the valley and the Kinneret), low-poly trees/rocks/cabin/snowmen, 3D sled and rider, 3D gates, far mountains, sky, lake.
+  - Falls back to the old flat drawing if a phone can't do 3D. About 160,000 triangles in view; quality drops by itself on slow phones.
+  - **Crashes are solid now:** the sled's NOSE hits (`RACE.sledLength`), only a tree's trunk counts (`hit` in `SPRITE_SIZES`), the sled stops, bounces back (`crashBounce`) and is shoved sideways (`crashShove`, `crashShoveTime`); in 3D the tree rocks and snow/leaves burst off. New `crash` sound.
+  - Multiplayer data is unchanged (still 10 tiny "where I am" messages a second), so 3D can't add network lag.
+  - Known rough edges: a tree right beside the camera can fill a corner of the screen; other sleds' crashes show no tree shake.
 - For 1+ players, no teams (`teams: false`). The lobby shows one racer list and a "Start the race!" button (`startText`). Lobby parts marked `data-modes="ctf"` / `"race"` show only for that game.
 - **The course:** one downhill ride from snowy Mt Hermon to the Kinneret, no laps, about 3 minutes.
   - Curvy, with hills and dips (`RACE.hills`).
@@ -87,7 +93,7 @@
   - Steering turns the sled (`turnSpeed`, `maxTurn`), and the view turns part of the way with it (`cameraTurn` 0.35; Daniel: 0.6 was "a little too much").
   - Curves push you outward a little.
 - **The sled:** rustic wood, tipped nose-down (`nose` in `drawSled`; Daniel asked for it). The rider has a knitted kippah, a tallit-striped scarf, tzitzit, and an Israeli flag.
-- **Not tested yet:** tilt steering on a real phone (an iPhone asks permission), auto-sideways at race start, 2 phones racing each other, speed on an older phone (lower `drawDistance` if it's choppy).
+- **Tilt steering: Daniel says great, better than tapping (2026-11-13).** Not tested yet: 3D on real phones (speed!), 2 phones racing each other, tilt on an iPhone.
 
 ## Tested by Daniel on 2026-11-12
 - **Logs protect hiders + same log = see each other** (2 players): "really fun".
@@ -175,5 +181,6 @@
   - A gate needs `segments[gate.index].gate = gate`, or it isn't drawn (this happened once: "bring back the physical gates").
   - The camera must stay above the highest ground between it and the sled, or the screen goes white past a hilltop.
   - Steep, short hills bring that back too: keep hills long (90+ segments).
-- Race test driver: `<scratchpad>/t/test.js` (a copy of the game + `test.js` after race-game.js). Hash options: `pre`, `frames`, `steer`, `aim=right|wrong`, `at=<0..1>`, `finish`, `post`, `mode`, `tilt=<deg>`, `sweep=1` (white-screen check down the whole course). Delete the `edge*` profiles before each run, or Edge serves old files.
+- Race test driver: `<scratchpad>/test.js` + `mk.sh` (copies the game into `t/` and adds test.js) + `shot.ps1` (screenshot or `-dom` results). Hash options: `pre`, `frames`, `steer`, `aim=right|wrong`, `at=<0..1>`, `seg=<segment>`, `crash=1`, `finish`, `post`, `mode`, `bot=1`, `flat=1` (old drawing), `tilt=<deg>`. Headless Edge needs `--enable-unsafe-swiftshader` for 3D.
+- 3D gotchas: the test result lists `spots` (peaks, dips, ridges, valleys by segment) for screenshots. `P3.z` must keep going down (heading stays under 90°, now max 65°): `landAt` relies on it. The mountain is sunk 2.5 under the path strip so they never flicker.
 - Git Bash heredocs break on some quotes in JS ("unexpected EOF"). Write the code with the Write tool, then splice it in.

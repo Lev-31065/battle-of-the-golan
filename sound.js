@@ -71,6 +71,7 @@ const SOUNDS = {
   win:     () => melody([523, 659, 784, 1047, 784, 1047], 0.13, { type: "triangle", volume: 0.22 }),
   boost:   () => tone(300, 0.45, { type: "sawtooth", slideTo: 1200, volume: 0.1 }),
   bump:    () => tone(90, 0.2, { type: "square", volume: 0.2 }),          // walking into a rock
+  crash:   () => { tone(130, 0.1, { type: "square", slideTo: 50, volume: 0.25 }); tone(60, 0.3, { type: "sawtooth", slideTo: 30, volume: 0.2 }); }, // a sled hitting a tree
   nudge:   () => tone(140, 0.08, { type: "sine", slideTo: 100, volume: 0.04 }), // bumping into a player (soft!)
   munch:   () => melody([520, 700], 0.05, { type: "triangle", volume: 0.07 }),  // eating berries
   throw:   () => tone(350, 0.14, { type: "triangle", slideTo: 900, volume: 0.09 }), // a whoosh (rock, ninja star)

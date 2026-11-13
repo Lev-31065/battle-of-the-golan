@@ -25,21 +25,22 @@ const TRACK = {
   gates: [],  // the answer gates: { number, index (which segment it stands on), z, width }
 };
 
-// How big each kind of sprite is in the world (width, height), and whether a sled
-// crashes into it. (race-draw.js paints them.)
+// How big each kind of sprite is in the world (width, height), whether a sled crashes into
+// it (solid), and how wide the part you actually hit is (hit: a tree's trunk, a whole rock).
+// (race-draw.js paints them flat; race-3d.js builds them in 3D.)
 const SPRITE_SIZES = {
-  bush:     { w: 760,  h: 460,  solid: true },
-  bushSnow: { w: 760,  h: 500,  solid: true },
-  oak:      { w: 1400, h: 1500, solid: true },
-  oakSnow:  { w: 1400, h: 1500, solid: true },
-  olive:    { w: 1300, h: 1100, solid: true },
-  almond:   { w: 1300, h: 1300, solid: true }, // an almond tree in blossom (they flower in winter, around Tu BiShvat)
-  palm:     { w: 1000, h: 2300, solid: true },
-  rock:     { w: 700,  h: 400,  solid: true },
-  rockSnow: { w: 700,  h: 430,  solid: true },
-  snowman:  { w: 480,  h: 720,  solid: true },
-  cabin:    { w: 1800, h: 1350, solid: true },
-  sign:     { w: 1300, h: 1000, solid: true },
+  bush:     { w: 760,  h: 460,  solid: true, hit: 560 },
+  bushSnow: { w: 760,  h: 500,  solid: true, hit: 560 },
+  oak:      { w: 1400, h: 1500, solid: true, hit: 260 },
+  oakSnow:  { w: 1400, h: 1500, solid: true, hit: 260 },
+  olive:    { w: 1300, h: 1100, solid: true, hit: 300 },
+  almond:   { w: 1300, h: 1300, solid: true, hit: 200 }, // an almond tree in blossom (they flower in winter, around Tu BiShvat)
+  palm:     { w: 1000, h: 2300, solid: true, hit: 180 },
+  rock:     { w: 700,  h: 400,  solid: true, hit: 620 },
+  rockSnow: { w: 700,  h: 430,  solid: true, hit: 620 },
+  snowman:  { w: 480,  h: 720,  solid: true, hit: 400 },
+  cabin:    { w: 1800, h: 1350, solid: true, hit: 1500 },
+  sign:     { w: 1300, h: 1000, solid: true, hit: 1100 },
   pole:     { w: 70,   h: 650,  solid: false }, // orange-tipped snow poles that mark the path's edge
   reeds:    { w: 650,  h: 520,  solid: false },
 };

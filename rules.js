@@ -337,7 +337,10 @@ const RACE = {
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0.1,        // how hard curves push you toward the outside
   maxSide: 4,         // the farthest from the middle any sled can be (the referee checks this)
-  crashSpeed: 0.2,        // hitting a tree, bush or rock drops you to 20% speed
+  crashBounce: 1300,      // hitting a tree, bush or rock stops you dead and knocks you BACK at this speed
+  crashShove: 1.1,        // …and shoves you sideways, away from it, this fast (road widths per second)…
+  crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
+  sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateCount: 7,           // how many gates on the way down
@@ -349,7 +352,12 @@ const RACE = {
   slowSpeed: 0.45,        // wrong answer: top speed drops to 45%…
   slowTime: 1.5,          // …for this many seconds
   feedbackTime: 2.5,      // seconds "Correct!" or "The answer is…" stays on the screen
-  // Screen
+  // Real 3D (race-3d.js)
+  threeD: true,           // draw the race in real 3D (false = the old flat drawing; phones that can't do 3D use that anyway)
+  viewDistance: 900,      // how far you can see before the mist, in 3D units (a sled is 6 wide). Lower = faster on old phones
+  sharpness: 2,           // the most screen dots drawn per "pixel" (phones have 2 or 3; 3 looks a bit sharper but is slower)
+  bend3d: 0.6,            // how sharp the bends are in the 3D world (higher = tighter bends)
+  // Screen (the old flat drawing)
   cameraHeight: 1700,     // how high the camera floats above the path (higher = more from above)
   fieldOfView: 100,       // how wide the camera sees (degrees)
   horizon: 0.3,           // where the horizon is on the screen (0 = top, 0.5 = middle)
@@ -362,7 +370,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-12p";
+const GAME_VERSION = "2026-11-13a";
 
 // ---------- Helpers ----------
 

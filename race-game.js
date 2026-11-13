@@ -11,6 +11,7 @@ let mySpeed = 0;          // how fast my sled is going (track units per second)
 let mySteer = 0;          // which way my sled points: -1 = turned fully left, 0 = straight down the path, 1 = fully right
 let raceTurn = 0;         // goes up and down as the track turns (slides the mountains)
 let crashAt = -Infinity;  // when I last hit a tree (for the screen shake)
+let crashDir = 1;         // which way that crash shoved me: -1 = left, 1 = right
 let lastRaceSend = -Infinity; // when I last told the referee where I am (game clock)
 let lastCountdown = null; // the last countdown number I beeped for
 let myFinishedPlace = 0;  // my place once I've crossed the finish line (0 = still racing)
@@ -131,7 +132,7 @@ function raceUpdate(dt) {
 
   if (started) {
     const segment = findSegment(me.y);
-    const fraction = mySpeed / RACE.maxSpeed; // 0 = stopped, 1 = top speed
+    const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
     // The way the sled points moves you sideways (faster when you're going fast)…
     me.x += mySteer * RACE.steerSpeed * fraction * dt;
     // …and curves push you toward the outside, so you have to steer into them.
@@ -152,20 +153,28 @@ function raceUpdate(dt) {
 
     // Crashing into a tree, a snowman, a rock or a cabin.
     // (Trees and rocks stand beside the path, and a few right on it, so watch out!)
-    if (gameTime - crashAt > 0.6) {
-      for (const sprite of segment.sprites) {
-        const size = SPRITE_SIZES[sprite.type];
-        if (!size.solid) continue;
-        const reach = (SLED_WIDTH / 2 + size.w * 0.35) / RACE.roadWidth;
-        if (Math.abs(me.x - sprite.offset) < reach) {
-          mySpeed = Math.min(mySpeed, RACE.maxSpeed * RACE.crashSpeed);
+    // The sled is long: we look at everything from its back to its NOSE, so it hits the
+    // moment the nose touches (not after it's already halfway through). A hit stops the sled
+    // dead, knocks it back a little and shoves it sideways, so it never goes through anything.
+    // (Only the solid middle counts, like a tree's trunk: `hit` in SPRITE_SIZES. You can slip under the leaves.)
+    if (gameTime - crashAt > 0.5 && mySpeed > 0) {
+      const noseIndex = findSegment(me.y + RACE.sledLength).index;
+      for (let i = segment.index; i <= noseIndex && gameTime !== crashAt; i++) {
+        for (const sprite of TRACK.segments[i].sprites) {
+          const size = SPRITE_SIZES[sprite.type];
+          if (!size.solid) continue;
+          const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth;
+          if (Math.abs(me.x - sprite.offset) >= reach) continue;
+          crashDir = me.x >= sprite.offset ? 1 : -1; // bounce off, away from it
+          mySpeed = -RACE.crashBounce * Math.max(0.4, fraction);
           crashAt = gameTime;
-          me.x += (me.x >= sprite.offset ? 1 : -1) * 0.15; // bounce off, away from it
-          playSound("bump");
+          playSound("crash");
+          if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
           break;
         }
       }
     }
+    if (gameTime - crashAt < RACE.crashShoveTime) me.x += crashDir * RACE.crashShove * dt;
 
     // The mountains slide as the track turns.
     raceTurn += segment.curve * (mySpeed * dt / RACE.segmentLength) * 0.003;
@@ -324,7 +333,26 @@ function raceRender() {
   const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   const viewTurn = racing ? mySteer * RACE.maxTurn * RACE.cameraTurn : 0;
-  drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate });
+
+  // Real 3D (race-3d.js) if this phone can do it: the world is drawn on the 3D canvas
+  // behind this one, and this canvas only adds the snowflakes and the race info on top.
+  const fraction = Math.max(0, mySpeed) / RACE.maxSpeed;
+  let sledOnScreen = null;
+  if (race3dAvailable()) {
+    sledOnScreen = drawRace3d({
+      along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate,
+      color: (me && me.color) || RACE.colors[0],
+      sleds: sleds.map((sled, i) => Object.assign({ id: "other" + i }, sled)),
+      bounce: inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
+      wobble: sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0, // rocking after a crash
+      shake: shake / 8,
+    }, w, h);
+  }
+  if (sledOnScreen) ctx.clearRect(-10, -10, w + 20, h + 20); // (see-through, so the 3D world shows)
+  else {
+    hideRace3d();
+    drawRaceScene(ctx, w, h, { cameraZ: myY - raceCamera.playerZ, cameraX: myX, turn: raceTurn, viewTurn, time: gameTime, sleds, gate });
+  }
   // Snow falling up high (it stops lower down, where the snow has melted).
   drawSnowfall(ctx, w, h, gameTime, findSegment(myY).snow, racing ? mySpeed / RACE.maxSpeed : 0.5, -viewTurn * w);
   if (!racing) return;
@@ -333,21 +361,22 @@ function raceRender() {
 
   // My sled, in the middle, where the track is under the camera. It bumps along in deep snow.
   // (On a sideways phone the screen is wide but short, so the sled is kept from getting too big.)
-  const size = Math.min(SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2, h * 0.3);
-  const fraction = mySpeed / RACE.maxSpeed;
+  // (In 3D the sled is part of the 3D world; here we only need to know where it is, for the snow spray.)
+  const size = sledOnScreen ? sledOnScreen.size : Math.min(SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2, h * 0.3);
   const bounce = inDeepSnow ? Math.sin(gameTime * 30) * size * 0.025 : Math.sin(gameTime * 18) * size * 0.006 * fraction;
-  const bottom = h * (RACE.horizon + 0.5) + bounce;
+  const bottom = sledOnScreen ? sledOnScreen.y : h * (RACE.horizon + 0.5) + bounce;
+  const middle = sledOnScreen ? sledOnScreen.x : w / 2;
   mySledSize = size;
   ctx.fillStyle = "#ffffff";
   for (const puff of snowPuffs) {
     ctx.globalAlpha = 1 - puff.age / puff.life;
     ctx.beginPath();
-    ctx.arc(w / 2 + puff.x, bottom - size * 0.05 + puff.y, puff.size * (1 + puff.age * 2), 0, Math.PI * 2);
+    ctx.arc(middle + puff.x, bottom - size * 0.05 + puff.y, puff.size * (1 + puff.age * 2), 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
   // (The sled points a bit further round than the view, so you can see it turning.)
-  drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer * RACE.maxTurn - viewTurn * 0.5, gameTime, null);
+  if (!sledOnScreen) drawSled(ctx, w / 2, bottom, size, me.color || RACE.colors[0], mySteer * RACE.maxTurn - viewTurn * 0.5, gameTime, null);
 
   // The race info on top.
   const order = raceOrder();
@@ -430,6 +459,7 @@ function forgetGates() {
 }
 
 function raceClear() {
+  hideRace3d(); // (the 3D canvas is only for the race)
   raceInfo = { startAt: Infinity, finishers: [] };
   mySpeed = 0;
   myFinishedPlace = 0;
