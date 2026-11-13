@@ -329,11 +329,12 @@ const RACE = {
   offTrackSpeed: 0.3,     // off the path, your top speed drops to 30%
   offTrackSlowdown: 6000, // how fast going off the path slows you down
   steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
+  slowSteer: 0.35,        // even when you're barely moving, you steer at least this much of that (so you can get unstuck after a crash)
   turnSpeed: 4,           // how quickly the sled swings round when you steer (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
   cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
-  tiltFull: 25,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way
-  tiltDeadZone: 3,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
+  tiltFull: 16,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way (lower = more sensitive). Was 25
+  tiltDeadZone: 2,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0.1,        // how hard curves push you toward the outside
   maxSide: 4,         // the farthest from the middle any sled can be (the referee checks this)
@@ -342,6 +343,12 @@ const RACE = {
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
+  // Bots: computer sleds, so even one player has someone to race (the referee drives them: race-server.js)
+  bots: 4,                // bots join until there are this many sleds (4 = one player gets 3 bots; 0 = no bots)
+  botNames: ["🤖 גַּל", "🤖 נֹעָה", "🤖 טַל", "🤖 שַׁי", "🤖 לִיאוֹר"],
+  botSkill: [0.96, 0.9, 0.84, 0.93, 0.87], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner
+  botRight: 0.6,          // how often a bot picks the right answer at a gate (0.6 = 60%)
+  botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateCount: 7,           // how many gates on the way down
   gateGap: 640,           // segments from one gate to the next (about 23 seconds)
@@ -370,7 +377,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-13a";
+const GAME_VERSION = "2026-11-13b";
 
 // ---------- Helpers ----------
 

@@ -69,14 +69,20 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13a)
-- **Daniel tried it on v 12p: "its great!"** Steps 1–2 of 6 done (1 road + driving, 2 answer gates), plus 3 rounds of visual and gameplay changes. Still to do: 3 bots, 4 gift boxes (🍌 dropped behind, 🥭 thrown forward), 5 multiplayer polish, 6 polish (sounds, podium).
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13b)
+- **Daniel tried it on v 12p: "its great!"** Steps 1–3 of 6 done (1 road + driving, 2 answer gates, 3 bots), plus real 3D. Still to do: 4 gift boxes (🍌 dropped behind, 🥭 thrown forward), 5 multiplayer polish, 6 polish (sounds, podium).
 - **Real 3D (2026-11-13, v 2026-11-13a), headless-tested, NOT yet tried on a phone:**
   - `race-3d.js` + three.js: a real 3D mountain. Valley walls rise in the path's dips, the ground falls away on hilltops (views of the valley and the Kinneret), low-poly trees/rocks/cabin/snowmen, 3D sled and rider, 3D gates, far mountains, sky, lake.
   - Falls back to the old flat drawing if a phone can't do 3D. About 160,000 triangles in view; quality drops by itself on slow phones.
   - **Crashes are solid now:** the sled's NOSE hits (`RACE.sledLength`), only a tree's trunk counts (`hit` in `SPRITE_SIZES`), the sled stops, bounces back (`crashBounce`) and is shoved sideways (`crashShove`, `crashShoveTime`); in 3D the tree rocks and snow/leaves burst off. New `crash` sound.
   - Multiplayer data is unchanged (still 10 tiny "where I am" messages a second), so 3D can't add network lag.
   - Known rough edges: a tree right beside the camera can fill a corner of the screen; other sleds' crashes show no tree shake.
+- **Bots = race step 3 (2026-11-13, v 2026-11-13b), headless-tested, not yet tried by Daniel:**
+  - Computer sleds join when the host taps Start, until there are `RACE.bots` (4) sleds; they leave when everyone returns to the lobby. Names 🤖 גַּל / נֹעָה / טַל.
+  - The referee drives them (`raceMoveBot` in race-server.js; players with `bot: true`, ids `robot1`…): lanes, dodging trees (better bots look further ahead), 60% right at gates (`botRight`), speeds from `botSkill`, and they ease off / push harder to stay near the best player (`botCatchUp`).
+  - The race ends when every PLAYER has finished; the 25-second "hurry up" clock starts with the first player, never a bot.
+  - Claude's choices (Daniel didn't pick): 4 sleds total, same bots at every level.
+  - Also: tilt steering more sensitive (`tiltFull` 16, was 25; dead zone 2). After a crash you can always steer a bit (`slowSteer`), crashes beside the path push you back toward it, and trees beside the path stand further from its edge.
 - For 1+ players, no teams (`teams: false`). The lobby shows one racer list and a "Start the race!" button (`startText`). Lobby parts marked `data-modes="ctf"` / `"race"` show only for that game.
 - **The course:** one downhill ride from snowy Mt Hermon to the Kinneret, no laps, about 3 minutes.
   - Curvy, with hills and dips (`RACE.hills`).

@@ -134,7 +134,8 @@ function raceUpdate(dt) {
     const segment = findSegment(me.y);
     const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
     // The way the sled points moves you sideways (faster when you're going fast)…
-    me.x += mySteer * RACE.steerSpeed * fraction * dt;
+    // (Even when you're crawling you can still steer a bit: RACE.slowSteer. Otherwise you'd be stuck after a crash.)
+    me.x += mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * dt;
     // …and curves push you toward the outside, so you have to steer into them.
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
     // You can go off the path, but not past the edge of the mountainside.
@@ -165,7 +166,8 @@ function raceUpdate(dt) {
           if (!size.solid) continue;
           const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth;
           if (Math.abs(me.x - sprite.offset) >= reach) continue;
-          crashDir = me.x >= sprite.offset ? 1 : -1; // bounce off, away from it
+          // Bounce off, away from it. (If it stands beside the path, always back TOWARD the path.)
+          crashDir = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
           mySpeed = -RACE.crashBounce * Math.max(0.4, fraction);
           crashAt = gameTime;
           playSound("crash");

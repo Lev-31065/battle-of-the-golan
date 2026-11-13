@@ -232,7 +232,8 @@ function trackProgress(z) {
     if (n % 3 === 0) {
       for (const side of [-1, 1]) {
         if (random() < 0.45) continue;
-        add(n, pickType(seg, progress), side * (seg.width + 0.2 + random() * (RACE.shoulder - 0.4)));
+        // (Far enough from the edge that nothing solid pokes into the path: staying on the path is always safe from these.)
+        add(n, pickType(seg, progress), side * (seg.width + 0.45 + random() * (RACE.shoulder - 0.65)));
       }
     }
   }
