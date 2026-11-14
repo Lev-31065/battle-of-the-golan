@@ -381,6 +381,12 @@ const RACE = {
   faceWidth: 3.4,         // the mountain face: half the width of the big curve + the island + the shortcut together
   faceIsland: 0.9,        // …half the width of the island between them
   faceSpeed: 1.2,         // …and on the shortcut your top speed is this much higher (1.2 = 120%): it is steeper
+  // Secret shortcuts: a narrow way hidden behind a row of trees along one edge of the path, with rocks in it to skid round
+  secretWidth: 2.5,       // half the width of the path where there is a secret shortcut (the main path + the row of trees + the secret way)
+  secretAt: 1.0,          // …the row of trees is this far from the middle of the path…
+  secretIsland: 0.5,      // …and this is half its width (so the secret way is 2.5 - 1.5 = 1 wide; a sled is 0.3)
+  secretSpeed: 1.5,       // on a secret shortcut your top speed is this much higher (1.5 = 150%)
+  secretRocks: 30,        // a rock every this many segments inside it, on one side and then the other (lower = closer together = harder)
   hillRampLength: 30,     // in the hills, one way round goes up a hill and jumps off: how long that slope is (segments)…
   hillRampHeight: 1000,   // …and how high its top is
   // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you),
@@ -424,8 +430,8 @@ const RACE = {
   botRight: 0.6,          // how often a bot picks the right answer at a gate (0.6 = 60%)
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
-  gateZone: 110,          // the straight, wide stretch around each gate (in segments)
-  gateShowAt: 200,        // the question shows up when the gate is this many segments ahead
+  gateZone: 90,           // the straight, wide stretch around each gate (in segments)
+  gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
   boostTime: 2.5,         // …for this many seconds
   gateBounce: 9000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
@@ -455,7 +461,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14d";
+const GAME_VERSION = "2026-11-14e";
 
 // ---------- Helpers ----------
 

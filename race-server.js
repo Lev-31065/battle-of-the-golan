@@ -359,8 +359,11 @@ function raceMoveBot(p, dt) {
   const islandAhead = Math.max(islandSoon, findSegment(p.y + 55 * RACE.segmentLength).island);
   const islandAt = segment.island > 0 ? segment.islandAt : findSegment(p.y + 25 * RACE.segmentLength).islandAt; // (where the island's middle is)
   const onIsland = Math.abs(p.x - islandAt) < segment.island;
+  // (Bots never find the secret shortcuts: they always stay on the main path there.)
+  const forkAhead = segment.fork || findSegment(p.y + 55 * RACE.segmentLength).fork;
   if (islandAhead === 0) p.forkSide = 0;
   else {
+    if (forkAhead && forkAhead.secretSide) p.forkSide = -forkAhead.secretSide;
     if (!p.forkSide) p.forkSide = Math.abs(p.x - islandAt) > 0.3 ? Math.sign(p.x - islandAt) : Math.random() < 0.5 ? -1 : 1; // (the side it is on already)
     // Each way round is 1.25 wide, so its middle is about 0.6 out from the island's edge.
     // (Coming up to the island the path is still narrow: then it just keeps to that side.)
@@ -426,7 +429,7 @@ function raceMoveBot(p, dt) {
   const top = RACE.maxSpeed * p.skill * catchUp
     * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
     * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
-    * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? RACE.faceSpeed : 1) * (1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
+    * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
   if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
   else p.speed = Math.min(top, p.speed + RACE.accel * (boosting ? 3 : 1) * dt);
 

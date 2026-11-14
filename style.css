@@ -569,6 +569,12 @@ button, select, input { touch-action: manipulation; }
 @media (min-width: 640px) {
   .toast-area { bottom: 16px; right: 370px; }   /* sideways phones: at the very bottom, left of the buttons */
 }
+/* In the race (while the skid buttons are showing): messages sit BETWEEN the two skid
+   buttons, or just above them on a narrow phone, so they never cover a button. */
+.skid-button:not([hidden]) ~ .toast-area { bottom: 122px; right: 16px; }
+@media (min-width: 640px) {
+  .skid-button:not([hidden]) ~ .toast-area { bottom: 16px; left: 128px; right: 128px; }
+}
 .toast {
   max-width: 100%;
   padding: 10px 18px;

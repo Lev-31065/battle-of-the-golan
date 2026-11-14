@@ -43,6 +43,8 @@ let inWater = false;      // my sled has landed in the Kinneret
 let itemUsedAt = -Infinity; // when I last used a gift (so the button hides straight away)
 let itemTips = 0;         // how many times the "tap to use it" tip was shown
 let lastItem = null;      // the gift I was holding a moment ago
+let lastSecret = null;    // the last secret shortcut I found (so its message shows only once)
+const hardHits = new Map(); // the trees and rocks I hit lately, and when (for a moment they can not stop me again)
 let mySkid = false;       // am I skidding right now? (holding a skid button)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
 const seenBooms = new Set(); // the rimon explosions this phone has already shown (their ids)
@@ -285,9 +287,15 @@ function raceUpdate(dt) {
     const boosting = gameTime < boostUntil;
     // The shortcut down the mountain face is steeper, so it is faster; so is a tilted bend.
     const onShortcut = !inDeepSnow && segment.fork && segment.fork.fastSide && segment.island > 0.3 && (me.x - segment.islandAt) * segment.fork.fastSide > segment.island;
+    // (Found a SECRET shortcut? Say so, once for each one.)
+    if (onShortcut && segment.fork.secretSide && lastSecret !== segment.fork) {
+      lastSecret = segment.fork;
+      showToast("🤫 A secret shortcut!", "🤫 קִצּוּר דֶּרֶךְ סוֹדִי!");
+      playSound("item");
+    }
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
       * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
-      * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? RACE.faceSpeed : 1)
+      * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1)
       * (inDeepSnow ? 1 : 1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
     // (A skid scrubs the speed off gently; deep snow or a hit brakes hard.)
     const braking = skidding && !inDeepSnow && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
@@ -340,7 +348,12 @@ function raceUpdate(dt) {
             if (race3dAvailable()) { race3dCrash(i, sprite.offset, away, gameTime, true); race3dSplash(me.y, me.x, false); } // snow everywhere
             continue;
           }
-          if (gameTime - crashAt <= 0.5) continue; // (still sliding away from the last tree)
+          if (gameTime - crashAt <= 0.8) continue; // (still sliding away from the last tree)
+          // (A tree or rock I hit a moment ago can not stop me again: I slide past it this time.
+          // That way a sled can never get stuck, bouncing between a rock and a row of trees.)
+          if (gameTime - (hardHits.get(sprite) || -Infinity) < 3) continue;
+          if (hardHits.size > 30) hardHits.clear();
+          hardHits.set(sprite, gameTime);
           crashDir = away;
           crashAt = gameTime;
           mySpeed *= size.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
@@ -778,6 +791,8 @@ function raceOnPhase(phase) {
     itemUsedAt = -Infinity;
     lastItem = null;
     mySkid = false;
+    lastSecret = null;
+    hardHits.clear();
     steerLimit = 1;
     skidFingers.clear();
     softHits.clear();

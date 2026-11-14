@@ -505,6 +505,27 @@ const MODELS = {
       B.tube([0, y0 + (y1 - y0) * 0.3, 0], r * 0.74, [0, y1 + 0.25, 0], 0, 6, COL.snow);
     }
   },
+  // A GIANT tree of the deep woods: a trunk like a tower, and far above the path, layer upon
+  // layer of dark branches with snow lying on them. (Its lowest branches are well above a sled and the camera.)
+  giantPine(B, seed) {
+    const green = shade3(COL.pine, 0.72 + rand2(seed, 3) * 0.3);
+    const h = 60 + rand2(seed, 7) * 22; // how tall it is (a sled is 6 wide)
+    B.tube([0, 0, 0], 2.7, [0, h * 0.45, 0], 1.8, 7, COL.bark);
+    B.tube([0, h * 0.45, 0], 1.8, [0, h * 0.85, 0], 0.7, 6, shade3(COL.bark, 0.85));
+    for (let k = 0; k < 6; k++) {
+      const t = k / 5, y0 = h * (0.3 + 0.52 * t), y1 = y0 + h * 0.2, r = 13.5 - 9 * t;
+      B.tube([0, y0, 0], r, [0, y1, 0], 0, 7, shade3(green, 1 - 0.06 * (k % 2)));
+      B.tube([0, y0 + (y1 - y0) * 0.3, 0], r * 0.74, [0, y1 + 0.3, 0], 0, 7, COL.snow);
+    }
+  },
+  // The big bushes that hide the ends of a secret shortcut.
+  thicket(B, seed, snowy) {
+    const top = snowy ? COL.snow : null;
+    B.blob(-3.4, 2.6, 0.3, 4.0, 3.4, 3.6, COL.leafDark, seed, 0.3, top);
+    B.blob(0.4, 3.6, -0.3, 4.8, 4.6, 4.2, COL.leaf, seed + 1, 0.3, top);
+    B.blob(3.6, 2.6, 0.4, 3.8, 3.2, 3.5, COL.leafLight, seed + 2, 0.3, top);
+  },
+  thicketSnow(B, seed) { MODELS.thicket(B, seed, true); },
   olive(B, seed) {
     B.tube([0, 0, 0], 1.2, [-0.9, 2.8, 0.3], 0.9, 6, COL.barkOlive);
     B.tube([-0.9, 2.8, 0.3], 0.9, [0.5, 5.6, -0.2], 0.6, 6, COL.barkOlive);
@@ -851,10 +872,10 @@ function buildLandChunk(cx, cz) {
   group.add(new THREE.Mesh(geo, world3d.groundPaint));
 
   // Trees, bushes and rocks scattered over the mountainside (just to look at: you can't reach them).
-  // (In the deep woods: many more of them, nearly all tall snowy trees.)
+  // (In the deep woods: many more of them, nearly all GIANT trees.)
   const B = new MeshBuilder();
   const deepWoods = P3.woods[nearest[Math.floor(GRID / 2) * GRID + Math.floor(GRID / 2)]] === 1;
-  for (let k = 0; k < (deepWoods ? 130 : 44); k++) {
+  for (let k = 0; k < (deepWoods ? 70 : 44); k++) {
     const gx = 1 + rand2(cx * 131 + k, cz * 71) * (GRID - 3), gz = 1 + rand2(cx * 17, cz * 191 + k) * (GRID - 3);
     const cell = Math.floor(gz) * GRID + Math.floor(gx);
     const t = away[cell];
@@ -866,10 +887,10 @@ function buildLandChunk(cx, cz) {
     const pick = Math.floor(rand2(k * 3, cx * 5 + cz) * LAND_TREES.length);
     let type = LAND_TREES[pick];
     const snowy = snow[cell] * 1.25 + lift[cell] / 300 > 0.5;
-    if (woods) type = pick === 7 ? "rockSnow" : "pineSnow";
+    if (woods) type = pick === 7 ? "rockSnow" : pick === 6 ? "bushSnow" : "giantPine";
     else if (snowy) type = type === "oak" || type === "olive" || type === "almond" ? "oakSnow" : type + "Snow";
     else if (snow[cell] > 0.1 && (type === "olive" || type === "almond")) type = "oak"; // (olives and almonds grow lower down)
-    B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, 0.8 + rand2(cz + k, cx) * 0.7);
+    B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, type === "giantPine" ? 0.75 + rand2(cz + k, cx) * 0.4 : 0.8 + rand2(cz + k, cx) * 0.7);
     MODELS[type](B, k + cx * 7 + cz * 13);
   }
   if (B.p.length) group.add(new THREE.Mesh(B.geometry(), world3d.paint));
@@ -1058,7 +1079,7 @@ const STONE = rgb3("#8d8478"), STONE_DARK = rgb3("#6b645b"), STONE_LIGHT = rgb3(
 // One segment of the BRIDGE: a low stone wall along each side (with snow on top), the
 // underside of the deck, and here and there a tall stone leg standing on the ground below.
 function buildBridgePiece(B, n, ox, oz) {
-  const c = TRACK.crossing;
+  const c = TRACK.segments[n].crossing; // (which bridge this is: there is one for every loop)
   const spot = (i, lat, dy) => [P3.x[i] - ox + P3.cos[i] * lat, P3.y[i] + dy, P3.z[i] - oz + P3.sin[i] * lat];
   const ha = P3.half[n], hb = P3.half[n + 1], thick = 1.4, rail = 3.4, deep = 3;
   const stone = n % 2 ? STONE : STONE_LIGHT;
@@ -1089,7 +1110,7 @@ function tunnelShape(i) {
 // One segment of the tunnel: stone walls and an arched roof (in light and dark bands, so you
 // feel the speed), and at each mouth a frame of pale stone around the opening.
 function buildTunnelPiece(B, n, ox, oz) {
-  const c = TRACK.crossing;
+  const c = TRACK.segments[n].crossing; // (which tunnel this is)
   const spot = (i, q, frame) => {
     const lat = q[0] * (frame ? 1.16 : 1), up = q[1] + (!frame ? 0 : q[1] > 0 ? 3.2 : -0.4);
     return [P3.x[i] - ox + P3.cos[i] * lat, P3.y[i] + up, P3.z[i] - oz + P3.sin[i] * lat];
@@ -1900,8 +1921,8 @@ function drawRace3d(view, w, h) {
   pathSpot(view.along - 1500, view.side, CAM, true);
   camY = Math.max(camY, CAM.y + 3.2);
   // In the tunnel the camera ducks, so it stays under the roof.
-  const tunnel = TRACK.crossing.tunnel;
-  const inTunnel = smooth3(tunnel[0] - 10, tunnel[0] + 4, index) * (1 - smooth3(tunnel[1] + 12, tunnel[1] + 24, index));
+  let inTunnel = 0;
+  for (const { tunnel } of TRACK.crossings) inTunnel = Math.max(inTunnel, smooth3(tunnel[0] - 10, tunnel[0] + 4, index) * (1 - smooth3(tunnel[1] + 12, tunnel[1] + 24, index)));
   if (inTunnel > 0) camY = Math.min(camY, sledY + 15 + (1 - inTunnel) * 12);
   pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
   const shake = (view.shake || 0) * 0.5;

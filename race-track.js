@@ -18,12 +18,15 @@
 //   ramps  the snow jumps on this piece (most pieces have none)
 //
 // THE RIDE, from top to bottom (it is written out piece by piece further down):
-//   1. the snowfield on top, then a long, fairly straight downhill
-//   2. a very sharp bend (skid!) into deep woods: sharp bends and places where the path splits
+//   1. the snowfield on top, then a fairly straight downhill
+//   2. a very sharp bend (skid!) into deep woods: a path between GIANT trees, with one sharp bend
+//      after another, places where the path splits, and a secret shortcut behind the trees
 //   3. out of the woods over a BRIDGE, round in a big loop, and through the TUNNEL under that bridge
-//   4. the side of a steep mountain: a big wide curve, or the bumpy shortcut down the face
-//   5. hills, with the path weaving between them (and jumps off some of the hills)
-//   6. the last stretch down to the beach, and the big ramp into the Kinneret
+//   4. the side of a steep mountain: a big wide curve (or the bumpy shortcut down the face), then two hairpins
+//   5. a second loop (bridge + tunnel), tilted like a bowl
+//   6. hills, with the path weaving between them (jumps off some of the hills, hairpins, a secret shortcut)
+//   7. a third loop (bridge + tunnel)
+//   8. the last stretch down to the beach (one more secret shortcut), and the big ramp into the Kinneret
 //
 // Things beside the path (bushes, rocks, trees, snowmen) are "sprites": each one sits on a
 // segment, at a sideways spot called "offset", measured in RACE.roadWidth from the middle
@@ -39,10 +42,10 @@ const TRACK = {
   finishZ: 0, // where the finish line is (on the beach)
   gates: [],  // the answer gates, in order down the path: { number, index (which segment it stands on), z, center + half (where its 3 lanes are across the path, and half their width) }. They are all the same size, right across the path
   ramps: [],  // snow jumps: { index (the segment it starts on), length (segments), z0, z1 (its top edge), offset + half (where it is across the path, and half its width), height, kind ("snow", "hill" or "pier") }
-  forks: [],  // places where the path splits in two around an island: { from, to (segments), kind ("woods", "hill" or "face"), jumpSide (-1 / 1: the side with the jumps, 0 = none), fastSide (-1 / 1: the shortcut side, where sleds go faster; 0 = none) }
+  forks: [],  // places where the path splits in two around an island: { from, to (segments), kind ("woods", "hill", "face" or "secret"), jumpSide (-1 / 1: the side with the jumps, 0 = none), fastSide (-1 / 1: the shortcut side, where sleds go faster; 0 = none), fastSpeed (how much faster), secretSide (-1 / 1: the side a SECRET shortcut is hidden on; 0 = not a secret one) }
   goats: [],  // mountain goats wandering about on the path: { id, z (where it lives), range (how far it walks to each side), speed, phase }
   layout: null,   // where every piece of the path is on the map: { x, z, heading } (lists; in 3D units: one track unit = 0.01)
-  crossing: null, // where the path crosses over itself: { upper, lower (the two segments, one above the other), bridge: [from, to], tunnel: [from, to], drop (how far below the bridge the tunnel's floor is) }
+  crossings: [],  // the places where the path crosses over itself (one for each loop): { upper, lower (the two segments, one above the other), bridge: [from, to], tunnel: [from, to], drop (how far below the bridge the tunnel's floor is) }. A segment on a bridge or in a tunnel has `crossing` = its one
   waterZ: 0,  // where the Kinneret starts
 };
 
@@ -56,7 +59,10 @@ const SPRITE_SIZES = {
   bushSnow: { w: 760,  h: 500,  solid: true, soft: true, hit: 560 },
   oak:      { w: 1400, h: 1500, solid: true, hit: 260 },
   oakSnow:  { w: 1400, h: 1500, solid: true, hit: 260 },
-  pineSnow: { w: 1000, h: 2200, solid: true, hit: 220 }, // the tall, snowy trees of the deep woods
+  pineSnow: { w: 1000, h: 2200, solid: true, hit: 220 }, // a BABY tree of the deep woods: these stand ON the path, to dodge
+  giantPine: { w: 2800, h: 7500, solid: true, hit: 460 }, // a GIANT tree of the deep woods: they tower over the path on both sides (as tall as a 10-floor building)
+  thicket:     { w: 1700, h: 1100, solid: false },        // big bushes that hide the ends of a secret shortcut (you ride right through them)
+  thicketSnow: { w: 1700, h: 1100, solid: false },
   olive:    { w: 1300, h: 1100, solid: true, hit: 300 },
   almond:   { w: 1300, h: 1300, solid: true, hit: 200 }, // an almond tree in blossom (they flower in winter, around Tu BiShvat)
   palm:     { w: 1000, h: 2300, solid: true, hit: 180 },
@@ -163,12 +169,18 @@ function trackProgress(z) {
 
   // A place where the path SPLITS in two around an island, and joins up again further down.
   // kind: "woods" (two ways through the trees, one with small jumps), "hill" (one way goes up
-  // a hill and jumps off it) or "face" (a wide easy way, or the bumpy shortcut down the mountain face).
+  // a hill and jumps off it), "face" (a wide easy way, or the bumpy shortcut down the mountain face)
+  // or "secret" (a narrow, fast way hidden behind a row of trees along one edge of the path, with
+  // rocks in it to skid round. For "face" and "secret", the side given is the shortcut's side).
   // `build` lays down the pieces of path the split runs along.
   function fork(kind, jumpSide, build) {
     const before = width;
-    width = kind === "face" ? RACE.faceWidth : RACE.forkWidth;
-    const f = { from: segments.length, to: 0, kind, jumpSide: kind === "face" ? 0 : jumpSide, fastSide: kind === "face" ? jumpSide : 0 };
+    const shortcut = kind === "face" || kind === "secret";
+    width = kind === "face" ? RACE.faceWidth : kind === "secret" ? RACE.secretWidth : RACE.forkWidth;
+    const f = {
+      from: segments.length, to: 0, kind, jumpSide: shortcut ? 0 : jumpSide, fastSide: shortcut ? jumpSide : 0,
+      fastSpeed: kind === "secret" ? RACE.secretSpeed : RACE.faceSpeed, secretSide: kind === "secret" ? jumpSide : 0,
+    };
     build();
     f.to = segments.length;
     TRACK.forks.push(f);
@@ -179,103 +191,132 @@ function trackProgress(z) {
   // (To change the path, change the pieces here. Every piece is: how far or how many degrees,
   // how sharp, how steep. Then check the map: the test page draws it.)
 
-  // ----- 1. The top of the mountain: a big snowfield, then a long, fairly straight downhill -----
+  // A LOOP: over a stone bridge, round three quarters of a circle (way = 1 to the right, -1 to
+  // the left), and back through a tunnel under that same bridge. (It turns exactly 270 degrees,
+  // so the path comes back and crosses under itself.) `banked` = the loop is tilted like a bowl.
+  const loops = [];
+  function loop(way, sharp, banked) {
+    const widthBefore = width, zoneBefore = zone;
+    zone = "bridge";
+    width = RACE.pathWidth;
+    const c = { upperFrom: segments.length, upperTo: 0, lowerFrom: 0, lowerTo: 0 };
+    straight(75, 0.02, { calm: true });       // …the bridge is on this stretch
+    c.upperTo = segments.length;
+    width = 1.25;
+    turn(way * 270, sharp, 0.12, { calm: true, banked });
+    width = RACE.pathWidth;
+    c.lowerFrom = segments.length;
+    straight(75, 0.08, { calm: true });       // …and the tunnel on this one
+    c.lowerTo = segments.length;
+    loops.push(c);
+    width = widthBefore;
+    zone = zoneBefore;
+  }
+
+  // ----- 1. The top of the mountain: a big snowfield, then a fairly straight downhill -----
   straight(90, 0, { calm: true }); // the start, on top of the mountain
   TRACK.startZ = 40 * L;
   turn(12, 1.2, 0.12);
   width = RACE.wideWidth;
   turn(-20, 1.5, 0.14);
   width = RACE.pathWidth + 0.15;
-  straight(60, 0.2);
+  straight(40, 0.2);
   turn(10, 1, 0.22);
   gate();                                   // gate 1
   turn(-8, 1, 0.2);
-  straight(90, 0.22);
+  straight(50, 0.22);
 
-  // ----- 2. The deep woods: a very sharp bend in (skid!), then about a minute of sharp bends and splits -----
+  // ----- 2. The deep woods: a path between giant trees, one very sharp bend after another (skid!) -----
   zone = "woods";
-  width = 1.2;
-  turn(100, 12, 0.1);
-  width = 1.0;
-  straight(40, 0.12);
-  width = 1.2;
-  turn(-70, 11, 0.1);
-  fork("woods", 1, () => { straight(20, 0.14); turn(25, 2.2, 0.15); straight(30, 0.14); });
-  turn(85, 12, 0.1);
-  width = 1.0;
-  straight(30, 0.14);
-  width = 1.2;
-  turn(-110, 12.5, 0.1);
-  fork("woods", -1, () => { straight(20, 0.14); turn(-30, 2.5, 0.15); straight(30, 0.14); });
-  turn(60, 10, 0.12);
-  straight(20, 0.1);
+  width = 1.15;
+  turn(100, 15, 0.1);
+  straight(30, 0.12);
+  turn(-120, 16, 0.1);
+  fork("secret", 1, () => { straight(45, 0.14); turn(25, 2.2, 0.15); straight(95, 0.14); }); // a secret way behind the trees on the right
+  turn(95, 15, 0.1);                        // two sharp bends in a row: right-left, like an S
+  turn(-95, 15, 0.1);
+  straight(15, 0.1);
   gate();                                   // gate 2, in a clearing in the woods
-  turn(-95, 12, 0.1);
+  turn(-110, 16, 0.1);
   fork("woods", 1, () => { straight(20, 0.14); turn(40, 3, 0.15); straight(25, 0.14); });
-  turn(75, 11, 0.1);                        // two sharp bends in a row: left-right, like an S
-  turn(-80, 12, 0.1);
+  turn(130, 17, 0.1);                       // a hairpin: nearly all the way round
+  straight(25, 0.12);
+  turn(-100, 15, 0.1);
   fork("woods", -1, () => { straight(25, 0.14); turn(20, 2, 0.15); straight(30, 0.14); });
-  turn(70, 10, 0.12);
+  turn(80, 14, 0.12);
+  straight(15, 0.1);
+  gate();                                   // gate 3
   width = 1.0;
-  straight(40, 0.1);
+  straight(20, 0.1);
 
-  // ----- 3. Out of the woods: over the bridge, round in a loop, and through the tunnel under the bridge -----
-  // (The loop turns exactly 270 degrees, so the path comes back and crosses under itself.)
-  zone = "bridge";
+  // ----- 3. Out of the woods: the first loop (over the bridge, round to the right, through the tunnel) -----
   snow = 0.85;
-  width = RACE.pathWidth;
-  const loop = { upperFrom: segments.length, upperTo: 0, lowerFrom: 0, lowerTo: 0 };
-  straight(125, 0.02, { calm: true });      // …the bridge is on this stretch
-  loop.upperTo = segments.length;
-  width = 1.25;
-  turn(270, 9.5, 0.11, { calm: true });
-  width = RACE.pathWidth;
-  loop.lowerFrom = segments.length;
-  straight(110, 0.08, { calm: true });      // …and the tunnel on this one
-  loop.lowerTo = segments.length;
+  loop(1, 9.5);
 
-  // ----- 4. The side of a steep mountain: a wall on the right, a long drop on the left -----
+  // ----- 4. The side of a steep mountain: a wall on one side, a long drop on the other -----
   zone = "face";
   snow = 0.6;
   width = RACE.wideWidth;
-  const cliff = { wallL: -1, wallR: 1 };
+  const cliff = { wallL: -1, wallR: 1 };     // the wall on the right, the drop on the left
+  const cliffBack = { wallL: 1, wallR: -1 }; // (after a hairpin you ride back the other way: the wall is on the left)
   straight(30, 0.1, cliff);
-  gate();                                   // gate 3
+  gate();                                   // gate 4
   // The big curve (wide and easy), or the shortcut down the face on its inside (narrow, full
   // of rocks and trees, but faster).
   fork("face", -1, () => { straight(20, 0.16, cliff); turn(-100, 2.2, 0.18, cliff); straight(20, 0.16, cliff); });
-  straight(70, 0.15, cliff);
-  turn(60, 4, 0.14, { wallL: -0.6, wallR: 0.6 });
-  gate();                                   // gate 4
+  straight(40, 0.15, cliff);
+  width = 1.3;
+  turn(-140, 15, 0.12, cliff);              // down the mountainside in zigzags: a hairpin to the left…
+  straight(70, 0.14, cliffBack);
+  turn(140, 15, 0.12, cliffBack);           // …and one back to the right
+  straight(30, 0.14, cliff);
+  gate();                                   // gate 5
 
-  // ----- 5. The hills: the path weaves between them, and on some you can ride up and jump off -----
+  // ----- 5. The second loop: to the left, and tilted like a bowl (zoom!) -----
+  snow = 0.45;
+  loop(-1, 10, true);
+
+  // ----- 6. The hills: the path weaves between them, and on some you can ride up and jump off -----
   zone = "hills";
   snow = 0.3;
   width = 1.1;
-  turn(90, 6, 0.12);
-  straight(60, 0.14);
-  turn(-80, 7, 0.12);
+  turn(-90, 6, 0.12);
+  straight(40, 0.14);
+  turn(80, 7, 0.12);
   fork("hill", 1, () => { straight(30, 0.13); turn(30, 2.5, 0.14); straight(60, 0.13); });
   turn(70, 6.5, 0.14, { banked: true });    // a tilted bend: zoom!
-  turn(-100, 7, 0.12);
-  snow = 0.1;
-  gate();                                   // gate 5
-  turn(60, 5, 0.12);
-  straight(70, 0.14);
+  turn(-130, 15, 0.12);                     // a hairpin round a hill
+  snow = 0.2;
+  gate();                                   // gate 6
+  turn(110, 15, 0.12);
+  fork("secret", -1, () => { straight(40, 0.13); turn(-30, 2.5, 0.14); straight(90, 0.13); }); // a secret way on the left
+  straight(30, 0.14);
   fork("hill", -1, () => { straight(30, 0.13); turn(-25, 2, 0.14); straight(60, 0.13); });
   turn(-70, 8, 0.12);
   turn(90, 7.5, 0.14, { banked: true });    // another tilted bend
-  snow = 0;
-  fork("hill", 1, () => { straight(30, 0.13); turn(-20, 2, 0.14); straight(60, 0.13); });
-  gate();                                   // gate 6
+  snow = 0.1;
+  gate();                                   // gate 7
+  turn(120, 16, 0.12);                      // two hairpins in a row
+  turn(-120, 16, 0.12);
+  straight(20, 0.13);
+  gate();                                   // gate 8
 
-  // ----- 6. The last stretch down to the Kinneret -----
+  // ----- 7. The third loop -----
+  snow = 0;
+  loop(1, 10.5);
+
+  // ----- 8. The last stretch down to the Kinneret -----
   zone = "valley";
   width = RACE.pathWidth;
   turn(-40, 4, 0.12);
+  fork("secret", 1, () => { straight(40, 0.12); turn(30, 2.5, 0.12); straight(80, 0.12); }); // the last secret way, on the right
   turn(45, 5, 0.1);
+  gate();                                   // gate 9
+  turn(-100, 14, 0.1);                      // one last sharp bend
+  turn(55, 5, 0.08);
+  gate();                                   // gate 10
   turn(-15, 2.5, 0.05);
-  straight(100, 0.015, { calm: true });     // flattening out by the lake
+  straight(60, 0.015, { calm: true });      // flattening out by the lake
   zone = "beach";
   width = RACE.startWidth;
   const beachStart = segments.length;
@@ -357,9 +398,16 @@ function trackProgress(z) {
       const seg = segments[n];
       // (The front tip grows slowly, so there is time to pick a side; the tail closes a bit quicker.)
       const ends = smooth(Math.min((n - (fork.from - 10)) / 45, (fork.to + 30 - n) / 25));
+      // (A secret way opens and closes much more slowly, so there is time to slip in behind the trees.)
+      const slowEnds = smooth(Math.min((n - (fork.from - 10)) / 75, (fork.to + 30 - n) / 40));
       if (fork.kind === "face") {
         seg.island = Math.max(0, Math.min(RACE.faceIsland, seg.width - 2.3)) * ends;
         seg.islandAt = fork.fastSide * (RACE.faceIsland + 0.5 * Math.sin((n - fork.from) * 0.1)) * ends * (seg.island > 0 ? 1 : 0);
+      } else if (fork.kind === "secret") {
+        // A secret shortcut: the "island" is a thin row of trees near one edge of the path, and
+        // the narrow way hidden behind it (between the trees and the edge) is the shortcut.
+        seg.island = Math.max(0, Math.min(RACE.secretIsland, seg.width - RACE.secretAt - RACE.secretIsland)) * slowEnds;
+        seg.islandAt = seg.island > 0 ? fork.secretSide * RACE.secretAt : 0;
       } else {
         seg.island = Math.max(0, Math.min(RACE.forkIsland, seg.width - 1.25)) * ends;
       }
@@ -391,23 +439,26 @@ function trackProgress(z) {
   }
   map.heading[N] = heading;
 
-  // ----- The bridge and the tunnel -----
-  // Find the spot where the stretch after the loop passes under the stretch before it:
-  // the two segments (one on each stretch) that are closest together on the map.
-  let gap = Infinity, upper = loop.upperFrom, lower = loop.lowerFrom;
-  for (let i = loop.upperFrom; i < loop.upperTo; i++) {
-    for (let j = loop.lowerFrom; j < loop.lowerTo; j++) {
-      const d = Math.hypot(map.x[i] - map.x[j], map.z[i] - map.z[j]);
-      if (d < gap) { gap = d; upper = i; lower = j; }
+  // ----- The bridges and the tunnels (one of each for every loop) -----
+  for (const loop of loops) {
+    // Find the spot where the stretch after the loop passes under the stretch before it:
+    // the two segments (one on each stretch) that are closest together on the map.
+    let gap = Infinity, upper = loop.upperFrom, lower = loop.lowerFrom;
+    for (let i = loop.upperFrom; i < loop.upperTo; i++) {
+      for (let j = loop.lowerFrom; j < loop.lowerTo; j++) {
+        const d = Math.hypot(map.x[i] - map.x[j], map.z[i] - map.z[j]);
+        if (d < gap) { gap = d; upper = i; lower = j; }
+      }
     }
+    // The bridge has to reach right across the path below it (and its banks); the tunnel
+    // covers the path above it, and sticks out a little way on both sides.
+    const bridge = [Math.max(loop.upperFrom + 2, upper - 28), Math.min(loop.upperTo - 3, upper + 28)];
+    const tunnel = [Math.max(loop.lowerFrom + 2, lower - 29), Math.min(loop.lowerTo - 3, lower + 29)];
+    const crossing = { upper, lower, gap, bridge, tunnel, drop: segments[upper].p1.world.y - segments[lower].p1.world.y };
+    TRACK.crossings.push(crossing);
+    for (let n = bridge[0]; n <= bridge[1]; n++) { segments[n].bridge = true; segments[n].walled = true; segments[n].crossing = crossing; }
+    for (let n = tunnel[0]; n <= tunnel[1]; n++) { segments[n].tunnel = true; segments[n].walled = true; segments[n].crossing = crossing; }
   }
-  // The bridge has to reach right across the path below it (and its banks); the tunnel
-  // covers the path above it, and sticks out a little way on both sides.
-  const bridge = [Math.max(loop.upperFrom + 2, upper - 28), Math.min(loop.upperTo - 3, upper + 28)];
-  const tunnel = [Math.max(loop.lowerFrom + 2, lower - 29), Math.min(loop.lowerTo - 3, lower + 29)];
-  TRACK.crossing = { upper, lower, gap, bridge, tunnel, drop: segments[upper].p1.world.y - segments[lower].p1.world.y };
-  for (let n = bridge[0]; n <= bridge[1]; n++) { segments[n].bridge = true; segments[n].walled = true; }
-  for (let n = tunnel[0]; n <= tunnel[1]; n++) { segments[n].tunnel = true; segments[n].walled = true; }
 
   // ----- Things beside the path -----
   const add = (n, type, offset) => { if (segments[n]) segments[n].sprites.push({ type, offset }); };
@@ -434,12 +485,13 @@ function trackProgress(z) {
     // Snow poles along the edges (not on the beach).
     if (n % 12 === 0 && seg.sand === 0) { add(n, "pole", -(seg.width + 0.08)); add(n, "pole", seg.width + 0.08); }
     if (seg.zone === "woods") {
-      // The deep woods: tall snowy trees crowd in on both sides, all the way.
-      if (n % 2 === 0) {
-        for (const side of [-1, 1]) {
-          if (random() < 0.12) continue;
-          const r = random();
-          add(n, r < 0.8 ? "pineSnow" : r < 0.9 ? "oakSnow" : r < 0.95 ? "rockSnow" : "bushSnow", side * (seg.width + 0.4 + random() * (RACE.shoulder - 0.55)));
+      // The deep woods: GIANT trees tower over the path on both sides, all the way, with a snowy
+      // bush or a rock at their feet here and there. (The small "baby" trees only stand ON the path.)
+      for (const side of [-1, 1]) {
+        if ((n + (side > 0 ? 1 : 0)) % 3 === 0) {
+          if (random() > 0.1) add(n, "giantPine", side * (seg.width + 0.5 + random() * (RACE.shoulder - 0.6)));
+        } else if (random() < 0.08) {
+          add(n, random() < 0.6 ? "bushSnow" : "rockSnow", side * (seg.width + 0.4 + random() * 0.4));
         }
       }
     } else if (n % 3 === 0) {
@@ -462,11 +514,11 @@ function trackProgress(z) {
 
   // Trees and rocks right ON the path, to steer around (only where it's wide enough to get
   // past, never on a calm piece, where the path splits, or in a sharp or tilted bend).
-  // In the very wide places, sometimes two. (Fewer in the woods: the bends there are hard enough.)
+  // In the very wide places, sometimes two. (In the woods these are the small "baby" trees.)
   const quiet = (n) => { for (let k = n - 45; k <= n + 45; k++) if (segments[k].calm) return false; return true; };
   for (let n = 220; n < beachStart - 210; n += 30 + Math.floor(random() * 50)) {
     const seg = segments[n];
-    if (random() > RACE.treesOnPath * (seg.zone === "woods" ? 0.5 : 1) || seg.width < 0.9 || !quiet(n) || seg.fork || Math.abs(seg.curve) > 3 || seg.bank) continue;
+    if (random() > RACE.treesOnPath || seg.width < 0.9 || !quiet(n) || seg.fork || Math.abs(seg.curve) > 3 || seg.bank) continue;
     const progress = trackProgress(seg.p1.world.z);
     const type = seg.zone === "woods" ? (random() < 0.6 ? "pineSnow" : "rockSnow")
       : seg.snow > 0.6 ? (random() < 0.6 ? "oakSnow" : "rockSnow")
@@ -489,9 +541,50 @@ function trackProgress(z) {
     add(n, type, (random() * 2 - 1) * (seg.width - 0.5));
   }
 
+  // ----- The secret shortcuts -----
+  // A row of trees hides the narrow way behind it, and big bushes hide its two ends (you ride
+  // right through those). There are no marker poles on that side. Inside, rocks stand first
+  // on one side and then on the other, close together: you have to skid round them.
+  function hideSecretWay(fork) {
+    const side = fork.secretSide;
+    const full = []; // the segments where the secret way is as wide as it gets
+    let first = -1, last = -1;
+    for (let n = fork.from - 10; n <= fork.to + 30; n++) {
+      if (segments[n].island >= 0.12) { if (first < 0) first = n; last = n; }
+      if (segments[n].island >= RACE.secretIsland - 0.03) full.push(n);
+    }
+    if (first < 0) return;
+    for (let n = fork.from - 30; n <= fork.to + 45; n++) {
+      const seg = segments[n];
+      seg.sprites = seg.sprites.filter((s) => !(s.type === "pole" && s.offset * side > 0));
+      if (seg.island < 0.12) continue;
+      const snowy = seg.snow > 0.3;
+      if (n % 2 === 0) {
+        // The row of trees. (Where the row is still thin, at its two ends: big bushes.)
+        const tree = seg.zone === "woods" ? "giantPine" : snowy ? "oakSnow" : seg.snow < 0.05 ? "olive" : "oak";
+        const type = seg.island > 0.32 ? tree : snowy ? "thicketSnow" : "thicket"; // (you can ride through these bushes: that is the way in, and the way out)
+        add(n, type, seg.islandAt + (random() * 2 - 1) * Math.max(0, seg.island - 0.3));
+      }
+      if (n % 6 === 0) add(n, "pole", seg.islandAt - side * (seg.island + 0.06)); // (poles on the main path's side only)
+    }
+    // The bushes that hide the way in and the way out.
+    for (const n of [first - 3, first + 3, last - 3, last + 3]) {
+      const seg = segments[n];
+      for (let x = RACE.secretAt + 0.1; x < seg.width + 0.2; x += 0.42) add(n, seg.snow > 0.3 ? "thicketSnow" : "thicket", side * x);
+    }
+    // The rocks inside: one near the trees, the next near the outer edge, and so on.
+    let k = 0;
+    for (let i = 16; i < full.length - 22; i += RACE.secretRocks, k++) {
+      const seg = segments[full[i]];
+      const inner = seg.islandAt + side * seg.island, outer = side * seg.width; // the secret way's two edges
+      add(full[i], seg.snow > 0.3 ? "rockSnow" : "rock", k % 2 ? inner + side * 0.2 : outer - side * 0.2);
+    }
+  }
+
   // ----- The islands where the path splits -----
   // A big rock at the island's tip, poles along its edges, and rocks, trees and bushes down the middle.
   for (const fork of TRACK.forks) {
+    if (fork.kind === "secret") { hideSecretWay(fork); continue; }
     let tip = true;
     for (let n = fork.from - 10; n <= fork.to + 30; n++) {
       const seg = segments[n];
@@ -530,7 +623,7 @@ function trackProgress(z) {
     TRACK.ramps.push(ramp);
     for (let k = index; k < index + length; k++) (segments[k].ramps = segments[k].ramps || []).push(ramp);
   }
-  const noJumpsNear = (n, len) => { for (let k = n - 60; k <= n + len + 140; k++) if (segments[k].calm) return true; return false; };
+  const noJumpsNear = (n, len) => { for (let k = n - 30; k <= n + len + 90; k++) if (segments[k].calm) return true; return false; };
   // How a jump from a ramp here would go at top speed: how many seconds in the air, and how
   // high above the ground at most. (A ramp just before the ground falls away steeply would
   // throw sleds half way down the mountain, and one on an uphill would hardly lift them.)
@@ -556,13 +649,13 @@ function trackProgress(z) {
     const len = RACE.rampLength;
     if (noJumpsNear(n, len) || segments[n - 5].fork || segments[n + len + 45].fork || !goodJump(n)) continue;
     let bend = 0, widthHere = Infinity, widthAfter = Infinity, tilted = false;
-    for (let k = n; k < n + len + 55; k++) {
+    for (let k = n; k < n + len + 38; k++) {
       bend = Math.max(bend, Math.abs(segments[k].curve));
       if (k < n + len) widthHere = Math.min(widthHere, segments[k].width);
       widthAfter = Math.min(widthAfter, segments[k].width);
       if (segments[k].bank) tilted = true;
     }
-    if (bend > 4 || widthAfter < 0.85 || tilted) continue;
+    if (bend > 6 || widthAfter < 0.85 || tilted) continue;
     const r = random();
     if (widthHere < 1.5) {
       if (r < 0.35) addRamp(n, len, 0, widthHere + 0.12, RACE.rampHeight, "snow"); // right across the path: everybody jumps!

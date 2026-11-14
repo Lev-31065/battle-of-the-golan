@@ -63,6 +63,15 @@
     - **Skid:** `holdTime` ≥ `RACE.skidAfter`. **Hits:** `SPRITE_SIZES[type].soft` → slowed (`softHits`, `softAt`); hard → `clack`, `hardHitSpeed`, `hardHitTurn`.
     - **Goats:** `TRACK.goats`, `goatSpot(goat, time, out)` (where it is depends only on the clock, so no messages), `sledHitsGoat`. Phone: `goatHits`, sends `{ type: "goat", id, dir }`; referee: `raceGoatHit`, `race.goats`, snapshot `race.goats`. Drawn as a "thing" of kind `goat`.
     - **Sounds:** `playSound(name, loud)` (loud 0…1 for far-away things); new `clack`, `poof`, `bleat`, `boing`.
+  - **Since v 2026-11-14d/e (this REPLACES what is said above about hold-to-skid, `skidAfter`, `holdTime`, 6 gates, ONE loop, `TRACK.crossing`):**
+    - **Skid buttons:** `#skid-left` / `#skid-right` in the bottom corners (index.html, `.skid-button` in style.css). race-game.js: `skidFingers`, `skidInput()` (-1 / 0 / 1; Shift + arrow on a computer); a skid button also steers that way. Messages move between the buttons (`.skid-button:not([hidden]) ~ .toast-area`).
+    - **Speed:** `RACE.maxSpeed` 4200 (was 5500); `gravity`, `accel`, `rimonSpeed`, `mangoSpeed` scaled down with it. A clean race is about 4 min 30 s.
+    - **Rocks:** `rock: true` in `SPRITE_SIZES` → `RACE.rockHitSpeed` (keep 10%). `hardHits` (race-game.js): a tree or rock you just hit can't stop you again for 3 s, so a sled can't get stuck.
+    - **Loops:** `loop(way, sharp, banked)` in "THE RIDE" = bridge + 270° + tunnel. `TRACK.crossings` (a list, one per loop); bridge/tunnel segments have `seg.crossing`. 3 loops now (the second is tilted, to the left).
+    - **Secret shortcuts:** `fork("secret", side, build)`. The "island" is a thin row of trees at `RACE.secretAt` from the middle; the way behind it is the shortcut (`secretWidth`, `secretIsland`, `secretSpeed`, `secretRocks`). `fork.secretSide`, `fork.fastSpeed`. `hideSecretWay(fork)` plants the tree row, the ride-through bushes at both ends (`thicket` / `thicketSnow`, not solid), removes the poles on that side and puts the rocks inside. Bots never take them. 3 of them (woods, hills, valley).
+    - **Giant trees:** `giantPine` (60–82 tall) stands beside the path in the woods and in the woods scenery; `pineSnow` = "baby" trees, only ON the path and on woods islands.
+    - **Gates:** 10; `gateZone` 90, `gateShowAt` 170. **Sharp bends:** 14–17 in "THE RIDE" (need a skid at this speed), hairpins on the mountain face (`cliff` / `cliffBack` walls) and in the hills.
+    - **Sound:** `swish` = the carve boost (it used to play `boost`, which sounded like a jump).
 
 ## Conventions
 - Write beginner-friendly comments, and explain every change in plain English.
