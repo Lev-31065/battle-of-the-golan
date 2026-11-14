@@ -518,6 +518,31 @@ button, select, input { touch-action: manipulation; }
 .drop-button[hidden] { display: none; }
 .drop-button .he { display: block; font-size: 14px; font-weight: 800; line-height: 16px; }
 .drop-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.75; }
+/* The two skid buttons, in the bottom corners: hold one to skid to that side. */
+.skid-button {
+  position: fixed;
+  bottom: 16px;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: 4px solid #7dd3fc;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.5);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 4;
+}
+.skid-button[hidden] { display: none; }
+.skid-left { left: 16px; }
+.skid-right { right: 16px; }
+.skid-button.held { background: rgba(56, 189, 248, 0.85); border-color: #ffffff; }
+.skid-arrow { display: block; font-size: 30px; font-weight: 800; line-height: 30px; }
+.skid-button .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
+.skid-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.8; }
 .item-icon { display: block; font-size: 34px; line-height: 38px; }
 .item-label .he { display: block; font-size: 12px; font-weight: 800; line-height: 14px; }
 .item-label .en { display: block; font-size: 9px; line-height: 11px; opacity: 0.75; }

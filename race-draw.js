@@ -1091,7 +1091,7 @@ function drawRaceHud(ctx, w, h, info) {
     ctx.globalAlpha = 1;
   }
   // My place, bottom left. My speed, bottom right.
-  const cornerX = Math.max(70, w * 0.1);
+  const cornerX = Math.max(70, w * 0.1) + 104; // (clear of the skid buttons in the corners)
   drawBilingualText(ctx, `מָקוֹם ${info.place}`, `${ordinal(info.place)} of ${info.racers}`, cornerX, h - size * 1.2, size * 1.2, "#fde047");
   drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - cornerX, h - size * 1.2, size);
   if (info.spinning) drawBilingualText(ctx, "🌀 מִסְתּוֹבְבִים!", "Spinning out!", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
@@ -1109,7 +1109,7 @@ function drawRaceHud(ctx, w, h, info) {
 }
 
 // At the start of every race: a circle on each side of the screen showing where to tap,
-// and what holding does: hold = turn, keep holding (more than a second) = skid.
+// and what holding does: hold a side = turn, hold a corner button = skid.
 function drawSteerHint(ctx, w, h, size) {
   const r = Math.min(w * 0.13, h * 0.2, 90);
   const y = h * 0.62;
@@ -1140,8 +1140,8 @@ function drawSteerHint(ctx, w, h, size) {
   roundedBox(ctx, (w - boxW) / 2, top, boxW, boxH, 14, "rgba(15, 23, 42, 0.62)");
   drawTextInBox(ctx, "מַחֲזִיקִים: פּוֹנִים", w / 2, top + boxH * 0.16, boxW - 16, boxH * 0.26, size * 0.95, "#ffffff", true);
   drawTextInBox(ctx, "Hold a side to turn", w / 2, top + boxH * 0.36, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
-  drawTextInBox(ctx, "מַמְשִׁיכִים לְהַחֲזִיק: הַחְלָקָה", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
-  drawTextInBox(ctx, "Keep holding (over a second) to skid: sharper turns, but slower", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+  drawTextInBox(ctx, "כַּפְתּוֹרֵי הַפִּנּוֹת: הַחְלָקָה", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
+  drawTextInBox(ctx, "Hold a corner button to skid: sharper turns, but slower", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
 }
 
 // Top left: how far down the mountain everyone is. ⛰️ = the start, 🌊 = the Kinneret.

@@ -3,7 +3,7 @@
 //
 // The sled goes forward by itself. Hold the left half of the screen to steer left,
 // the right half to steer right (or use the arrow keys / A and D on a computer).
-// Keep holding for more than a second = a skid (sharper turns, but slower).
+// Hold a SKID button (bottom corners of the screen) = a skid to that side (sharper turns, but slower).
 // Also here: bumping into mountain goats, flying off the snow ramps, gifts from the gates (banana peel / mango / rimon), spinning out,
 // and the splash into the Kinneret at the end.
 // The drawing is in race-draw.js and the track in race-track.js.
@@ -43,9 +43,7 @@ let inWater = false;      // my sled has landed in the Kinneret
 let itemUsedAt = -Infinity; // when I last used a gift (so the button hides straight away)
 let itemTips = 0;         // how many times the "tap to use it" tip was shown
 let lastItem = null;      // the gift I was holding a moment ago
-let mySkid = false;       // am I skidding right now? (holding a turn for more than a second)
-let holdTime = 0;         // how long I have been holding this turn (seconds)
-let holdSide = 0;         // …and which way (-1 left, 1 right, 0 = not steering)
+let mySkid = false;       // am I skidding right now? (holding a skid button)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
 const seenBooms = new Set(); // the rimon explosions this phone has already shown (their ids)
 const goatHits = new Map();  // the goats that were bumped lately: goat id → { at (when), dir (which way it flew: -1 left, 1 right) }
@@ -66,9 +64,26 @@ const raceWinnerEl = document.getElementById("winner");
 // ---------- Steering ----------
 // Every finger on the screen counts: left half = -1 (left), right half = 1 (right).
 // A finger can slide across the middle to switch sides.
-// SKID: keep holding a turn for more than a second (RACE.skidAfter) and the sled starts to
-// skid: it swings round much further (sharp bends!), but it loses speed. Let go to stop skidding.
+// SKID: hold one of the two skid buttons in the bottom corners (left button = skid left,
+// right button = skid right). The sled swings round much further (sharp bends!), but it
+// loses speed. Let go to stop skidding. (On a computer: hold Shift with an arrow key.)
 const steerFingers = new Map(); // finger (pointer id) → -1 or 1
+const skidFingers = new Map();  // a finger on a skid button → -1 (the left button) or 1 (the right one)
+const skidButtons = { "-1": document.getElementById("skid-left"), "1": document.getElementById("skid-right") };
+for (const side of [-1, 1]) {
+  skidButtons[side].addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    if (client.mode === "race" && client.phase === "playing") skidFingers.set(event.pointerId, side);
+  });
+}
+
+// Which way I am asking to skid: -1 = left, 1 = right, 0 = not skidding.
+function skidInput() {
+  let side = 0;
+  for (const s of skidFingers.values()) side += s;
+  if (keysDown.has("shift")) side += keyboardDirection().x;
+  return Math.sign(side);
+}
 
 function sideOfScreen(event) {
   return event.clientX < window.innerWidth / 2 ? -1 : 1;
@@ -85,7 +100,7 @@ window.addEventListener("pointermove", (event) => {
   if (steerFingers.has(event.pointerId)) steerFingers.set(event.pointerId, sideOfScreen(event));
 });
 for (const type of ["pointerup", "pointercancel"]) {
-  window.addEventListener(type, (event) => { steerFingers.delete(event.pointerId); });
+  window.addEventListener(type, (event) => { steerFingers.delete(event.pointerId); skidFingers.delete(event.pointerId); });
 }
 
 // ---------- Using a gift (the banana peel, mango or rimon from a gate) ----------
@@ -118,6 +133,8 @@ function spinAngle(since) {
 
 // -1 = full left, 0 = straight, 1 = full right.
 function steerInput() {
+  const skid = skidInput(); // (a skid button also steers, that way)
+  if (skid) return skid;
   let steer = keyboardDirection().x;
   for (const side of steerFingers.values()) steer += side;
   return Math.max(-1, Math.min(1, steer));
@@ -182,13 +199,10 @@ function raceUpdate(dt) {
 
   const flying = myAir > 0;
   const steer = started && !spinning && !inWater ? steerInput() : 0;
-  // Skidding: hold a turn for more than a second (RACE.skidAfter) and the sled starts to skid.
-  // It swings round faster and much further, so it can take a sharp bend, but it loses speed.
-  // Only on the ground. Let go (or steer the other way) and the skid is over.
-  if (steer !== 0 && Math.sign(steer) === holdSide) holdTime += dt; else holdTime = 0;
-  holdSide = Math.sign(steer);
+  // Skidding: while I hold a skid button, the sled skids to that side. It swings round faster
+  // and much further, so it can take a sharp bend, but it loses speed. Only on the ground.
   const bouncing = gameTime - bounceAt < RACE.gateBounceTime; // (a gate is bouncing me back)
-  const skidding = started && !spinning && !inWater && !flying && !bouncing && holdTime >= RACE.skidAfter;
+  const skidding = started && !spinning && !inWater && !flying && !bouncing && skidInput() !== 0;
   if (skidding && !mySkid) playSound("skid");
   mySkid = skidding;
   // (After a skid the sled straightens back to a normal turn quickly, not in one jerk.)
@@ -290,7 +304,7 @@ function raceUpdate(dt) {
     else if (bend < RACE.carveCurve * 0.5) {
       if (carveTime >= RACE.carveAfter) {
         boostUntil = Math.max(boostUntil, gameTime + RACE.carveBoost[carveTime >= RACE.carveBig ? 1 : 0]);
-        playSound("boost");
+        playSound("swish");
       }
       carveTime = 0;
     }
@@ -329,12 +343,11 @@ function raceUpdate(dt) {
           if (gameTime - crashAt <= 0.5) continue; // (still sliding away from the last tree)
           crashDir = away;
           crashAt = gameTime;
-          mySpeed *= RACE.hardHitSpeed;
+          mySpeed *= size.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
           me.y = Math.max(me.y - 250, Math.min(me.y, i * RACE.segmentLength - RACE.sledLength)); // (the nose stops AT the tree, not inside it)
           steerLimit = Math.max(steerLimit, RACE.hardHitTurn);
           mySteer = crashDir * RACE.hardHitTurn; // knocked round, away from it
           mySlide = crashDir * RACE.crashShove;
-          holdTime = 0;
           carveTime = 0;
           playSound("clack");
           if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
@@ -515,7 +528,6 @@ function checkGates(me) {
   bounceTo = Math.max(TRACK.startZ, gate.z - RACE.gateBounce);
   mySpeed = 0;
   boostUntil = -Infinity;
-  holdTime = 0;
   playSound("wrong");
   playSound("boing");
   // Say the English word again.
@@ -649,7 +661,7 @@ function raceRender() {
     countdown: !started ? Math.max(1, Math.ceil(raceInfo.startAt - gameTime)) : sinceStart < 0.8 ? "go" : null,
     finishedPlace: myFinishedPlace,
     deepSnow: inDeepSnow,
-    showHint: !started || sinceStart < RACE.hintTime, // the "hold to turn / keep holding to skid" circles
+    showHint: !started || sinceStart < RACE.hintTime, // the "hold to turn / corner buttons to skid" circles
     skidding: mySkid,
     gate: gateQuestion ? {
       english: gateQuestion.entry.english, choices: gateQuestion.choices, myLane: laneAt(me.x, gateQuestion.gate),
@@ -727,6 +739,7 @@ function raceClear() {
   mySpeed = 0;
   myFinishedPlace = 0;
   steerFingers.clear();
+  skidFingers.clear();
   forgetGates();
   snowPuffs.length = 0;
   otherSleds.clear();
@@ -766,8 +779,7 @@ function raceOnPhase(phase) {
     lastItem = null;
     mySkid = false;
     steerLimit = 1;
-    holdTime = 0;
-    holdSide = 0;
+    skidFingers.clear();
     softHits.clear();
     softAt = -Infinity;
     seenBooms.clear();
@@ -798,6 +810,12 @@ function raceUpdateHud(p, playing) {
   const names = playing && p.item && gameTime - itemUsedAt > 0.5 ? ITEM_NAMES[p.item] : null;
   itemButton.hidden = !names;
   dropButton.hidden = !names || p.item !== "rimon";
+  // The two skid buttons, in the bottom corners. (The one being held lights up.)
+  const skid = playing ? skidInput() : 0;
+  for (const side of [-1, 1]) {
+    skidButtons[side].hidden = !playing;
+    skidButtons[side].classList.toggle("held", skid === side);
+  }
   if (names) {
     itemIcon.textContent = names.icon;
     setBilingual(itemLabel, names.en, names.he);

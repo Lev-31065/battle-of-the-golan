@@ -60,8 +60,8 @@ const SPRITE_SIZES = {
   olive:    { w: 1300, h: 1100, solid: true, hit: 300 },
   almond:   { w: 1300, h: 1300, solid: true, hit: 200 }, // an almond tree in blossom (they flower in winter, around Tu BiShvat)
   palm:     { w: 1000, h: 2300, solid: true, hit: 180 },
-  rock:     { w: 700,  h: 400,  solid: true, hit: 620 },
-  rockSnow: { w: 700,  h: 430,  solid: true, hit: 620 },
+  rock:     { w: 700,  h: 400,  solid: true, hit: 620, rock: true }, // rock = it slows a sled much more than a tree does (RACE.rockHitSpeed)
+  rockSnow: { w: 700,  h: 430,  solid: true, hit: 620, rock: true },
   snowman:  { w: 480,  h: 720,  solid: true, soft: true, hit: 400 },
   cabin:    { w: 1800, h: 1350, solid: true, hit: 1500 },
   sign:     { w: 1300, h: 1000, solid: true, hit: 1100 },

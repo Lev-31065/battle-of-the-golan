@@ -446,7 +446,7 @@ function raceMoveBot(p, dt) {
         }
         if (server.time - p.crashAt <= 0.5) continue;
         p.crashDir = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : p.x >= sprite.offset ? 1 : -1;
-        p.speed *= RACE.hardHitSpeed;
+        p.speed *= size.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops it)
         p.y = Math.max(p.y - 250, Math.min(p.y, i * RACE.segmentLength - RACE.sledLength)); // (its nose stops AT the tree)
         if (server.time - p.crashAt < 4) p.freeUntil = server.time + 2.5;
         p.crashAt = server.time;

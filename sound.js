@@ -114,6 +114,7 @@ const SOUNDS = {
   plant:   () => melody([392, 523, 659], 0.06, { type: "triangle", volume: 0.12 }), // planting a tree
   tick:    () => tone(620, 0.16, { type: "sine", volume: 0.18 }),              // race countdown: 3… 2… 1…
   go:      () => tone(990, 0.45, { type: "sine", volume: 0.2 }),               // race countdown: Go!
+  swish:   () => { noise(0.35, { volume: 0.16, from: 500, to: 2600 }); },         // the little boost after carving round a bend: a soft rush of snow
   jump:    () => tone(260, 0.5, { type: "triangle", slideTo: 880, volume: 0.12 }),   // a sled flying off a ramp
   land:    () => tone(120, 0.16, { type: "sine", slideTo: 60, volume: 0.25 }),       // …and coming down: a soft thump
   splash:  () => { tone(900, 0.5, { type: "sawtooth", slideTo: 90, volume: 0.12 }); tone(1400, 0.7, { type: "triangle", slideTo: 200, volume: 0.1, delay: 0.05 }); tone(70, 0.5, { type: "sine", slideTo: 40, volume: 0.3 }); }, // into the Kinneret!
