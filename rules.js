@@ -323,7 +323,10 @@ const RACE = {
   hills: 1,               // how big the hills and dips are (0 = none, 1 = normal, 2 = huge)
   gateWidth: 1.7,         // half the width of the path at an answer gate
   startWidth: 1.2,        // half the width at the start and the finish
-  shoulder: 1.0,          // how much ground there is beside the path before it drops down the mountainside
+  shoulder: 1.0,          // (the old flat drawing only) how far off the path a sled can go
+  shoulderWide: 1.3,      // how wide the strip of ground beside the path is (road widths). Where another stretch of path is close, the two share the ground between them
+  zigWidth: 0.95,         // half the width of the path on a zigzag
+  zigGap: 17,             // how long the gap in the rocks along each leg of a zigzag is, in segments (the secret way down to the next leg)
   lanes: 3,               // lanes at the gates (one answer over each lane)
   maxSpeed: 3700,         // top speed on a normal slope (track units per second). Was 10000, then 6000, 5500, 4200
   accel: 1400,            // how fast you speed up on the path
@@ -343,7 +346,13 @@ const RACE = {
   cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0,           // an extra sideways push in bends (was 0.1; `curveSteer` below does this job now)
-  maxSide: 6,             // the farthest from the middle any sled can be (the referee checks this)
+  maxSide: 20,            // the farthest from the middle of the path any sled can be, in road widths (the referee checks this)
+  // Roaming: off the path, anywhere on the mountain (race-game.js: roamUpdate)
+  roamTurn: 1.15,         // how fast the sled turns round out there (radians per second: 1.15 is about a third of a full turn in 2 seconds)
+  roamSkidTurn: 2.1,      // …and in a skid
+  roamSlope: [0.35, 1.45], // out there the slope matters more: from 35% of your speed (struggling up a steep bank) to 145% (straight down one)
+  roamJoin: 1.0,          // back on the path, you are "riding the path" again once you point within this much of its direction (radians: 1.0 is about 57 degrees). Pointing more across it than that, you just cross it
+  roamFar: 260,           // this far from any path (map units; a sled is 6 wide) the game puts you back on the path by itself
   // Steering feel: a bit like a kart racing game (race-game.js)
   curveSteer: 0.8,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself, 1 = fully real. (Was 0.5.) With this, a bend sharper than about 18 can only be taken in a skid
   grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
@@ -433,11 +442,11 @@ const RACE = {
   botRight: 0.6,          // how often a bot picks the right answer at a gate (0.6 = 60%)
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
-  gateZone: 90,           // the straight, wide stretch around each gate (in segments)
+  gateZone: 70,           // the straight, wide stretch around each gate (in segments)
   gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.25,       // right answer: top speed goes up to 125%… (was 145%)
   boostTime: 2,           // …for this many seconds
-  gateBounce: 9000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
+  gateBounce: 7000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
   gateBounceTime: 0.9,    // …and the bounce takes this many seconds. (You start again from a standstill, until you get it right.)
   soundReach: 9000,       // you only hear a rimon blow up if it is this close to you (quieter the further away)
   feedbackTime: 2.5,      // seconds "Correct!" or "The answer is…" stays on the screen
@@ -465,7 +474,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14f";
+const GAME_VERSION = "2026-11-14g";
 
 // ---------- Helpers ----------
 

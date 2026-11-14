@@ -79,6 +79,7 @@ function raceStartGame() {
   server.race.startAt = server.time + RACE.countdown;
 }
 
+const RACE_FROM = {}, RACE_TO = {}; // (spare spots for trackToWorld to fill in)
 function raceHandle(p, msg) {
   if (server.phase !== "playing") return;
   if (server.time < server.race.startAt) return; // no moving before "Go!"
@@ -88,15 +89,25 @@ function raceHandle(p, msg) {
   if (msg.type !== "move") return;
   const x = Number(msg.x), y = Number(msg.y), speed = Number(msg.speed), steer = Number(msg.steer);
   if (![x, y, speed, steer].every(Number.isFinite)) return;
-  // A sled can't jump ahead faster than it could really go (a glitch or a cheat).
+  // A sled can't move faster than it could really go (a glitch or a cheat). We measure on the
+  // MAP, because a sled that leaves the path can drop from one stretch of it to another, and then
+  // its distance along the path jumps. (Backwards along the path is fine: a gate bounces a sled
+  // back after a wrong answer. And if a phone keeps saying the same thing, we believe it.)
   const seconds = Math.max(0.05, server.time - p.lastMoveAt);
-  const furthest = p.y + RACE.maxSpeed * 2 * seconds + RACE.segmentLength;
   p.lastMoveAt = server.time;
-  // (Backwards is fine: a gate bounces a sled back up the path after a wrong answer. But not miles back.)
-  p.y = Math.max(p.y - RACE.gateBounce - 3000, Math.min(y, furthest));
-  p.x = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, x));
+  const side = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, x));
+  const from = trackToWorld(p.y, p.x, RACE_FROM), to = trackToWorld(y, side, RACE_TO);
+  const moved = Math.hypot(to.x - from.x, to.z - from.z) * 100; // (in track units)
+  const bounced = y <= p.y && y >= p.y - RACE.gateBounce - 3000;
+  if (bounced || moved <= RACE.maxSpeed * 2.2 * seconds + 600 || (p.oddMoves || 0) >= 8) {
+    p.y = Math.max(0, Math.min(TRACK.length, y));
+    p.x = side;
+    p.oddMoves = 0;
+  } else {
+    p.oddMoves = (p.oddMoves || 0) + 1;
+  }
   p.speed = Math.max(0, Math.min(RACE.maxSpeed * 2, speed));
-  p.steer = Math.max(-RACE.skidTurn, Math.min(RACE.skidTurn, steer)); // (in a skid a sled swings round further than 1)
+  p.steer = Math.max(-8, Math.min(8, steer)); // (in a skid a sled swings round further than 1; off the path it can point any way at all)
   p.air = Math.max(0, Math.min(5000, Number(msg.air) || 0)); // (how high it is flying, so everyone can see the jump)
   raceCheckFinish(p);
 }

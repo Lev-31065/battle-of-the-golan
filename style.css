@@ -543,6 +543,24 @@ button, select, input { touch-action: manipulation; }
 .skid-arrow { display: block; font-size: 30px; font-weight: 800; line-height: 30px; }
 .skid-button .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
 .skid-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.8; }
+/* "Back to the path": just above the right skid button, only while the sled is off the path. */
+.return-button {
+  position: fixed;
+  right: 16px;
+  bottom: 124px;
+  padding: 7px 12px;
+  border: 3px solid #fde047;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  cursor: pointer;
+  touch-action: none;
+  z-index: 4;
+}
+.return-button[hidden] { display: none; }
+.return-button .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
+.return-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.85; }
 .item-icon { display: block; font-size: 34px; line-height: 38px; }
 .item-label .he { display: block; font-size: 12px; font-weight: 800; line-height: 14px; }
 .item-label .en { display: block; font-size: 9px; line-height: 11px; opacity: 0.75; }

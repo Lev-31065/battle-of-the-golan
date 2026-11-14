@@ -76,6 +76,7 @@ const P3 = (function buildPath3d() {
     half: make(), island: make(), islandAt: make(), tilt: make(), snow: make(), sand: make(), yLand: make(), wallL: make(), wallR: make(),
     bridge: new Uint8Array(N + 1), tunnel: new Uint8Array(N + 1), woods: new Uint8Array(N + 1),
     edgeL: make().fill(NaN), edgeR: make().fill(NaN),
+    shL: make(), shR: make(), // how wide the strip of ground beside the path is, on the left and on the right (narrower where another stretch of path is close)
     waterIndex: N, finishIndex: Math.floor(TRACK.finishZ / RACE.segmentLength),
   };
   for (let n = 0; n <= N; n++) {
@@ -95,6 +96,8 @@ const P3 = (function buildPath3d() {
     p.bridge[n] = seg.bridge ? 1 : 0;
     p.tunnel[n] = seg.tunnel ? 1 : 0;
     p.woods[n] = seg.zone === "woods" ? 1 : 0;
+    p.shL[n] = seg.roomL * RW3;
+    p.shR[n] = seg.roomR * RW3;
     if (seg.water && n < p.waterIndex) p.waterIndex = n;
   }
   // Valleys and ridges. In a dip of the path the sides rise up (you're in a valley); on a
@@ -205,6 +208,7 @@ function landAt(px, pz, list) {
   const bumpy = rough2(px * 0.011, pz * 0.011) * (0.3 + Math.min(L.t, 220) * 0.14)
     + noise2(px * 0.09, pz * 0.09) * Math.min(1.2, L.t * 0.05);
   L.h = L.base + (lift + bumpy) * (1 - L.sand * 0.92);
+  if (TRACK.trails.length) L.h += trailHills(px, pz) * smooth3(0, 30, L.t); // (not on the path itself)
   return L;
 }
 
@@ -212,7 +216,7 @@ function landAt(px, pz, list) {
 function edgeHeight(n, side) {
   const store = side > 0 ? P3.edgeR : P3.edgeL;
   if (isNaN(store[n])) {
-    const lat = side * (P3.half[n] + SHOULDER3);
+    const lat = side * (P3.half[n] + (side > 0 ? P3.shR[n] : P3.shL[n]));
     store[n] = landAt(P3.x[n] + P3.cos[n] * lat, P3.z[n] + P3.sin[n] * lat).h;
   }
   return store[n];
@@ -241,10 +245,11 @@ function stripHeight(n, lat) {
   if (a <= half) return P3.y[n] + P3.tilt[n] * lat + fieldRoll(n, lat, half) + islandMound(n, lat);
   const y = P3.y[n] + P3.tilt[n] * (lat > 0 ? half : -half); // the height of the path's edge on this side
   if (P3.bridge[n]) return y;                                 // (a bridge has no ground beside it)
-  if (a <= half + 3) return y + 0.45 * (a - half) / 3;        // the little bank of snow along the edge
+  const wide = lat > 0 ? P3.shR[n] : P3.shL[n], bank = Math.min(3, wide * 0.5), up = 0.45 * bank / 3;
+  if (a <= half + bank) return y + up * (a - half) / bank;   // the little bank of snow along the edge
   const edge = edgeHeight(n, lat > 0 ? 1 : -1);
-  if (a >= half + SHOULDER3) return edge;
-  return y + 0.45 + (edge - y - 0.45) * (a - half - 3) / (SHOULDER3 - 3);
+  if (a >= half + wide) return edge;
+  return y + up + (edge - y - up) * (a - half - bank) / (wide - bank);
 }
 
 // Where a spot on the path is in the world. along = distance along the path (track units),
@@ -260,11 +265,66 @@ function pathSpot(along, side, out, plain) {
   out.z = P3.z[i] + (P3.z[i + 1] - P3.z[i]) * f + s * lat;
   const y0 = stripHeight(i, lat), y1 = stripHeight(i + 1, lat);
   out.y = y0 + (y1 - y0) * f + (plain ? 0 : rampHeightAt(along, side) * U3);
+  // Far off the path (past the strip of ground that belongs to it): the mountain itself.
+  const past = Math.abs(lat) - P3.half[i] - (lat > 0 ? P3.shR[i] : P3.shL[i]);
+  if (past > 2.5) { const t = smooth3(2.5, 7, past); out.y = out.y * (1 - t) + landGround(out.x, out.z) * t; }
   out.heading = heading;
   const a = Math.max(0, i - 1), b = Math.min(P3.N, i + 3);
   out.slope = (P3.y[b] - P3.y[a]) / ((b - a) * SEG3); // minus = downhill
   out.index = i;
   return out;
+}
+
+// ---------- The ground anywhere on the mountain ----------
+// The mountain is drawn as a net of triangles, with a corner every CELL units (see buildLandChunk).
+// A sled that is off the path rides on exactly that net, so it never sinks into it or floats over it.
+
+// Right under the path (and the strip of ground that belongs to it) the mountain is pushed
+// down a little, so it never pokes up through the path.
+function sinkUnderPath(L) {
+  return 2.5 * (1 - smooth3(L.half + SHOULDER3 + 9, L.half + SHOULDER3 + 24, L.d));
+}
+// The height of the net at one of its corners (worked out once, then remembered).
+const NET = new Map();
+function netHeight(ix, iz) {
+  const key = (ix + 40000) * 100000 + (iz + 40000);
+  let h = NET.get(key);
+  if (h === undefined) {
+    if (NET.size > 60000) NET.clear();
+    const L = landAt(ix * 5, iz * 5);
+    h = L.h - sinkUnderPath(L);
+    NET.set(key, h);
+  }
+  return h;
+}
+// The height of the mountain at any spot on the map (on the triangle of the net that spot is in).
+function landGround(x, z) {
+  const gx = x / 5, gz = z / 5, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+  const a = netHeight(ix, iz), b = netHeight(ix + 1, iz), c = netHeight(ix, iz + 1), d = netHeight(ix + 1, iz + 1);
+  return fx + fz <= 1 ? a + (b - a) * fx + (c - a) * fz : d + (c - d) * (1 - fx) + (b - d) * (1 - fz);
+}
+// The height of the ground at any spot on the map: the path where there is path, the mountain elsewhere.
+const WT = {}, WS = {};
+function worldHeight(x, z, hint) {
+  worldToTrack(x, z, WT, hint);
+  return pathSpot(WT.y, WT.x, WS, true).y;
+}
+
+// Little hills along a secret trail (the trail over the hills near the start): the ground
+// rises and falls along it, and fades back to normal a little way to each side.
+function trailHills(px, pz) {
+  let rise = 0;
+  for (const t of TRACK.trails) {
+    if (!t.hills || px < t.minX - 90 || px > t.maxX + 90 || pz < t.minZ - 90 || pz > t.maxZ + 90) continue;
+    let best = Infinity, at = 0;
+    for (let i = 0; i < t.count; i += 3) {
+      const d = (t.x[i] - px) * (t.x[i] - px) + (t.z[i] - pz) * (t.z[i] - pz);
+      if (d < best) { best = d; at = i; }
+    }
+    const s = at * t.step, ends = smooth3(0, 45, Math.min(s, t.length - s));
+    rise += t.hills * (0.5 - 0.5 * Math.cos(s / t.hillEvery * Math.PI * 2)) * ends * Math.exp(-best / (38 * 38));
+  }
+  return rise;
 }
 
 // ---------- Building shapes out of triangles ----------
@@ -655,6 +715,7 @@ function initRace3d() {
   makeSigns();
   makeSpray();
   makeItems();
+  makeTrails();
   w3.ready = true;
 }
 
@@ -834,8 +895,7 @@ function buildLandChunk(cx, cz) {
     nearest[k] = L.n;
     height[k] = L.h; away[k] = L.t; snow[k] = L.snow; sand[k] = L.sand; lift[k] = L.h - L.base;
     // Right under the path the ground is pushed down a little, so the path strip sits on top of it.
-    // (All the way under the strip of ground that belongs to the path, and a bit beyond it, so the mountain never pokes up through it.)
-    sunk[k] = L.h - 2.5 * (1 - smooth3(L.half + SHOULDER3 + 9, L.half + SHOULDER3 + 24, L.d));
+    sunk[k] = L.h - sinkUnderPath(L);
   }
   const positions = new Float32Array(count * 3), colors = new Float32Array(count * 3);
   const normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2); // (soft light + the snow picture)
@@ -876,6 +936,7 @@ function buildLandChunk(cx, cz) {
   // (In the deep woods: many more of them, nearly all GIANT trees.)
   const B = new MeshBuilder();
   const deepWoods = P3.woods[nearest[Math.floor(GRID / 2) * GRID + Math.floor(GRID / 2)]] === 1;
+  const trees = []; // where each one stands on the map (a sled that is off the path can run into them)
   for (let k = 0; k < (deepWoods ? 70 : 44); k++) {
     const gx = 1 + rand2(cx * 131 + k, cz * 71) * (GRID - 3), gz = 1 + rand2(cx * 17, cz * 191 + k) * (GRID - 3);
     const cell = Math.floor(gz) * GRID + Math.floor(gx);
@@ -891,11 +952,57 @@ function buildLandChunk(cx, cz) {
     if (woods) type = pick === 7 ? "rockSnow" : pick === 6 ? "bushSnow" : "giantPine";
     else if (snowy) type = type === "oak" || type === "olive" || type === "almond" ? "oakSnow" : type + "Snow";
     else if (snow[cell] > 0.1 && (type === "olive" || type === "almond")) type = "oak"; // (olives and almonds grow lower down)
-    B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, type === "giantPine" ? 0.75 + rand2(cz + k, cx) * 0.4 : 0.8 + rand2(cz + k, cx) * 0.7);
+    if (trailAt(x0 + gx * CELL, z0 + gz * CELL, 5)) continue; // (nothing grows on a secret trail)
+    const big = type === "giantPine" ? 0.75 + rand2(cz + k, cx) * 0.4 : 0.8 + rand2(cz + k, cx) * 0.7;
+    const size = SPRITE_SIZES[type];
+    trees.push({ x: x0 + gx * CELL, z: z0 + gz * CELL, r: size.hit / 2 * U3 * big, tall: size.h * big, soft: Boolean(size.soft), rock: Boolean(size.rock), seg: -1, offset: 0 });
+    B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, big);
     MODELS[type](B, k + cx * 7 + cz * 13);
   }
   if (B.p.length) group.add(new THREE.Mesh(B.geometry(), world3d.paint));
+  group.userData.trees = trees;
   return group;
+}
+
+// The scenery trees and rocks near a spot on the map: calls visit(thing) for each one
+// (the same kind of thing as solidsNear in race-track.js gives). Only the parts of the
+// mountain that are built right now have any.
+function landTreesNear(x, z, visit) {
+  for (let cx = Math.floor((x - 30) / CHUNK); cx <= Math.floor((x + 30) / CHUNK); cx++) {
+    for (let cz = Math.floor((z - 30) / CHUNK); cz <= Math.floor((z + 30) / CHUNK); cz++) {
+      const group = world3d.landChunks && world3d.landChunks.get(cx + "," + cz);
+      if (!group) continue;
+      for (const tree of group.userData.trees || []) if (Math.abs(tree.x - x) < 30 && Math.abs(tree.z - z) < 30) visit(tree);
+    }
+  }
+}
+
+// ---------- The secret trails: a faint track across the mountainside ----------
+// Each trail (TRACK.trails, race-track.js) is drawn as a narrow ribbon lying on the ground:
+// packed snow (or bare earth lower down) in the middle, fading into the ground at its edges.
+function makeTrails() {
+  const T = {};
+  for (const t of TRACK.trails) {
+    const B = new MeshBuilder();
+    const across = [-1, -0.45, 0.45, 1];
+    const row = (i) => {
+      const a = Math.max(0, i - 1), b = Math.min(t.count - 1, i + 1), d = Math.hypot(t.x[b] - t.x[a], t.z[b] - t.z[a]) || 1;
+      const nx = -(t.z[b] - t.z[a]) / d, nz = (t.x[b] - t.x[a]) / d;
+      const narrow = smooth3(0, 10, Math.min(i, t.count - 1 - i) * t.step) * 0.6 + 0.4; // (it starts and ends in a point)
+      return across.map((k) => { const x = t.x[i] + nx * k * t.half * narrow, z = t.z[i] + nz * k * t.half * narrow; return [x, worldHeight(x, z) + 0.32, z]; });
+    };
+    let last = row(0);
+    for (let i = 1; i < t.count; i++) {
+      const next = row(i);
+      worldToTrack(t.x[i], t.z[i], T);
+      const snow = P3.snow[T.index], land = landColor(t.x[i], t.z[i], snow, 0, 0, 0);
+      const packed = snow > 0.3 ? rgb3(i % 4 < 2 ? "#d3e0ef" : "#c9d8ea") : rgb3(i % 4 < 2 ? "#b7a37a" : "#ad9a72");
+      for (let k = 0; k < 3; k++) B.quad(last[k], last[k + 1], next[k + 1], next[k], mix3(land, packed, k === 1 ? 0.8 : 0.3));
+      last = next;
+    }
+    const mesh = new THREE.Mesh(B.groundGeometry(0, 0), world3d.groundPaint);
+    world3d.scene.add(mesh);
+  }
 }
 
 // Build the chunks near the camera (a few per frame, nearest first), and throw away the far ones.
@@ -969,14 +1076,20 @@ function buildPathPiece(piece) {
     // (Not on the bridge: there is only air beside it.)
     for (const s of seg.bridge ? [] : [-1, 1]) {
       const ground = landColor(mid + P3.cos[n] * s * (ha + 14), midZ + P3.sin[n] * s * (ha + 14), P3.snow[n], P3.sand[n], 0, 0);
-      strip(n, s * (ha + 3), s * (ha + SHOULDER3), s * (hb + 3), s * (hb + SHOULDER3), ground);
-      const a = at(n, s * (ha + SHOULDER3)), b = at(n + 1, s * (hb + SHOULDER3));
-      const a2 = at(n, s * (ha + SHOULDER3 + 8)), b2 = at(n + 1, s * (hb + SHOULDER3 + 8));
-      a2[1] -= 4.5; b2[1] -= 4.5;
-      B.quad(a, a2, b2, b, ground);
+      // (How wide the strip is here, and the little bank along the edge: less where another stretch of path is close.)
+      const sa = s > 0 ? P3.shR[n] : P3.shL[n], sb = s > 0 ? P3.shR[n + 1] : P3.shL[n + 1];
+      const ba = Math.min(3, sa * 0.5), bb = Math.min(3, sb * 0.5);
+      strip(n, s * (ha + ba), s * (ha + sa), s * (hb + bb), s * (hb + sb), ground);
+      if (sa > SHOULDER3 - 1 && sb > SHOULDER3 - 1) {
+        // (The skirt. Not where two stretches of path share the ground between them: there the two strips meet.)
+        const a = at(n, s * (ha + sa)), b = at(n + 1, s * (hb + sb));
+        const a2 = at(n, s * (ha + sa + 8)), b2 = at(n + 1, s * (hb + sb + 8));
+        a2[1] -= 4.5; b2[1] -= 4.5;
+        B.quad(a, a2, b2, b, ground);
+      }
       // The little bank along the path's edge.
       const bank = mix3(mix3(shade3(ground, 0.9), PATHC.bank, P3.snow[n] * 0.9 + 0.1), LANDC.sand, P3.sand[n]);
-      strip(n, s * ha, s * (ha + 3), s * hb, s * (hb + 3), bank);
+      strip(n, s * ha, s * (ha + ba), s * hb, s * (hb + bb), bank);
     }
     // The path: light and dark stripes (so you feel the speed), with thin lines on it.
     const base = mix3(seg.dark ? PATHC.pathDark : PATHC.path, seg.dark ? PATHC.sandPathDark : PATHC.sandPath, P3.sand[n]);
@@ -1421,6 +1534,15 @@ function poseSled(sled, o, time, dt) {
   pathSpot(o.along + c * len / 2 + s * wide, o.side + (s * len / 2 - c * wide) / RACE.roadWidth, LEFT);
   pathSpot(o.along + c * len / 2 - s * wide, o.side + (s * len / 2 + c * wide) / RACE.roadWidth, RIGHT);
   pathSpot(o.along, o.side, SPOT); // (last, so SPOT is left holding the sled's own spot)
+  // Off the path (or pointing right across it): look at the ground on the MAP instead, straight
+  // ahead of the sled and to its two sides, whichever way it points.
+  const here = TRACK.segments[Math.min(TRACK.segments.length - 1, SPOT.index)];
+  if (Math.abs(o.side) > here.width + (o.side > 0 ? here.roomR : here.roomL) || Math.abs(o.turn) > 1.2) {
+    const H = SPOT.heading + o.turn, fx = Math.sin(H), fz = -Math.cos(H), rx = Math.cos(H), rz = Math.sin(H), l3 = len * U3;
+    NOSE.y = worldHeight(SPOT.x + fx * l3, SPOT.z + fz * l3, SPOT.index);
+    LEFT.y = worldHeight(SPOT.x + fx * l3 / 2 - rx * 3, SPOT.z + fz * l3 / 2 - rz * 3, SPOT.index);
+    RIGHT.y = worldHeight(SPOT.x + fx * l3 / 2 + rx * 3, SPOT.z + fz * l3 / 2 + rz * 3, SPOT.index);
+  }
   const air = (o.air || 0) * U3;
   let y = SPOT.y + air, pitch, roll;
   if (o.float) {
@@ -1920,9 +2042,15 @@ function drawRace3d(view, w, h) {
   let camX = sledX - fx * RACE.camBack * back, camZ = sledZ - fz * RACE.camBack * back, camY = sledY + RACE.camHeight * back + air * 0.85;
   // Never inside the mountain (a wall beside a bend, or a hilltop just behind me).
   camY = Math.max(camY, landAt(camX, camZ).h + 2.6);
-  pathSpot(view.along - 1500, view.side, CAM, true);
-  camY = Math.max(camY, CAM.y + 3.2);
-  pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
+  if (view.free) {
+    // Off the path: the camera looks at the ground ahead of the sled, whichever way it is heading.
+    camY = Math.max(camY, worldHeight(camX, camZ, index) + 3.2);
+    CAM.y = Math.max(sledY - 12, Math.min(sledY + 4, worldHeight(sledX + fx * RACE.camAhead * U3, sledZ + fz * RACE.camAhead * U3, index))); // (never tipped so far up or down that my sled leaves the picture)
+  } else {
+    pathSpot(view.along - 1500, view.side, CAM, true);
+    camY = Math.max(camY, CAM.y + 3.2);
+    pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
+  }
   const shake = (view.shake || 0) * 0.5;
   w3.camera.position.set(camX + (Math.random() - 0.5) * shake, camY + (Math.random() - 0.5) * shake, camZ);
   LOOK.set(sledX + fx * RACE.camAhead * U3, CAM.y + 1 + air * 0.6, sledZ + fz * RACE.camAhead * U3);

@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-14f">
+  <link rel="stylesheet" href="style.css?v=2026-11-14g">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -60,6 +60,8 @@
   <!-- Mt Hermon Racing only: the two skid buttons, in the bottom corners. Hold one to skid that way. race-game.js. -->
   <button id="skid-left" class="skid-button skid-left" type="button" aria-label="Skid left" data-game-button="race" hidden><span class="skid-arrow">↶</span><span class="he" lang="he" dir="rtl">הַחְלָקָה</span><span class="en">Skid</span></button>
   <button id="skid-right" class="skid-button skid-right" type="button" aria-label="Skid right" data-game-button="race" hidden><span class="skid-arrow">↷</span><span class="he" lang="he" dir="rtl">הַחְלָקָה</span><span class="en">Skid</span></button>
+  <!-- Mt Hermon Racing only: "back to the path". It only shows while your sled is off the path. race-game.js. -->
+  <button id="return-button" class="return-button" type="button" aria-label="Back to the path" data-game-button="race" hidden><span class="he" lang="he" dir="rtl">חֲזָרָה לַשְּׁבִיל</span><span class="en">↩ Back to the path</span></button>
   <!-- Leave the game (asks "Are you sure?" first). -->
   <button id="leave-button" class="mute-button leave-button" type="button" aria-label="Leave the game" hidden>🚪</button>
 
@@ -298,7 +300,8 @@
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
         <p><span class="he" lang="he" dir="rtl">הַמִּזְחֶלֶת נוֹסַעַת לְבַד. מַחֲזִיקִים אֶת <b>הַצַּד הַשְּׂמָאלִי</b> אוֹ <b>הַיְּמָנִי</b> שֶׁל הַמָּסָךְ כְּדֵי לִפְנוֹת.</span><span class="en">🛷 Your sled goes by itself. Hold the <b>left</b> or <b>right</b> side of the screen to steer.</span></p>
         <p><span class="he" lang="he" dir="rtl">סִיבוּב חַד? מַחֲזִיקִים אֶת <b>כַּפְתּוֹר הַהַחְלָקָה</b> בַּפִּנָּה: הַמִּזְחֶלֶת מַחֲלִיקָה וּפוֹנָה חַד יוֹתֵר, אֲבָל מְאִטָּה.</span><span class="en">💨 A sharp bend? Hold the <b>skid button</b> in the bottom corner on that side: the sled skids and turns much sharper, but it slows down.</span></p>
-        <p><span class="he" lang="he" dir="rtl">נִשְׁאָרִים עַל הַשְּׁבִיל: מִחוּצָה לוֹ נוֹסְעִים לְאַט, וְאַל תִּתְנַגְּשׁוּ בַּשִּׂיחִים, בַּסְּלָעִים וּבָעֵצִים!</span><span class="en">❄️ Stay on the path: off it you're slow, and don't crash into the bushes, rocks and trees!</span></p>
+        <p><span class="he" lang="he" dir="rtl">אֶפְשָׁר לָרֶדֶת מֵהַשְּׁבִיל וְלִנְסֹעַ לְכָל כִּוּוּן! בַּשֶּׁלֶג הֶעָמֹק נוֹסְעִים קְצָת יוֹתֵר לְאַט, וְיֵשׁ עֵצִים וּסְלָעִים. כַּפְתּוֹר <b>חֲזָרָה לַשְּׁבִיל</b> מַחְזִיר אֶתְכֶם.</span><span class="en">❄️ You can leave the path and go any way you like! The deep snow is a bit slower, and there are trees and rocks. The <b>Back to the path</b> button puts you back.</span></p>
+        <p><span class="he" lang="he" dir="rtl">חַפְּשׂוּ <b>קִצּוּרֵי דֶּרֶךְ סוֹדִיִּים</b>: רֶוַח בֵּין הַסְּלָעִים בַּזִּיגְזָג, אוֹ שְׁבִיל צַר בֵּין הָעֵצִים.</span><span class="en">🤫 Look for <b>secret shortcuts</b>: a gap in the rocks on a zigzag, or a narrow trail between the trees.</span></p>
         <p><span class="he" lang="he" dir="rtl">בְּכָל <b>שַׁעַר</b> יֵשׁ מִלָּה בְּאַנְגְּלִית. נוֹסְעִים מִתַּחַת לַ<b>תִּרְגּוּם הַנָּכוֹן בְּעִבְרִית</b> וּמְקַבְּלִים טוּרְבּוֹ וּמַתָּנָה! תְּשׁוּבָה לֹא נְכוֹנָה? הַשַּׁעַר מַקְפִּיץ אֶתְכֶם אֲחוֹרָה, וּמְנַסִּים שׁוּב.</span><span class="en">🚧 Every <b>gate</b> has an English word. Drive under the <b>right Hebrew</b> for a speed boost and a gift! A wrong answer? The gate bounces you back to try again.</span></p>
         <p><span class="he" lang="he" dir="rtl">הַמַּתָּנוֹת: <b>קְלִפַּת בָּנָנָה</b> (נוֹפֶלֶת מֵאֲחוֹרֵיכֶם), <b>מַנְגּוֹ</b> (נִזְרָק קָדִימָה) אוֹ <b>רִמּוֹן</b> (זוֹרְקִים קָדִימָה אוֹ מַפִּילִים מֵאָחוֹר, וְהוּא מִתְפּוֹצֵץ).</span><span class="en">🎁 The gifts: a <b>banana peel</b> (dropped behind you), a <b>mango</b> (thrown ahead) or a <b>rimon</b> (throw it ahead or drop it behind you, and it blows up).</span></p>
         <p><span class="he" lang="he" dir="rtl">בַּסִּיבוּבִים מַחֲזִיקִים פְּנִימָה, אַחֶרֶת זוֹרְקִים אֶתְכֶם הַחוּצָה.</span><span class="en">↪️ In the curves, steer to the inside or you'll slide out.</span></p>
@@ -398,27 +401,27 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-14f"></script>
-  <script src="rules.js?v=2026-11-14f"></script>
-  <script src="sound.js?v=2026-11-14f"></script>
-  <script src="speech.js?v=2026-11-14f"></script>
-  <script src="levels-b.js?v=2026-11-14f"></script>
-  <script src="words.js?v=2026-11-14f"></script>
-  <script src="progress.js?v=2026-11-14f"></script>
-  <script src="account.js?v=2026-11-14f"></script>
-  <script src="decks.js?v=2026-11-14f"></script>
-  <script src="quiz.js?v=2026-11-14f"></script>
-  <script src="ctf-draw.js?v=2026-11-14f"></script>
-  <script src="race-track.js?v=2026-11-14f"></script>
-  <script src="race-draw.js?v=2026-11-14f"></script>
-  <script src="three.min.js?v=2026-11-14f"></script>
-  <script src="race-3d.js?v=2026-11-14f"></script>
-  <script src="network.js?v=2026-11-14f"></script>
-  <script src="server.js?v=2026-11-14f"></script>
-  <script src="ctf-server.js?v=2026-11-14f"></script>
-  <script src="race-server.js?v=2026-11-14f"></script>
-  <script src="game.js?v=2026-11-14f"></script>
-  <script src="ctf-game.js?v=2026-11-14f"></script>
-  <script src="race-game.js?v=2026-11-14f"></script>
+  <script src="map.js?v=2026-11-14g"></script>
+  <script src="rules.js?v=2026-11-14g"></script>
+  <script src="sound.js?v=2026-11-14g"></script>
+  <script src="speech.js?v=2026-11-14g"></script>
+  <script src="levels-b.js?v=2026-11-14g"></script>
+  <script src="words.js?v=2026-11-14g"></script>
+  <script src="progress.js?v=2026-11-14g"></script>
+  <script src="account.js?v=2026-11-14g"></script>
+  <script src="decks.js?v=2026-11-14g"></script>
+  <script src="quiz.js?v=2026-11-14g"></script>
+  <script src="ctf-draw.js?v=2026-11-14g"></script>
+  <script src="race-track.js?v=2026-11-14g"></script>
+  <script src="race-draw.js?v=2026-11-14g"></script>
+  <script src="three.min.js?v=2026-11-14g"></script>
+  <script src="race-3d.js?v=2026-11-14g"></script>
+  <script src="network.js?v=2026-11-14g"></script>
+  <script src="server.js?v=2026-11-14g"></script>
+  <script src="ctf-server.js?v=2026-11-14g"></script>
+  <script src="race-server.js?v=2026-11-14g"></script>
+  <script src="game.js?v=2026-11-14g"></script>
+  <script src="ctf-game.js?v=2026-11-14g"></script>
+  <script src="race-game.js?v=2026-11-14g"></script>
 </body>
 </html>

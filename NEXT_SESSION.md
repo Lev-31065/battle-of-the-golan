@@ -1,27 +1,26 @@
 # Next session
 
 ## Where we stopped (2026-11-14)
-- Live version: **v 2026-11-14e** (shown under Privacy on the home screen). Everything is uploaded.
-- Daniel played v 14c and sent a third list. **All of it is built and live, not yet tried by him** (details in STATE.md):
-  - v 14d: skid buttons in the bottom corners, slower sleds, rocks nearly stop you, the carve-boost sound (which sounded like other players jumping) is now a soft swish.
-  - v 14e: 10 gates, giant trees in the woods, sharper and more sharp bends (hairpins), 3 loops with bridges and tunnels, 3 secret shortcuts with rocks to skid round.
+- Live version: **v 2026-11-14g** (shown under Privacy on the home screen). Everything is uploaded.
+- Daniel played v 14e ("It's great") and sent a fourth list. **Built and live, not yet tried by him** (details at the top of the race section in STATE.md):
+  - v 14f: slower, steady speed that follows the slope (no surprise boosts), off-path only 30% slower, tighter skid bends, gas gift, homing mangoes, open bridges you ride under, and the fix for path pieces that were not drawn.
+  - v 14g: free off-roading with a "Back to the path" button, a track full of zigzags with a secret gap in each row of rocks, 4 winding secret trails (one over the hills after gate 1), solid scenery trees, gates that can't be skipped.
 
 ## Next steps
-1. Ask Daniel how v 14e feels. Most likely tuning, in `RACE` (rules.js) or "THE RIDE" (race-track.js):
-   - race too long (about 4½ min)? Cut pieces from "THE RIDE", or raise `maxSpeed` (4200)
-   - skid buttons: size and place (`.skid-button` in style.css)
-   - sharp bends: the `sharp` number of each `turn(…)` (14–17 now), or `sharpSteer`
-   - secret ways: `secretRocks` (30), `secretSpeed` (1.5), `secretWidth`; how well hidden (`hideSecretWay` in race-track.js)
-   - rocks: `rockHitSpeed` (0.1)
-   - bots: too slow now? `botSkill`, `botRight`
-2. Then race step 5 (two phones racing: do skids, bounces, goats, rimonim look right on the other phone?) and step 6 (podium).
+1. Ask Daniel how v 14g feels. Likely tuning, in `RACE` (rules.js) or "THE RIDE" / the `addTrail` lines (race-track.js):
+   - roaming: `roamTurn`, `roamSkidTurn`, `roamSlope`, `offTrackSpeed`; how easily you rejoin the path (`roamJoin`)
+   - zigzag gaps too strong or too hard to hit: `zigGap` (17), where the gap is on the leg (the `0.45 + random() * 0.35` line), rocks (`rockHitSpeed`)
+   - trails: `speed`, `wiggle`, `wave`, `half` in each `addTrail(…)`; the hill trail's `via` points and `hills`
+   - race length (about 4½ min on the path): fewer legs in a `zigzag(…)`, or `maxSpeed`
+   - phones too slow? `nearView` (300), `viewDistance`
+2. **"You can add the next thing"** (Daniel, 2026-11-14): not built. Ask what he meant. Claude's guess: the podium (race step 6) and two-phone polish (step 5).
+3. Two phones: do roaming sleds, gas and drops between zigzag legs look right on the other phone?
 
 ## Questions for Daniel
-- Is about 4½ minutes a good race length?
-- "The sharp bends were not nearly enough": Claude made them both sharper AND more of them. Right reading?
-- Should bots get faster, or learn the secret ways?
+- What is "the next thing": the podium, the two-phone polish, or the 3rd game?
+- Should the zigzag gaps be marked a little (two poles?), or stay fully secret?
+- Should bots use the gaps and trails sometimes?
 - Capture the Flag lag: when does it happen (school Wi-Fi? many players?).
-- What's the 3rd game?
 - Older: levels 18–20 use לְ/אֶל + pronoun: keep, or its own level? More Key concepts decks? Decks for the other verb patterns?
 
 ## Reminders for Claude
@@ -31,9 +30,9 @@
 - Test rig that worked on 2026-11-14 (rebuild if gone):
   - `mk.pl` copies index.html with a `<base href>` + an error catcher + one test script pasted in at the end.
   - `go.ps1` runs headless Edge on it (`--dump-dom` for numbers, `--screenshot` for pictures). The test writes its result into a `<pre>`; build the marker text in pieces ("RES" + "ULT"), or the search finds the script's own text.
-  - `t-map.js` prints the track's numbers (every crossing's gap and drop, far-apart pieces of path closer than 118 units, gates, forks, ramps) and with `?map=1` draws the map.
-  - `t-race.js` drives a whole race with an autopilot (replaces `steerInput` and `skidInput`): `?fork=special` takes the jump / shortcut / secret sides, `?noskid=1`, `?wrong=1`, `?seg=N` stops for a screenshot, `?flat=1`. It lists where it crashed and how long each split took.
-  - After changing "THE RIDE": the map check must show `close: []` and every crossing with a gap near 0 and a drop of 40+.
+  - `t-map.js` prints the track's numbers and with `?map=1` draws the map (trails in pink, zigzag gaps as green dots). It must show `close: []` (no two stretches closer than their widths), every crossing with a gap near 0 and a drop of about 23, and each trail's `nearest` (how close it comes to the path away from its ends) above about 10.
+  - `t-race.js` drives a whole race with an autopilot (it replaces `steerInput` and `skidInput`): `?fork=special`, `?noskid=1`, `?wrong=1`, `?seg=N` (stop for a screenshot), `?flat=1`, `?roam=GAPSEG&side=-1&time=8` (leave the path through a zigzag gap, go straight for 8 s, press the button), `?trail=N` (ride secret trail N), `?stoproam=T` (screenshot T seconds after leaving the path). It lists where it crashed and into what.
 - Perl only exists inside Git Bash (from PowerShell: `C:\Program Files\Git\usr\bin\perl.exe`). For screenshots do NOT block `requestAnimationFrame`.
 - In PowerShell, don't name a helper `R` or `rd`. Scripts need `-ExecutionPolicy Bypass`.
 - Scripted edits: Git Bash heredocs break on quotes and garble Hebrew/emoji. Write the perl script with the Write tool, then run it. Perl: `@` inside a double-quoted string gets eaten.
+- A test autopilot that never leaves "hug the edge" mode misses gates and loops forever on the bounce: that is the test's fault, not the game's.

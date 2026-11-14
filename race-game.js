@@ -44,6 +44,14 @@ let itemUsedAt = -Infinity; // when I last used a gift (so the button hides stra
 let itemTips = 0;         // how many times the "tap to use it" tip was shown
 let lastItem = null;      // the gift I was holding a moment ago
 let lastSecret = null;    // the last secret shortcut I found (so its message shows only once)
+let roaming = false;      // am I OFF the path, free to go any way I like? (Then the numbers below say where I am on the map.)
+let roamX = 0, roamZ = 0; // my spot on the map (map units: a sled is 6 wide)
+let roamHeading = 0;      // which way my sled points on the map (radians)
+let roamAlt = 0;          // how high my sled is (map units)…
+let roamVy = 0;           // …and how fast it is going up (minus = down)
+let camExtra = 0, camLast = null, lastRenderAt = 0; // (these keep the camera from jumping when I leave the path or come back to it)
+const ROAM = {}, HERE = {}; // (spare spots for trackToWorld and worldToTrack to fill in)
+const returnButton = document.getElementById("return-button"); // "back to the path" (only while I am off it)
 const hardHits = new Map(); // the trees and rocks I hit lately, and when (for a moment they can not stop me again)
 let mySkid = false;       // am I skidding right now? (holding a skid button)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
@@ -126,6 +134,11 @@ dropButton.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   useMyItem("drop");
 });
+returnButton.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  const me = myPlayer();
+  if (me && client.mode === "race" && client.phase === "playing") returnToPath(me);
+});
 
 // How far round a sled has spun, this long after being hit (two full turns, slowing down).
 function spinAngle(since) {
@@ -167,6 +180,8 @@ function raceUpdate(dt) {
     let seen = otherSleds.get(other.id);
     if (!seen) { seen = { air: 0, spinCount: other.spinCount || 0, spinAt: -Infinity }; otherSleds.set(other.id, seen); }
     seen.air += ((other.air || 0) - seen.air) * Math.min(1, dt * 12);
+    // (A sled that drops from one stretch of path to another: show it there at once, do not glide it all the way round.)
+    if (other.targetY !== undefined && Math.abs(other.targetY - other.y) > 4000) { other.y = other.targetY; other.x = other.targetX; }
     if ((other.spinCount || 0) > seen.spinCount) seen.spinAt = gameTime;
     seen.spinCount = other.spinCount || 0;
   }
@@ -230,6 +245,8 @@ function raceUpdate(dt) {
     me.x = Math.max(-room, Math.min(room, me.x + mySteer * RACE.steerSpeed * 0.6 * dt));
     if (t >= 1) mySteer = 0;
     checkGates(me); // (so the lane I'm in stays up to date)
+  } else if (started && roaming) {
+    roamUpdate(me, dt, steer, skidding, spinning);
   } else if (started) {
     const segment = findSegment(me.y);
     const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
@@ -275,10 +292,14 @@ function raceUpdate(dt) {
         playSound("thump");
       }
     }
-    // You can go off the path, but not past the edge of the mountainside.
-    // (On the bridge and in the tunnel there are walls right at the path's edge.)
-    const farthest = segment.walled ? segment.width - 0.17 : segment.width + RACE.shoulder * 0.8;
+    // You can go OFF the path, anywhere you like: past the strip of ground beside it, the sled
+    // is "roaming" on the mountain itself (see roamUpdate). Not from a bridge (it has walls),
+    // not on the beach, and not on a phone that draws the old flat picture (there it stops at the edge).
+    const room = me.x > 0 ? segment.roomR : segment.roomL;
+    const canRoam = race3dAvailable() && !segment.walled && segment.sand < 0.3 && !inWater && me.y > TRACK.startZ && me.y < TRACK.finishZ;
+    const farthest = segment.walled ? segment.width - 0.17 : canRoam ? Infinity : segment.width + Math.min(room, RACE.shoulder * 0.8);
     me.x = Math.max(-farthest, Math.min(farthest, me.x));
+    if (canRoam && !flying && Math.abs(me.x) > segment.width + room + 0.03) startRoaming(me);
 
     // Off the path = much slower (deep snow up high, rough ground lower down). The island
     // in the middle of a split counts as off the path too.
@@ -314,45 +335,21 @@ function raceUpdate(dt) {
     // (Only the solid middle counts, like a tree's trunk: `hit` in SPRITE_SIZES. You can slip under the leaves.)
     // (A sled that is flying high enough goes right over it.)
     if (mySpeed > 0) {
-      const noseIndex = findSegment(me.y + RACE.sledLength).index;
-      for (let i = segment.index; i <= noseIndex && gameTime !== crashAt; i++) {
-        for (const sprite of TRACK.segments[i].sprites) {
-          const size = SPRITE_SIZES[sprite.type];
-          if (!size.solid || myAir > size.h * 0.5) continue;
-          const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth;
-          if (Math.abs(me.x - sprite.offset) >= reach) continue;
-          // Which way I get pushed: away from it. (If it stands beside the path, always back TOWARD the path.)
-          const away = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
-          if (size.soft) {
-            // (Each one slows me only once, and never two in the same moment: a thicket can't trap me.)
-            if (gameTime - softAt < 0.35 || gameTime - (softHits.get(sprite) || -Infinity) < 3) continue;
-            if (softHits.size > 40) softHits.clear();
-            softHits.set(sprite, gameTime);
-            softAt = gameTime;
-            mySpeed *= RACE.softHitSpeed;
-            carveTime = 0;
-            playSound("poof");
-            if (race3dAvailable()) { race3dCrash(i, sprite.offset, away, gameTime, true); race3dSplash(me.y, me.x, false); } // snow everywhere
-            continue;
-          }
-          if (gameTime - crashAt <= 0.8) continue; // (still sliding away from the last tree)
-          // (A tree or rock I hit a moment ago can not stop me again: I slide past it this time.
-          // That way a sled can never get stuck, bouncing between a rock and a row of trees.)
-          if (gameTime - (hardHits.get(sprite) || -Infinity) < 3) continue;
-          if (hardHits.size > 30) hardHits.clear();
-          hardHits.set(sprite, gameTime);
-          crashDir = away;
-          crashAt = gameTime;
-          mySpeed *= size.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
-          me.y = Math.max(me.y - 250, Math.min(me.y, i * RACE.segmentLength - RACE.sledLength)); // (the nose stops AT the tree, not inside it)
-          steerLimit = Math.max(steerLimit, RACE.hardHitTurn);
-          mySteer = crashDir * RACE.hardHitTurn; // knocked round, away from it
-          mySlide = crashDir * RACE.crashShove;
-          carveTime = 0;
-          playSound("clack");
-          if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
-          break;
-        }
+      trackToWorld(me.y, me.x, HERE);
+      const hit = sledHits(HERE.x, HERE.z, HERE.heading + mySteer * RACE.maxTurn);
+      if (hit && hit.soft) softBump(hit, me);
+      else if (hit) {
+        // Which way I get pushed: away from it. (If it stands beside this stretch of path, always back TOWARD the path.)
+        const mine = hit.seg >= 0 && Math.abs(hit.seg - segment.index) < 15;
+        crashDir = mine && Math.abs(hit.offset) > segment.width ? -Math.sign(hit.offset) : hit.onRight ? -1 : 1;
+        crashAt = gameTime;
+        mySpeed *= hit.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
+        me.y -= 120; // (the nose stops AT the tree, not inside it)
+        steerLimit = Math.max(steerLimit, RACE.hardHitTurn);
+        mySteer = crashDir * RACE.hardHitTurn; // knocked round, away from it
+        mySlide = crashDir * RACE.crashShove;
+        playSound("clack");
+        if (race3dAvailable() && hit.seg >= 0) race3dCrash(hit.seg, hit.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
       }
     }
     if (gameTime - crashAt < RACE.crashShoveTime) me.x += crashDir * RACE.crashShove * dt;
@@ -436,6 +433,188 @@ function raceUpdate(dt) {
   }
 }
 
+// ---------- Running into things ----------
+// Every solid thing is a spot on the map with a size (TRACK.solids in race-track.js, plus the
+// scenery trees of the mountain around me). Is my sled touching one? wx, wz = where my sled
+// is on the map; heading = which way it points. Returns the thing, or null.
+// (The sled is long: we look from its back to its NOSE. A sled flying high enough goes over it.
+// A bush slows me only once; a tree or a rock I hit a moment ago can not stop me again, so a
+// sled can never get stuck bouncing between two things.)
+function sledHits(wx, wz, heading) {
+  const fx = Math.sin(heading), fz = -Math.cos(heading);
+  let found = null;
+  const look = (thing) => {
+    if (found || myAir > thing.tall * 0.5) return;
+    for (const along of [1.5, 5, 8.5]) {
+      const dx = thing.x - wx - fx * along, dz = thing.z - wz - fz * along, reach = thing.r + 2.7;
+      if (dx * dx + dz * dz > reach * reach) continue;
+      if (thing.soft ? gameTime - softAt < 0.35 || gameTime - (softHits.get(thing) || -Infinity) < 3
+        : gameTime - crashAt <= (roaming ? 1.4 : 0.8) || gameTime - (hardHits.get(thing) || -Infinity) < 3) return;
+      found = thing;
+      return;
+    }
+  };
+  solidsNear(wx + fx * 5, wz + fz * 5, look);
+  if (roaming && race3dAvailable()) landTreesNear(wx + fx * 5, wz + fz * 5, look);
+  if (!found) return null;
+  const memory = found.soft ? softHits : hardHits;
+  if (memory.size > 40) memory.clear();
+  memory.set(found, gameTime);
+  found.onRight = (found.x - wx) * Math.cos(heading) + (found.z - wz) * Math.sin(heading) > 0; // is it to the right of my sled?
+  return found;
+}
+
+// A bush or a snowman: I plough right through it in a spray of snow, only slower.
+function softBump(thing, me) {
+  softAt = gameTime;
+  mySpeed *= RACE.softHitSpeed;
+  playSound("poof");
+  if (!race3dAvailable()) return;
+  if (thing.seg >= 0) race3dCrash(thing.seg, thing.offset, 1, gameTime, true);
+  race3dSplash(me.y, me.x, false);
+}
+
+// ---------- Roaming: off the path, anywhere on the mountain ----------
+// On the path a sled is at (y along the path, x to the side). Once it leaves the strip of
+// ground beside the path it is "roaming": now it has a spot on the MAP (roamX, roamZ) and
+// points any way it likes (roamHeading). Steering turns it; it goes where it points; the
+// slope under it makes it faster (downhill) or slower (uphill); and where the ground drops
+// away it flies. The snow off the path is deeper, so it is a bit slower there (RACE.offTrackSpeed),
+// except on a secret trail. Every frame we also work out which stretch of path is nearest
+// (me.y, me.x), because the gates, the race order and the other phones all use those numbers.
+// It is riding the path again when it is back on it AND pointing more or less along it. (So
+// you can cross a stretch of path and carry on down the mountain.)
+
+function startRoaming(me) {
+  trackToWorld(me.y, me.x, HERE);
+  roaming = true;
+  roamX = HERE.x;
+  roamZ = HERE.z;
+  roamHeading = HERE.heading + Math.max(-1.3, Math.min(1.3, mySteer * RACE.maxTurn));
+  roamAlt = worldHeight(roamX, roamZ, findSegment(me.y).index);
+  roamVy = 0;
+  mySlide = 0;
+}
+
+function stopRoaming() {
+  roaming = false;
+  myAir = 0;
+  myVy = 0;
+}
+
+function roamUpdate(me, dt, steer, skidding, spinning) {
+  const U = 0.01, hint = findSegment(me.y).index; // (U: one track unit is this many map units)
+  roamHeading += steer * (skidding ? RACE.roamSkidTurn : RACE.roamTurn) * (myAir > 0 ? RACE.airSteer : 1) * dt;
+  const fx = Math.sin(roamHeading), fz = -Math.cos(roamHeading);
+  const ground = worldHeight(roamX, roamZ, hint);
+  const inAir = roamAlt > ground + 0.001;
+
+  // Speed: the slope straight ahead, the deep snow, and the usual things (a boost, a skid, spinning out).
+  const slope = (worldHeight(roamX + fx * 5, roamZ + fz * 5, hint) - ground) / 5; // (minus = downhill)
+  const here = findSegment(me.y);
+  const onPath = !offThePath(here, me.x);
+  const trail = onPath ? null : trailAt(roamX, roamZ);
+  inDeepSnow = !inAir && !onPath && !trail;
+  const boosting = gameTime < boostUntil;
+  const steep = 1 - (slope + RACE.slopeNormal) * RACE.slopeSpeed;
+  const top = RACE.maxSpeed * (onPath ? 1 : trail ? trail.trail.speed : RACE.offTrackSpeed)
+    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1) * (skidding ? RACE.skidSpeed : 1)
+    * Math.max(RACE.roamSlope[0], Math.min(RACE.roamSlope[1], steep));
+  if (!inAir) {
+    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - RACE.offTrackSlowdown * dt);
+    else mySpeed = Math.min(top, mySpeed + RACE.accel * dt);
+  }
+  myCarve = inAir ? 0 : steer;
+  if (trail && lastSecret !== trail.trail) {
+    // (Found a secret trail? Say so, once for each one.)
+    lastSecret = trail.trail;
+    showToast("🤫 A secret trail!", "🤫 שְׁבִיל סוֹדִי!");
+    playSound("item");
+  }
+
+  // Move, and then: am I on the ground, or in the air?
+  const step = Math.max(0, mySpeed) * U * dt;
+  roamX += fx * step;
+  roamZ += fz * step;
+  const under = worldHeight(roamX, roamZ, hint), gravity = RACE.gravity * U;
+  let landed = false;
+  if (inAir) {
+    roamVy -= gravity * dt;
+    roamAlt += roamVy * dt;
+    if (roamAlt <= under) { landed = roamVy < -6; roamAlt = under; roamVy = 0; }
+  } else {
+    // (If the ground drops away faster than a sled can fall, the sled leaves the ground.)
+    const follow = (under - roamAlt) / dt, fall = roamVy - gravity * dt;
+    if (follow < fall - 2) { roamVy = fall; roamAlt += fall * dt; }
+    else { roamVy = Math.min(follow, 12); roamAlt = under; }
+  }
+  const high = roamAlt - under;
+  if (high > 1.2 && myAir === 0) playSound("jump");
+  myAir = high > 0.25 ? high / U : 0;
+
+  // Which stretch of path is nearest, and where I am on it.
+  worldToTrack(roamX, roamZ, ROAM, hint);
+  me.y = ROAM.y;
+  me.x = ROAM.x;
+  const off = roamHeading - ROAM.heading, rel = Math.atan2(Math.sin(off), Math.cos(off)); // which way I point, compared with the path
+  mySteer = rel / RACE.maxTurn;
+  steerLimit = 1;
+  if (landed) { playSound("land"); if (race3dAvailable()) race3dSplash(me.y, me.x, false); }
+
+  // Running into things: the rocks along a zigzag, trees, bushes…
+  const hit = mySpeed > 0 ? sledHits(roamX, roamZ, roamHeading) : null;
+  if (hit && hit.soft) softBump(hit, me);
+  else if (hit) {
+    crashDir = hit.onRight ? -1 : 1;
+    crashAt = gameTime;
+    mySpeed *= hit.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed;
+    roamX += Math.cos(roamHeading) * crashDir * 1.5; // shoved aside, and knocked round, away from it
+    roamZ += Math.sin(roamHeading) * crashDir * 1.5;
+    roamHeading += crashDir * 0.6;
+    playSound("clack");
+    if (race3dAvailable() && hit.seg >= 0) race3dCrash(hit.seg, hit.offset, crashDir, gameTime);
+  }
+
+  const now = findSegment(me.y);
+  // Much too far from any path, or down on the beach: straight back to the path.
+  if (ROAM.far > RACE.roamFar || now.sand > 0.3 || me.y >= TRACK.finishZ || me.y < TRACK.startZ) { returnToPath(me, true); return; }
+  // Back on the path and pointing more or less along it: I am riding the path again.
+  if (myAir === 0 && !now.bridge && Math.abs(me.x) < now.width - 0.08 && !offThePath(now, me.x) && Math.abs(rel) < RACE.roamJoin) {
+    stopRoaming();
+    mySteer = Math.max(-RACE.skidTurn, Math.min(RACE.skidTurn, rel / RACE.maxTurn));
+    steerLimit = Math.max(1, Math.abs(mySteer));
+    mySlide = mySteer * RACE.steerSpeed * Math.max(0, mySpeed) / RACE.maxSpeed;
+  }
+  checkGates(me);
+}
+
+// The "back to the path" button (or the R key): a hop back onto the nearest stretch of path.
+// It costs a moment: you start again from a standstill. (auto = the game did it, not me.)
+function returnToPath(me, auto) {
+  if (!roaming) return;
+  worldToTrack(roamX, roamZ, ROAM, findSegment(me.y).index);
+  // The nearest stretch of path. But if another stretch is nearly as close and further down
+  // the race, that one: the button never sends you back up the mountain if it can help it.
+  // (And never past a gate I have not answered yet.)
+  const next = nextGate(), last = Math.floor(((next ? next.z : TRACK.finishZ) - 600) / RACE.segmentLength);
+  let y = Math.max(TRACK.startZ, Math.min(last * RACE.segmentLength, ROAM.y)), x = ROAM.x;
+  const better = furthestPathNear(roamX, roamZ, ROAM.far * 1.5 + 40, last);
+  if (better * RACE.segmentLength > y + 3000) { y = better * RACE.segmentLength; x = 0; }
+  const seg = findSegment(y), room = Math.max(0.1, seg.width - 0.3);
+  stopRoaming();
+  me.y = y;
+  me.x = Math.max(-room, Math.min(room, x));
+  if (offThePath(seg, me.x)) me.x = seg.islandAt + (me.x >= seg.islandAt ? 1 : -1) * (seg.island + 0.35); // (not onto the island where the path splits)
+  mySteer = 0;
+  mySlide = 0;
+  mySpeed = 0;
+  bounceAt = gameTime; // (the same little hop as when a gate bounces me, but on the spot)
+  bounceFrom = y;
+  bounceTo = y;
+  playSound("boing");
+  if (auto) showToast("↩ Back on the path", "↩ חֲזָרָה לַשְּׁבִיל");
+}
+
 // ---------- Answer gates ----------
 // When a gate comes into view, this phone picks a word from MY level (each phone asks its
 // own questions, like the quiz popup): the English goes on the sign, and the right Hebrew
@@ -443,10 +622,12 @@ function raceUpdate(dt) {
 // pass under the gate is my answer. Right = a boost and a gift. Wrong = the gate bounces
 // me back up the path to try again (the same question), until I get it right.
 
-// The next gate ahead of distance y: { z (its distance along the race), gate }, or null.
-function nextGateAhead(y) {
+// The next gate I have not answered yet: { z (its distance along the race), gate }, or null.
+// (Wherever I am: you can not get out of answering a gate by going round it off the path.
+// Pass it without answering, by any way at all, and it bounces you back.)
+function nextGate() {
   for (const gate of TRACK.gates) {
-    if (gate.z > y && gate.z > lastGateZ) return { z: gate.z, gate };
+    if (gate.z > lastGateZ) return { z: gate.z, gate };
   }
   return null;
 }
@@ -476,7 +657,7 @@ function gateChoices(entry) {
 function checkGates(me) {
   // A gate is coming: put a question on it.
   if (!gateQuestion) {
-    const next = nextGateAhead(me.y);
+    const next = nextGate();
     if (next && next.z - me.y <= RACE.gateShowAt * RACE.segmentLength) {
       const entry = pickNextWord();
       gateQuestion = { z: next.z, gate: next.gate, entry, choices: gateChoices(entry), shownAt: gameTime, lane: laneAt(me.x, next.gate), settledAt: gameTime, tries: 0, wrong: [false, false, false] };
@@ -486,7 +667,8 @@ function checkGates(me) {
     return;
   }
   // Remember when I last changed lanes: that's how long I took to "answer" (for Auto levels).
-  const lane = laneAt(me.x, gateQuestion.gate);
+  // (Only a sled that is really AT the gate is in one of its lanes: one that got past it some other way is not.)
+  const lane = me.y < gateQuestion.z + 1500 ? laneAt(me.x, gateQuestion.gate) : -1;
   if (lane !== gateQuestion.lane) {
     gateQuestion.lane = lane;
     gateQuestion.settledAt = gameTime;
@@ -522,6 +704,7 @@ function checkGates(me) {
   if (lane !== -1) gateQuestion.wrong[lane] = true;
   gateQuestion.settledAt = gameTime;
   gateFeedback = { kind: lane === -1 ? "missed" : "wrong", entry, until: gameTime + 1.6 };
+  if (roaming) stopRoaming(); // (wherever I was: back onto the path, in front of the gate)
   bounceAt = gameTime;
   bounceFrom = me.y;
   bounceTo = Math.max(TRACK.startZ, gate.z - RACE.gateBounce);
@@ -596,7 +779,23 @@ function raceRender() {
   const hop = racing && sinceBounce >= 0 && sinceBounce < RACE.gateBounceTime ? Math.sin(sinceBounce / RACE.gateBounceTime * Math.PI) * 380 : 0;
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   // (In a skid the sled swings round a lot further than the view does.)
-  const viewTurn = racing ? Math.max(-1.2, Math.min(1.2, mySteer)) * RACE.maxTurn * RACE.cameraTurn : 0;
+  // (Roaming off the path: the view simply looks the way the sled points.)
+  let viewTurn = 0;
+  if (racing) {
+    const around = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    trackToWorld(myY, 0, HERE);
+    const wanted = roaming ? roamHeading : HERE.heading + Math.max(-1.2, Math.min(1.2, mySteer)) * RACE.maxTurn * RACE.cameraTurn;
+    const since = Math.max(0, Math.min(0.05, gameTime - lastRenderAt));
+    lastRenderAt = gameTime;
+    // (If the view would jump, like when I leave the path or come back to it, it swings round smoothly instead.)
+    if (camLast === null) camExtra = 0;
+    else if (Math.abs(around(wanted + camExtra - camLast)) > 0.3) camExtra = around(camLast - wanted);
+    camExtra *= Math.exp(-4 * since);
+    camLast = wanted + camExtra;
+    viewTurn = around(camLast - HERE.heading);
+  } else {
+    camLast = null;
+  }
 
   // Real 3D (race-3d.js) if this phone can do it: the world is drawn on the 3D canvas
   // behind this one, and this canvas only adds the snowflakes and the race info on top.
@@ -604,7 +803,7 @@ function raceRender() {
   let sledOnScreen = null;
   if (race3dAvailable()) {
     sledOnScreen = drawRace3d({
-      along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate,
+      along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate, free: roaming,
       color: (me && me.color) || RACE.colors[0],
       sleds, things,
       air: racing ? myAir + hop : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
@@ -780,6 +979,7 @@ function raceClear() {
   snowPuffs.length = 0;
   otherSleds.clear();
   myAir = 0;
+  roaming = false;
   inWater = false;
   raceWinnerEl.hidden = true;
 }
@@ -814,6 +1014,8 @@ function raceOnPhase(phase) {
     itemUsedAt = -Infinity;
     lastItem = null;
     mySkid = false;
+    roaming = false;
+    camLast = null;
     lastSecret = null;
     hardHits.clear();
     steerLimit = 1;
@@ -848,6 +1050,7 @@ function raceUpdateHud(p, playing) {
   const names = playing && p.item && gameTime - itemUsedAt > 0.5 ? ITEM_NAMES[p.item] : null;
   itemButton.hidden = !names;
   dropButton.hidden = !names || p.item !== "rimon";
+  returnButton.hidden = !(playing && roaming); // "back to the path": only while I am off it
   // The two skid buttons, in the bottom corners. (The one being held lights up.)
   const skid = playing ? skidInput() : 0;
   for (const side of [-1, 1]) {
@@ -865,7 +1068,7 @@ PHONE_GAMES.race = {
   startText: { en: "Start the race!", he: "מַתְחִילִים אֶת הַמֵּרוֹץ!" },
   resetTimers: raceResetTimers,
   clear: raceClear,
-  onKey: (key) => { if (key === " ") useMyItem(); else if (key === "b") useMyItem("drop"); }, // Space = use my gift (throw a rimon); B = drop a rimon behind me
+  onKey: (key) => { if (key === " ") useMyItem(); else if (key === "b") useMyItem("drop"); else if (key === "r" && myPlayer()) returnToPath(myPlayer()); }, // Space = use my gift (throw a rimon); B = drop a rimon behind me
   applySnapshot: raceApplySnapshot,
   onEvent: () => {},
   onPhase: raceOnPhase,
