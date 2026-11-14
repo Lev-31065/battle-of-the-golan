@@ -62,85 +62,118 @@ function rough2(x, z) {
 }
 
 // ---------- The path as a real line through the world ----------
-// race-track.js only says "this piece bends a little right". Here every point of the path
-// gets a real spot: x (sideways), y (height), z (forward is toward MINUS z).
+// race-track.js worked out the map (TRACK.layout): where every point of the path is, seen
+// from above, and which way it heads. Here each point also gets its height, its width, how
+// much the path is tilted there, and whether walls rise or the ground falls away beside it.
+// x = sideways, y = height, z = forward is toward MINUS z.
 
 const P3 = (function buildPath3d() {
-  const segs = TRACK.segments;
+  const segs = TRACK.segments, map = TRACK.layout;
   const N = segs.length;
   const make = () => new Float32Array(N + 1);
   const p = {
     N, x: make(), y: make(), z: make(), heading: make(), cos: make(), sin: make(),
-    half: make(), island: make(), snow: make(), sand: make(), yLand: make(), wallL: make(), wallR: make(),
+    half: make(), island: make(), islandAt: make(), tilt: make(), snow: make(), sand: make(), yLand: make(), wallL: make(), wallR: make(),
+    bridge: new Uint8Array(N + 1), tunnel: new Uint8Array(N + 1), woods: new Uint8Array(N + 1),
     edgeL: make().fill(NaN), edgeR: make().fill(NaN),
     waterIndex: N, finishIndex: Math.floor(TRACK.finishZ / RACE.segmentLength),
   };
-  let heading = 0;
   for (let n = 0; n <= N; n++) {
     const seg = segs[Math.min(n, N - 1)];
-    p.heading[n] = heading;
-    p.cos[n] = Math.cos(heading);
-    p.sin[n] = Math.sin(heading);
+    p.x[n] = map.x[n];
+    p.z[n] = map.z[n];
+    p.heading[n] = map.heading[n];
+    p.cos[n] = Math.cos(map.heading[n]);
+    p.sin[n] = Math.sin(map.heading[n]);
     p.y[n] = (n < N ? seg.p1.world.y : seg.p2.world.y) * U3;
     p.half[n] = seg.width * RW3;
-    p.island[n] = seg.island * RW3; // (where the path splits: half the width of the island in the middle)
+    p.island[n] = seg.island * RW3;     // (where the path splits: half the width of the island…
+    p.islandAt[n] = seg.islandAt * RW3; //  …and where its middle is)
+    p.tilt[n] = -seg.bank * RACE.bankTilt; // a tilted bend: how much higher the path gets for every unit to the right
     p.snow[n] = seg.snow;
     p.sand[n] = seg.sand;
+    p.bridge[n] = seg.bridge ? 1 : 0;
+    p.tunnel[n] = seg.tunnel ? 1 : 0;
+    p.woods[n] = seg.zone === "woods" ? 1 : 0;
     if (seg.water && n < p.waterIndex) p.waterIndex = n;
-    if (n < N) {
-      p.x[n + 1] = p.x[n] + Math.sin(heading) * SEG3;
-      p.z[n + 1] = p.z[n] - Math.cos(heading) * SEG3;
-      // Each piece turns the path a little. (A gentle pull back toward "straight ahead"
-      // keeps the whole ride heading for the Kinneret, and stops the path crossing itself.)
-      heading += seg.curve / RACE.segmentLength * RACE.bend3d - heading * 0.006;
-    }
   }
   // Valleys and ridges. In a dip of the path the sides rise up (you're in a valley); on a
   // hilltop they fall away (you're on a peak with a view). On top of that each side slowly
   // changes by itself, so sometimes there's a wall on one side and a drop on the other.
+  // (Some parts of the ride say what they want: the mountain face has a wall on one side and
+  // a long drop on the other, and in the hills a hill stands inside every bend. See race-track.js.)
   const sum = new Float64Array(N + 2);
   for (let n = 0; n <= N; n++) sum[n + 1] = sum[n] + p.y[n];
   const wave = (t) => noise2(t, 3.3) * 0.7 + noise2(t * 2.7 + 9, 8.1) * 0.3;
+  const rawL = make(), rawR = make();
   for (let n = 0; n <= N; n++) {
+    const seg = segs[Math.min(n, N - 1)];
     const a = Math.max(0, n - 110), b = Math.min(N, n + 110);
     const relief = p.y[n] - (sum[b + 1] - sum[a]) / (b - a + 1); // above (+) or below (-) the ground around it
     const dip = Math.max(-1, Math.min(1, -relief / 9));
     let left = Math.max(-1, Math.min(1, dip * 0.8 + wave(n / 150) * 0.95 + 0.05));
     let right = Math.max(-1, Math.min(1, dip * 0.8 + wave(n / 150 + 400) * 0.95 + 0.05));
+    if (seg.wallL !== undefined) left = seg.wallL;
+    if (seg.wallR !== undefined) right = seg.wallR;
     // The start is the very top of the mountain: the ground falls away on both sides.
     const top = 1 - smooth3(60, 200, n);
-    left = left + (-0.75 - left) * top;
-    right = right + (-0.75 - right) * top;
-    p.wallL[n] = left;
-    p.wallR[n] = right;
+    rawL[n] = left + (-0.75 - left) * top;
+    rawR[n] = right + (-0.75 - right) * top;
     p.yLand[n] = p.y[n] - (n >= p.waterIndex ? 4 : 0); // the lake bed dips under the water
+  }
+  // (Smoothed along the path, so a wall never starts or stops suddenly.)
+  for (let n = 0; n <= N; n++) {
+    let l = 0, r = 0, count = 0;
+    for (let k = Math.max(0, n - 24); k <= Math.min(N, n + 24); k += 4) { l += rawL[k]; r += rawR[k]; count++; }
+    p.wallL[n] = l / count;
+    p.wallR[n] = r / count;
   }
   p.lakeY = p.y[Math.min(N, p.finishIndex)];
   return p;
 })();
 
-// The first point of the path at or past a z (z gets smaller as the path goes on).
-function indexAtZ(z) {
-  let lo = 0, hi = P3.N;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (P3.z[mid] > z) lo = mid; else hi = mid;
+// ---------- Finding the path near a spot ----------
+// The path wanders all over the mountain (it even crosses over itself), so to shape the
+// ground at a spot we need "which points of the path are anywhere near here?", quickly.
+// The map is cut into big squares, and each square remembers the path points inside it.
+// (Points on the BRIDGE are left out: the ground under a bridge is shaped by the path below it.)
+const NEAR_CELL = 300;
+const NEAR = { cells: new Map(), lists: new Map() };
+(function sortPathIntoSquares() {
+  for (let i = 0; i <= P3.N; i += 4) {
+    if (P3.bridge[i]) continue;
+    const key = Math.floor(P3.x[i] / NEAR_CELL) + "," + Math.floor(P3.z[i] / NEAR_CELL);
+    if (!NEAR.cells.has(key)) NEAR.cells.set(key, []);
+    NEAR.cells.get(key).push(i);
   }
-  return lo;
+})();
+// Every path point in the squares from (cx0, cz0) to (cx1, cz1), and in the 2 squares beyond them all round.
+function pathPointsIn(cx0, cz0, cx1, cz1) {
+  const list = [];
+  for (let cx = cx0 - 2; cx <= cx1 + 2; cx++) for (let cz = cz0 - 2; cz <= cz1 + 2; cz++) {
+    const cell = NEAR.cells.get(cx + "," + cz);
+    if (cell) for (const i of cell) list.push(i);
+  }
+  return list;
+}
+// The path points near one spot (worked out once for each square, then remembered).
+function pathPointsNear(px, pz) {
+  const cx = Math.floor(px / NEAR_CELL), cz = Math.floor(pz / NEAR_CELL), key = cx + "," + cz;
+  let list = NEAR.lists.get(key);
+  if (!list) { list = pathPointsIn(cx, cz, cx, cz); NEAR.lists.set(key, list); }
+  return list;
 }
 
 // The ground at a spot (px, pz): its height, how far it is from the path, how snowy…
-// It looks at the path points nearby (i0 … i1) and blends them, the closest counting most,
-// so the ground is smooth everywhere, even inside a bend.
+// It looks at the path points nearby (`list`, or the ones near this spot) and blends them,
+// the closest counting most, so the ground is smooth everywhere, even inside a bend.
 const LAND = { h: 0, base: 0, d: 0, t: 0, half: 0, snow: 0, sand: 0, wall: 0, n: 0 };
-function landAt(px, pz, i0, i1) {
-  if (i0 === undefined) {
-    const guess = indexAtZ(pz);
-    i0 = Math.max(0, guess - 420);
-    i1 = Math.min(P3.N, guess + 420);
-  }
-  let sw = 0, sy = 0, sh = 0, ss = 0, sa = 0, sv = 0, best = Infinity, bi = i0;
-  for (let i = i0; i <= i1; i += 4) {
+function landAt(px, pz, list) {
+  if (!list) list = pathPointsNear(px, pz);
+  const L = LAND;
+  let sw = 0, sy = 0, sh = 0, ss = 0, sa = 0, sv = 0, best = Infinity, bi = -1;
+  for (let k = 0; k < list.length; k++) {
+    const i = list[k];
     const dx = px - P3.x[i], dz = pz - P3.z[i];
     const d2 = dx * dx + dz * dz;
     if (d2 < best) { best = d2; bi = i; }
@@ -149,15 +182,19 @@ function landAt(px, pz, i0, i1) {
     sw += w; sy += w * P3.yLand[i]; sh += w * P3.half[i]; ss += w * P3.snow[i]; sa += w * P3.sand[i];
     sv += w * (side >= 0 ? P3.wallR[i] : P3.wallL[i]);
   }
+  if (bi < 0) { // (nowhere near the path at all)
+    L.n = 0; L.base = L.h = P3.lakeY; L.half = 20; L.snow = 0; L.sand = 0; L.wall = 0; L.d = L.t = 1e6;
+    return L;
+  }
   // The exact distance to the path (checking the little pieces around the closest point).
   let d2min = best;
   for (let j = Math.max(0, bi - 4); j < Math.min(P3.N, bi + 4); j++) {
+    if (P3.bridge[j] && P3.bridge[j + 1]) continue;
     const ax = P3.x[j], az = P3.z[j], bx = P3.x[j + 1] - ax, bz = P3.z[j + 1] - az;
     const t = Math.max(0, Math.min(1, ((px - ax) * bx + (pz - az) * bz) / (bx * bx + bz * bz)));
     const dx = px - ax - bx * t, dz = pz - az - bz * t;
     d2min = Math.min(d2min, dx * dx + dz * dz);
   }
-  const L = LAND;
   L.n = bi;
   L.base = sy / sw; L.half = sh / sw; L.snow = ss / sw; L.sand = sa / sw; L.wall = sv / sw;
   L.d = Math.sqrt(d2min);
@@ -191,17 +228,20 @@ function fieldRoll(n, lat, half) {
 }
 
 // Where the path splits in two, the island in the middle is a low bank of rocky ground.
-function islandMound(n, a) {
-  const island = P3.island[n];
+function islandMound(n, lat) {
+  const island = P3.island[n], a = Math.abs(lat - P3.islandAt[n]);
   if (island <= 0 || a >= island) return 0;
   return 2.4 * smooth3(0, 5, island - a) * Math.min(1, island / 8);
 }
 
 // The height of the path strip at point n, `lat` units sideways from the middle.
+// (A tilted bend leans like a bowl: its outside edge is higher than its inside edge.)
 function stripHeight(n, lat) {
-  const a = Math.abs(lat), half = P3.half[n], y = P3.y[n];
-  if (a <= half) return y + fieldRoll(n, lat, half) + islandMound(n, a);
-  if (a <= half + 3) return y + 0.45 * (a - half) / 3; // the little bank of snow along the edge
+  const a = Math.abs(lat), half = P3.half[n];
+  if (a <= half) return P3.y[n] + P3.tilt[n] * lat + fieldRoll(n, lat, half) + islandMound(n, lat);
+  const y = P3.y[n] + P3.tilt[n] * (lat > 0 ? half : -half); // the height of the path's edge on this side
+  if (P3.bridge[n]) return y;                                 // (a bridge has no ground beside it)
+  if (a <= half + 3) return y + 0.45 * (a - half) / 3;        // the little bank of snow along the edge
   const edge = edgeHeight(n, lat > 0 ? 1 : -1);
   if (a >= half + SHOULDER3) return edge;
   return y + 0.45 + (edge - y - 0.45) * (a - half - 3) / (SHOULDER3 - 3);
@@ -429,7 +469,7 @@ MeshBuilder.prototype.groundGeometry = function (ox, oz) {
 
 const COL = {
   bark: rgb3("#5b3f26"), barkOlive: rgb3("#6b5a45"), barkPalm: rgb3("#8b6a42"),
-  leafDark: rgb3("#345026"), leaf: rgb3("#47692f"), leafLight: rgb3("#64883d"),
+  pine: rgb3("#2c5a3a"), leafDark: rgb3("#345026"), leaf: rgb3("#47692f"), leafLight: rgb3("#64883d"),
   olive: rgb3("#75865a"), oliveLight: rgb3("#98a97c"),
   blossom: rgb3("#f6d6df"), blossomDeep: rgb3("#e9a9bf"), palm: rgb3("#3f7a3a"),
   rock: rgb3("#4a4744"), rockLight: rgb3("#6a6660"), snow: rgb3("#f7fafd"),
@@ -456,6 +496,15 @@ const MODELS = {
     B.blob(0.4, 8.6, 3.0, 3.4, 2.8, 3.2, COL.leaf, seed + 3, 0.32, top);
   },
   oakSnow(B, seed) { MODELS.oak(B, seed, true); },
+  // A tall tree of the deep woods: a straight trunk and four layers of dark branches, each with snow lying on it.
+  pineSnow(B, seed) {
+    const green = shade3(COL.pine, 0.85 + rand2(seed, 3) * 0.3);
+    B.tube([0, 0, 0], 0.75, [0, 6, 0], 0.5, 5, COL.bark);
+    for (const [y0, y1, r] of [[3.6, 10.5, 4.7], [7.6, 14.5, 3.9], [11.8, 18.6, 3.0], [16, 22, 2.1]]) {
+      B.tube([0, y0, 0], r, [0, y1, 0], 0, 6, green);
+      B.tube([0, y0 + (y1 - y0) * 0.3, 0], r * 0.74, [0, y1 + 0.25, 0], 0, 6, COL.snow);
+    }
+  },
   olive(B, seed) {
     B.tube([0, 0, 0], 1.2, [-0.9, 2.8, 0.3], 0.9, 6, COL.barkOlive);
     B.tube([-0.9, 2.8, 0.3], 0.9, [0.5, 5.6, -0.2], 0.6, 6, COL.barkOlive);
@@ -748,18 +797,20 @@ const LAND_TREES = ["oak", "bush", "rock", "oak", "olive", "almond", "bush", "ro
 
 function buildLandChunk(cx, cz) {
   const x0 = cx * CHUNK, z0 = cz * CHUNK;
-  // Which part of the path is anywhere near this chunk?
-  const i0 = Math.max(0, indexAtZ(z0 + CHUNK + LAND_REACH + 40) - 4), i1 = Math.min(P3.N, indexAtZ(z0 - LAND_REACH - 40) + 4);
+  // Which points of the path are anywhere near this chunk?
+  const list = pathPointsIn(Math.floor(x0 / NEAR_CELL), Math.floor(z0 / NEAR_CELL), Math.floor((x0 + CHUNK) / NEAR_CELL), Math.floor((z0 + CHUNK) / NEAR_CELL));
   let near = Infinity;
-  for (let i = i0; i <= i1; i += 4) near = Math.min(near, Math.hypot(P3.x[i] - x0 - CHUNK / 2, P3.z[i] - z0 - CHUNK / 2));
+  for (const i of list) near = Math.min(near, Math.hypot(P3.x[i] - x0 - CHUNK / 2, P3.z[i] - z0 - CHUNK / 2));
   if (near > LAND_REACH + CHUNK * 0.75) return null; // too far from the path: nothing to build
 
   const count = GRID * GRID;
   const height = new Float32Array(count), sunk = new Float32Array(count), away = new Float32Array(count);
   const snow = new Float32Array(count), sand = new Float32Array(count), lift = new Float32Array(count);
+  const nearest = new Int32Array(count); // (the path point closest to each spot: that tells us if it is in the woods)
   for (let gz = 0; gz < GRID; gz++) for (let gx = 0; gx < GRID; gx++) {
     const k = gz * GRID + gx;
-    const L = landAt(x0 + gx * CELL, z0 + gz * CELL, i0, i1);
+    const L = landAt(x0 + gx * CELL, z0 + gz * CELL, list);
+    nearest[k] = L.n;
     height[k] = L.h; away[k] = L.t; snow[k] = L.snow; sand[k] = L.sand; lift[k] = L.h - L.base;
     // Right under the path the ground is pushed down a little, so the path strip sits on top of it.
     sunk[k] = L.h - 2.5 * (1 - smooth3(L.half + 18, L.half + 30, L.d));
@@ -800,19 +851,23 @@ function buildLandChunk(cx, cz) {
   group.add(new THREE.Mesh(geo, world3d.groundPaint));
 
   // Trees, bushes and rocks scattered over the mountainside (just to look at: you can't reach them).
+  // (In the deep woods: many more of them, nearly all tall snowy trees.)
   const B = new MeshBuilder();
-  for (let k = 0; k < 44; k++) {
+  const deepWoods = P3.woods[nearest[Math.floor(GRID / 2) * GRID + Math.floor(GRID / 2)]] === 1;
+  for (let k = 0; k < (deepWoods ? 130 : 44); k++) {
     const gx = 1 + rand2(cx * 131 + k, cz * 71) * (GRID - 3), gz = 1 + rand2(cx * 17, cz * 191 + k) * (GRID - 3);
     const cell = Math.floor(gz) * GRID + Math.floor(gx);
     const t = away[cell];
     if (t < 16 || t > LAND_REACH - 15 || steepness[cell] > 0.8 || sand[cell] > 0.3) continue;
-    if (t > 110 && rand2(k, cx + cz * 7) < 0.45) continue; // thinner far from the path
+    const woods = P3.woods[nearest[cell]] === 1;
+    if (t > 110 && !woods && rand2(k, cx + cz * 7) < 0.45) continue; // thinner far from the path
     const fx = gx - Math.floor(gx), fz = gz - Math.floor(gz);
     const y = (height[cell] * (1 - fx) + height[cell + 1] * fx) * (1 - fz) + (height[cell + GRID] * (1 - fx) + height[cell + GRID + 1] * fx) * fz;
     const pick = Math.floor(rand2(k * 3, cx * 5 + cz) * LAND_TREES.length);
     let type = LAND_TREES[pick];
     const snowy = snow[cell] * 1.25 + lift[cell] / 300 > 0.5;
-    if (snowy) type = type === "oak" || type === "olive" || type === "almond" ? "oakSnow" : type + "Snow";
+    if (woods) type = pick === 7 ? "rockSnow" : "pineSnow";
+    else if (snowy) type = type === "oak" || type === "olive" || type === "almond" ? "oakSnow" : type + "Snow";
     else if (snow[cell] > 0.1 && (type === "olive" || type === "almond")) type = "oak"; // (olives and almonds grow lower down)
     B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, 0.8 + rand2(cz + k, cx) * 0.7);
     MODELS[type](B, k + cx * 7 + cz * 13);
@@ -889,7 +944,8 @@ function buildPathPiece(piece) {
     const ha = P3.half[n], hb = P3.half[n + 1];
     const mid = P3.x[n], midZ = P3.z[n];
     // The ground beside the path, and a skirt going down into the mountain so there's never a gap.
-    for (const s of [-1, 1]) {
+    // (Not on the bridge: there is only air beside it.)
+    for (const s of seg.bridge ? [] : [-1, 1]) {
       const ground = landColor(mid + P3.cos[n] * s * (ha + 14), midZ + P3.sin[n] * s * (ha + 14), P3.snow[n], P3.sand[n], 0, 0);
       strip(n, s * (ha + 3), s * (ha + SHOULDER3), s * (hb + 3), s * (hb + SHOULDER3), ground);
       const a = at(n, s * (ha + SHOULDER3)), b = at(n + 1, s * (hb + SHOULDER3));
@@ -917,7 +973,7 @@ function buildPathPiece(piece) {
     const snowfield = smooth3(2.2, 3.2, seg.width) * (1 - P3.sand[n]);
     if (seg.island > 0.02 || seg.island2 > 0.02) {
       // Where the path splits: the island in the middle (rocky ground, cut finely so it can be a rounded bank).
-      lines.push([0, 0, seg.island, landColor(mid, midZ, P3.snow[n], 0, 0.8, 0), seg.island2, true]);
+      lines.push([seg.islandAt, seg.islandAt2, seg.island, landColor(mid, midZ, P3.snow[n], 0, 0.8, 0), seg.island2, true]);
     } else if (seg.width > 2.4) {
       // nothing drawn on it
     } else if (seg.width > RACE.gateWidth * 0.8) {
@@ -948,7 +1004,16 @@ function buildPathPiece(piece) {
   }
   if (R.p.length) group.add(new THREE.Mesh(R.geometry(), world3d.paint));
 
+  // The bridge and the tunnel (where the path crosses over itself).
+  const W = new MeshBuilder();
+  for (let n = first; n < Math.min(last, P3.N); n++) {
+    if (TRACK.segments[n].bridge) buildBridgePiece(W, n, ox, oz);
+    if (TRACK.segments[n].tunnel) buildTunnelPiece(W, n, ox, oz);
+  }
+  if (W.p.length) group.add(new THREE.Mesh(W.geometry(), world3d.paint));
+
   // The trees, bushes, rocks, poles… standing on this piece, and a soft shadow under each.
+
   const T = new MeshBuilder(), S = new MeshBuilder();
   const things = [];
   for (let n = first; n < Math.min(last, P3.N); n++) {
@@ -985,6 +1050,57 @@ function buildPathPiece(piece) {
   }
   group.userData = { things, treeMesh, still: treeMesh ? treeMesh.geometry.attributes.position.array.slice() : null };
   return group;
+}
+
+// ----- The bridge and the tunnel -----
+const STONE = rgb3("#8d8478"), STONE_DARK = rgb3("#6b645b"), STONE_LIGHT = rgb3("#b9b1a4");
+
+// One segment of the BRIDGE: a low stone wall along each side (with snow on top), the
+// underside of the deck, and here and there a tall stone leg standing on the ground below.
+function buildBridgePiece(B, n, ox, oz) {
+  const c = TRACK.crossing;
+  const spot = (i, lat, dy) => [P3.x[i] - ox + P3.cos[i] * lat, P3.y[i] + dy, P3.z[i] - oz + P3.sin[i] * lat];
+  const ha = P3.half[n], hb = P3.half[n + 1], thick = 1.4, rail = 3.4, deep = 3;
+  const stone = n % 2 ? STONE : STONE_LIGHT;
+  for (const s of [-1, 1]) {
+    B.quad(spot(n, s * ha, 0), spot(n + 1, s * hb, 0), spot(n + 1, s * hb, rail), spot(n, s * ha, rail), stone);                                 // the wall's inside
+    B.quad(spot(n, s * ha, rail), spot(n + 1, s * hb, rail), spot(n + 1, s * (hb + thick), rail), spot(n, s * (ha + thick), rail), COL.snow);  // snow on top of it
+    B.quad(spot(n, s * (ha + thick), rail), spot(n + 1, s * (hb + thick), rail), spot(n + 1, s * (hb + thick), -deep), spot(n, s * (ha + thick), -deep), STONE_DARK); // its outside, down past the deck
+  }
+  B.quad(spot(n, -ha - thick, -deep), spot(n + 1, -hb - thick, -deep), spot(n + 1, hb + thick, -deep), spot(n, ha + thick, -deep), STONE_DARK);  // the underside
+  // The legs: one on each side of the path below, and one at each end of the bridge.
+  if (Math.abs(n - c.upper) === 19 || n === c.bridge[0] || n === c.bridge[1]) {
+    const ground = landAt(P3.x[n], P3.z[n]).h - 3, top = P3.y[n] - deep;
+    if (top > ground) {
+      B.place(P3.x[n] - ox, 0, P3.z[n] - oz, -P3.heading[n], 1);
+      B.box(0, (ground + top) / 2, 0, (ha + thick) * 2, top - ground, 6, STONE);
+      B.place(0, 0, 0, 0, 1);
+    }
+  }
+}
+
+// The shape of the TUNNEL, cut across the path at point i: up one wall, over the arched roof, down the other wall.
+// Each corner is [how far sideways, how high above the path].
+function tunnelShape(i) {
+  const w = P3.half[i] + 0.9;
+  return [[-w, -0.6], [-w, 11], [-w * 0.74, 16.5], [-w * 0.32, 19.6], [w * 0.32, 19.6], [w * 0.74, 16.5], [w, 11], [w, -0.6]];
+}
+
+// One segment of the tunnel: stone walls and an arched roof (in light and dark bands, so you
+// feel the speed), and at each mouth a frame of pale stone around the opening.
+function buildTunnelPiece(B, n, ox, oz) {
+  const c = TRACK.crossing;
+  const spot = (i, q, frame) => {
+    const lat = q[0] * (frame ? 1.16 : 1), up = q[1] + (!frame ? 0 : q[1] > 0 ? 3.2 : -0.4);
+    return [P3.x[i] - ox + P3.cos[i] * lat, P3.y[i] + up, P3.z[i] - oz + P3.sin[i] * lat];
+  };
+  const a = tunnelShape(n), b = tunnelShape(n + 1);
+  const stone = Math.floor(n / 2) % 2 ? STONE : STONE_DARK;
+  for (let k = 0; k < a.length - 1; k++) B.quad(spot(n, a[k]), spot(n + 1, b[k]), spot(n + 1, b[k + 1]), spot(n, a[k + 1]), k === 3 ? shade3(stone, 0.85) : stone);
+  for (const [i, shape] of [[n, a], [n + 1, b]]) {
+    if (i !== c.tunnel[0] && i !== c.tunnel[1] + 1) continue;
+    for (let k = 0; k < shape.length - 1; k++) B.quad(spot(i, shape[k]), spot(i, shape[k + 1]), spot(i, shape[k + 1], true), spot(i, shape[k], true), STONE_LIGHT);
+  }
 }
 
 // A spot on the path strip BETWEEN the path's points (f = 12.5 is halfway from point 12 to 13),
@@ -1350,7 +1466,8 @@ function nameLabel(name) {
   return label;
 }
 
-// ---------- Banana peels, mangoes and rimonim ----------
+// ---------- Banana peels, mangoes, rimonim… and mountain goats ----------
+// A mountain goat wanders about on the path (race-game.js says where: it is one of the "things").
 // A banana peel lies on the snow. A mango tumbles through the air, down the path. A rimon
 // (a pomegranate grenade) flies in an arc when thrown, or lies waiting when dropped.
 // (Where they are comes from the referee.)
@@ -1368,6 +1485,33 @@ function makeItems() {
     R.pipe([Math.cos(an) * 0.55, 1.95, Math.sin(an) * 0.55], 0.2, [Math.cos(an) * 0.85, 2.5, Math.sin(an) * 0.85], 0.03, rgb3("#881337"));
   }
   w3.rimonShape = R.smoothGeometry();
+  // A mountain goat (an ibex), nose toward +x: a sturdy tan body, a pale belly, dark legs,
+  // a little beard and two big horns curving back.
+  const G = new MeshBuilder();
+  G.smooth = true;
+  const tan = rgb3("#b08a5a"), cream = rgb3("#e9dcc0"), brown = rgb3("#5b4636"), horn = rgb3("#4a443e");
+  G.ball(0, 4.7, 0, 3.7, 2.2, 1.9, tan);
+  G.ball(0.2, 3.7, 0, 3.0, 1.3, 1.5, cream);
+  G.pipe([2.3, 5.2, 0], 1.35, [4.1, 7.7, 0], 0.95, tan);
+  G.ball(4.7, 8.2, 0, 1.5, 1.05, 0.95, tan);
+  G.ball(5.9, 7.7, 0, 0.85, 0.62, 0.62, cream);
+  G.ball(6.55, 7.75, 0, 0.22, 0.2, 0.3, brown);                 // its nose
+  G.pipe([5.5, 7.1, 0], 0.32, [5.2, 5.9, 0], 0.04, brown);       // its beard
+  G.ball(-3.75, 5.7, 0, 0.55, 0.5, 0.42, cream);                // its little tail
+  for (const z of [-1, 1]) {
+    G.ball(5.3, 8.55, z * 0.72, 0.16, 0.16, 0.12, [0.05, 0.05, 0.05]); // an eye
+    G.ball(4.1, 8.7, z * 1.05, 0.55, 0.26, 0.3, tan);                  // an ear
+    // A horn: up, back and down again, getting thinner.
+    G.pipe([4.5, 9.0, z * 0.5], 0.36, [3.6, 10.8, z * 0.8], 0.3, horn);
+    G.pipe([3.6, 10.8, z * 0.8], 0.3, [2.3, 11.4, z * 1.0], 0.2, horn);
+    G.pipe([2.3, 11.4, z * 1.0], 0.2, [1.3, 10.6, z * 1.15], 0.03, horn);
+    // Legs and hooves.
+    for (const x of [2.3, -2.5]) {
+      G.pipe([x, 3.6, z * 1.0], 0.55, [x + 0.15, 0.5, z * 1.05], 0.33, brown);
+      G.ball(x + 0.2, 0.3, z * 1.05, 0.45, 0.32, 0.4, [0.12, 0.1, 0.09]);
+    }
+  }
+  w3.goatShape = G.smoothGeometry();
   // A banana peel: four flaps lying open on the snow, and the stalk standing up.
   const P = new MeshBuilder(), yellow = rgb3("#facc15"), pale = rgb3("#fef3c7");
   for (let k = 0; k < 4; k++) {
@@ -1394,14 +1538,23 @@ function updateItems(view) {
   for (const thing of view.things || []) {
     let mesh = w3.things.get(thing.id);
     if (!mesh) {
-      mesh = thing.kind === "rimon" ? new THREE.Mesh(w3.rimonShape, w3.smoothPaint)
+      mesh = thing.kind === "goat" ? new THREE.Mesh(w3.goatShape, w3.smoothPaint)
+        : thing.kind === "rimon" ? new THREE.Mesh(w3.rimonShape, w3.smoothPaint)
         : new THREE.Mesh(thing.kind === "banana" ? w3.bananaShape : w3.mangoShape, w3.paint);
-      mesh.scale.setScalar(1.4); // (a bit bigger than life, so you can see it coming)
+      mesh.scale.setScalar(thing.kind === "goat" ? 1.15 : 1.4); // (a bit bigger than life, so you can see it coming)
       w3.scene.add(mesh);
       w3.things.set(thing.id, mesh);
     }
     pathSpot(thing.y, thing.x, SPOT);
-    if (thing.kind === "banana") {
+    if (thing.kind === "goat") {
+      // Walking: it faces the way it is going, and bobs a little with every step.
+      // Bumped by a sled: it flies through the air, tumbling over and over.
+      const step = view.time * 7 + thing.phase;
+      mesh.position.set(SPOT.x, SPOT.y + (thing.air || 0) * U3 + (thing.tumble ? 0 : Math.abs(Math.sin(step)) * 0.3), SPOT.z);
+      if (thing.tumble) mesh.rotation.set(thing.tumble * 6, -SPOT.heading, thing.tumble * 8);
+      else mesh.rotation.set(0, -SPOT.heading + (thing.facing > 0 ? 0 : Math.PI), Math.sin(step) * 0.05);
+    } else if (thing.kind === "banana") {
+
       mesh.position.set(SPOT.x, SPOT.y + 0.05, SPOT.z);
       mesh.rotation.y = thing.id * 1.7;
     } else if (thing.kind === "rimon") {
@@ -1687,7 +1840,7 @@ function updateCrashEffects(time) {
 //   air, spin, float:    my sled flying (how high), spinning out (how far round), floating in the lake
 //   charge:       the carve boost building up (0, 1 or 2)
 //   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed, air, spin, float }]
-//   things:       banana peels, mangoes and rimonim: [{ id, kind, x, y, air }]
+//   things:       banana peels, mangoes, rimonim and goats: [{ id, kind, x, y, air }] (a goat also has facing, tumble, phase)
 //   gate:         the question on the next gate ({ number, english, choices, wrong: the lanes I already tried }) or null
 //   time:         the game clock
 // }
@@ -1746,6 +1899,10 @@ function drawRace3d(view, w, h) {
   camY = Math.max(camY, landAt(camX, camZ).h + 2.6);
   pathSpot(view.along - 1500, view.side, CAM, true);
   camY = Math.max(camY, CAM.y + 3.2);
+  // In the tunnel the camera ducks, so it stays under the roof.
+  const tunnel = TRACK.crossing.tunnel;
+  const inTunnel = smooth3(tunnel[0] - 10, tunnel[0] + 4, index) * (1 - smooth3(tunnel[1] + 12, tunnel[1] + 24, index));
+  if (inTunnel > 0) camY = Math.min(camY, sledY + 15 + (1 - inTunnel) * 12);
   pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
   const shake = (view.shake || 0) * 0.5;
   w3.camera.position.set(camX + (Math.random() - 0.5) * shake, camY + (Math.random() - 0.5) * shake, camZ);

@@ -343,6 +343,13 @@ const RACE = {
   curveSteer: 0.5,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself (the old way), 1 = fully real (hard!)
   grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
   airSteer: 0.35,         // in the air you can only turn this much of normal
+  // Very sharp bends are harder still: the sharper the bend, the more it throws the sled outward.
+  sharpFrom: 8,           // bends sharper than this (a segment's `curve`) start to get harder…
+  sharpFull: 12,          // …and from this sharp on…
+  sharpSteer: 1.25,       // …`curveSteer` is this much instead (more than a sled can hold without skidding)
+  // Tilted bends ("banked", like a bowl): the tilt holds the sled in, so you can zoom round.
+  bankHelp: 0.8,          // a tilted bend throws the sled outward this much LESS (0.8 = 80% less)
+  bankSpeed: 1.1,         // …and your top speed in it is this much higher
   // Skidding: keep HOLDING a side of the screen (or an arrow key). After a moment the sled starts to skid:
   // it swings round much further and faster, so it takes sharp bends, but it loses speed while it skids.
   skidAfter: 1.0,         // hold a turn for longer than this many seconds = a skid
@@ -371,7 +378,11 @@ const RACE = {
   // Alternate paths: the path splits in two around an island of rocks and trees, then joins up again
   forkWidth: 2.8,        // half the width of the whole split (both ways + the island)
   forkIsland: 1.1,        // half the width of the island in the middle
-  forkLength: 150,        // how long a split is, in segments
+  faceWidth: 3.4,         // the mountain face: half the width of the big curve + the island + the shortcut together
+  faceIsland: 0.9,        // …half the width of the island between them
+  faceSpeed: 1.2,         // …and on the shortcut your top speed is this much higher (1.2 = 120%): it is steeper
+  hillRampLength: 30,     // in the hills, one way round goes up a hill and jumps off: how long that slope is (segments)…
+  hillRampHeight: 1000,   // …and how high its top is
   // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you),
   // a mango (thrown ahead) or a rimon, a pomegranate grenade (thrown ahead OR dropped behind).
   giftsInFront: { banana: 0.5, rimon: 0.4, mango: 0.1 },  // what you get when you are in first place (nobody ahead to throw at)…
@@ -397,6 +408,11 @@ const RACE = {
   crashShove: 1.1,        // …and shoved sideways, away from it, this fast (road widths per second)…
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
+  // Mountain goats wander about on the path. Bump one and it is knocked flying (it comes back later), and you are slowed down.
+  goatWide: 560,          // how big a goat is to bump into (a sled is 600 wide)
+  goatTall: 700,          // a sled flying higher than this goes right over it
+  goatHitSpeed: 0.5,      // bumping a goat: you keep this much of your speed
+  goatAway: 12,           // a goat that was bumped stays away this many seconds, then wanders back
   bumpShove: 2.5,         // sleds are solid: two that touch get pushed apart sideways this fast (road widths per second)
   bumpBoost: 250,         // bumped from behind, the sled in front gets this little push forward
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
@@ -407,8 +423,6 @@ const RACE = {
   botRight: 0.6,          // how often a bot picks the right answer at a gate (0.6 = 60%)
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
-  gateCount: 7,           // how many gates on the way down
-  gateGap: 640,           // segments from one gate to the next (about 23 seconds)
   gateZone: 110,          // the straight, wide stretch around each gate (in segments)
   gateShowAt: 200,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
@@ -422,6 +436,7 @@ const RACE = {
   viewDistance: 900,      // how far you can see before the mist, in 3D units (a sled is 6 wide). Lower = faster on old phones
   sharpness: 2,           // the most screen dots drawn per "pixel" (phones have 2 or 3; 3 looks a bit sharper but is slower)
   bend3d: 0.6,            // how sharp the bends are in the 3D world (higher = tighter bends)
+  bankTilt: 0.28,         // how much a tilted bend leans (0.28 = its outside edge is about 6 higher than its middle)
   camBack: 16,            // the camera sits this far behind my sled (3D units; a sled is 6 wide). Was 13.5
   camHeight: 13,          // …and this high above it. Higher = looking down more from above. Was 6.6
   camAhead: 2600,         // it looks at the path this far ahead of my sled (track units). Was 1900
@@ -439,7 +454,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14b";
+const GAME_VERSION = "2026-11-14c";
 
 // ---------- Helpers ----------
 

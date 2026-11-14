@@ -4,7 +4,7 @@
 // The sled goes forward by itself. Hold the left half of the screen to steer left,
 // the right half to steer right (or use the arrow keys / A and D on a computer).
 // Keep holding for more than a second = a skid (sharper turns, but slower).
-// Also here: flying off the snow ramps, gifts from the gates (banana peel / mango / rimon), spinning out,
+// Also here: bumping into mountain goats, flying off the snow ramps, gifts from the gates (banana peel / mango / rimon), spinning out,
 // and the splash into the Kinneret at the end.
 // The drawing is in race-draw.js and the track in race-track.js.
 // The referee's side is race-server.js. (The questions game.js asks are at the bottom: PHONE_GAMES.race.)
@@ -31,7 +31,7 @@ let boostUntil = -Infinity; // right answer: faster until this time
 let bounceAt = -Infinity;   // wrong answer: when the gate bounced me back up the path…
 let bounceFrom = 0;         // …from here…
 let bounceTo = 0;           // …to here (distances along the race)
-let softHit = null;         // the last bush or snowman I ploughed through (so it only slows me once)
+const softHits = new Map(); // the bushes and snowmen I ploughed through lately, and when (so each one only slows me once)
 let softAt = -Infinity;     // …and when
 let mySlide = 0;          // how fast my sled is sliding sideways right now (road widths per second)
 let myAir = 0;            // how high my sled is above the ground (0 = on the ground)
@@ -48,6 +48,8 @@ let holdTime = 0;         // how long I have been holding this turn (seconds)
 let holdSide = 0;         // …and which way (-1 left, 1 right, 0 = not steering)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
 const seenBooms = new Set(); // the rimon explosions this phone has already shown (their ids)
+const goatHits = new Map();  // the goats that were bumped lately: goat id → { at (when), dir (which way it flew: -1 left, 1 right) }
+const GOAT = { x: 0, z: 0, facing: 1 }; // (a spare spot for goatSpot to fill in)
 const otherSleds = new Map(); // what this phone remembers about the other sleds: id → { air, spinCount, spinAt }
 const flight = { y: 0, x: 0, speed: 0, air: 0, vy: 0 }; // (my sled, the way sledFlight in race-track.js wants it)
 const itemButton = document.getElementById("item-button");
@@ -219,7 +221,11 @@ function raceUpdate(dt) {
     // A sled keeps going STRAIGHT, so in a bend the path turns away under it and you have
     // to steer round, like in a kart. (RACE.curveSteer = how much of that is real.)
     // (Much less while flying, so a jump in a bend still lands on the path.)
-    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * dt / RACE.maxTurn * RACE.curveSteer * (flying ? 0.3 : 1);
+    // A very SHARP bend throws the sled outward harder still (RACE.sharpSteer): only a skid gets
+    // round it. A TILTED bend holds the sled in like a bowl, so it hardly needs steering (RACE.bankHelp).
+    const sharp = Math.max(0, Math.min(1, (Math.abs(segment.curve) - RACE.sharpFrom) / (RACE.sharpFull - RACE.sharpFrom)));
+    const pull = (RACE.curveSteer + (RACE.sharpSteer - RACE.curveSteer) * sharp * sharp * (3 - 2 * sharp)) * (1 - RACE.bankHelp * Math.abs(segment.bank));
+    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
     mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
     // The way the sled points moves you sideways (faster when you're going fast)…
@@ -254,7 +260,8 @@ function raceUpdate(dt) {
       }
     }
     // You can go off the path, but not past the edge of the mountainside.
-    const farthest = segment.width + RACE.shoulder * 0.8;
+    // (On the bridge and in the tunnel there are walls right at the path's edge.)
+    const farthest = segment.walled ? segment.width - 0.17 : segment.width + RACE.shoulder * 0.8;
     me.x = Math.max(-farthest, Math.min(farthest, me.x));
 
     // Off the path = much slower (deep snow up high, rough ground lower down). The island
@@ -262,9 +269,12 @@ function raceUpdate(dt) {
     // A right answer at a gate = a boost (faster for a moment).
     inDeepSnow = !flying && !inWater && offThePath(segment, me.x);
     const boosting = gameTime < boostUntil;
+    // The shortcut down the mountain face is steeper, so it is faster; so is a tilted bend.
+    const onShortcut = !inDeepSnow && segment.fork && segment.fork.fastSide && segment.island > 0.3 && (me.x - segment.islandAt) * segment.fork.fastSide > segment.island;
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
       * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
-      * (skidding ? RACE.skidSpeed : 1);
+      * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? RACE.faceSpeed : 1)
+      * (inDeepSnow ? 1 : 1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
     // (A skid scrubs the speed off gently; deep snow or a hit brakes hard.)
     const braking = skidding && !inDeepSnow && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
     if (inWater) mySpeed = Math.max(0, mySpeed - RACE.waterDrag * dt); // the lake stops the sled
@@ -305,8 +315,10 @@ function raceUpdate(dt) {
           // Which way I get pushed: away from it. (If it stands beside the path, always back TOWARD the path.)
           const away = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
           if (size.soft) {
-            if (sprite === softHit) continue; // (I'm still going through this one)
-            softHit = sprite;
+            // (Each one slows me only once, and never two in the same moment: a thicket can't trap me.)
+            if (gameTime - softAt < 0.35 || gameTime - (softHits.get(sprite) || -Infinity) < 3) continue;
+            if (softHits.size > 40) softHits.clear();
+            softHits.set(sprite, gameTime);
             softAt = gameTime;
             mySpeed *= RACE.softHitSpeed;
             carveTime = 0;
@@ -331,6 +343,25 @@ function raceUpdate(dt) {
       }
     }
     if (gameTime - crashAt < RACE.crashShoveTime) me.x += crashDir * RACE.crashShove * dt;
+
+    // Mountain goats wander about on the path. Bump into one and it is knocked flying (it
+    // comes back later), and I am slowed down. (The referee tells the other phones.)
+    me.air = myAir;
+    for (const goat of TRACK.goats) {
+      if (Math.abs(goat.z - me.y) > 3000) continue;
+      const hit = goatHits.get(goat.id);
+      if (hit && gameTime - hit.at < RACE.goatAway) continue; // (it is not there right now)
+      if (!sledHitsGoat(me, goat, gameTime)) continue;
+      goatSpot(goat, gameTime, GOAT);
+      const dir = me.x >= GOAT.x ? -1 : 1; // it flies off to the side away from me
+      goatHits.set(goat.id, { at: gameTime, dir, mine: true });
+      mySpeed *= RACE.goatHitSpeed;
+      carveTime = 0;
+      softAt = gameTime;
+      playSound("thump");
+      playSound("bleat");
+      sendToServer({ type: "goat", id: goat.id, dir });
+    }
 
     // The mountains slide as the track turns.
     raceTurn += segment.curve * (mySpeed * dt / RACE.segmentLength) * 0.003;
@@ -533,6 +564,20 @@ function raceRender() {
     id: thing.id, kind: thing.kind, x: thing.x, air: thing.air || 0,
     y: thing.y + (thing.speed || 0) * Math.max(0, Math.min(0.2, gameTime - raceInfo.thingsAt)),
   }));
+  // The mountain goats near me: walking about, or (just bumped) flying off through the air.
+  for (const goat of racing ? TRACK.goats : []) {
+    if (Math.abs(goat.z - myY) > 30000) continue;
+    const hit = goatHits.get(goat.id);
+    const since = hit ? gameTime - hit.at : Infinity;
+    if (since >= 1.6 && since < RACE.goatAway) continue; // knocked away: it will wander back later
+    if (since < 1.6) {
+      goatSpot(goat, hit.at, GOAT);
+      things.push({ id: "goat" + goat.id, kind: "goat", x: GOAT.x + hit.dir * since * 1.5, y: GOAT.z + since * 4500, air: Math.max(0, 2400 * since - 1500 * since * since), facing: hit.dir, tumble: since + 0.01, phase: goat.phase });
+    } else {
+      goatSpot(goat, gameTime, GOAT);
+      things.push({ id: "goat" + goat.id, kind: "goat", x: GOAT.x, y: GOAT.z, air: 0, facing: GOAT.facing, tumble: 0, phase: goat.phase });
+    }
+  }
   const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices, wrong: gateQuestion.wrong } : null;
   // (Bounced back by a gate: the sled hops through the air on the way.)
   const sinceBounce = gameTime - bounceAt;
@@ -694,6 +739,15 @@ function raceApplySnapshot(snap) {
   if (!snap.race) return;
   raceInfo = snap.race;
   raceInfo.thingsAt = gameTime; // (when we heard where the mangoes are)
+  // Goats that somebody else bumped: they fly off on this phone too (with a bleat, if it was near me).
+  const me = myPlayer();
+  for (const hit of raceInfo.goats || []) {
+    const known = goatHits.get(hit.id);
+    if (known && Math.abs(known.at - hit.at) < 3) continue;
+    goatHits.set(hit.id, { at: hit.at, dir: hit.dir });
+    const goat = TRACK.goats[hit.id];
+    if (me && goat && gameTime - hit.at < 1) playSound("bleat", 0.7 * (1 - Math.abs(goat.z - me.y) / RACE.soundReach));
+  }
 }
 
 function raceOnPhase(phase) {
@@ -714,9 +768,10 @@ function raceOnPhase(phase) {
     steerLimit = 1;
     holdTime = 0;
     holdSide = 0;
-    softHit = null;
+    softHits.clear();
     softAt = -Infinity;
     seenBooms.clear();
+    goatHits.clear();
     for (const boom of raceInfo.booms || []) seenBooms.add(boom.id); // (not the bangs left over from the last race)
     otherSleds.clear();
     const me = myPlayer();

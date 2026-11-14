@@ -69,9 +69,27 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-14a)
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-14c)
+- **Daniel played v 14a (2026-11-14) and asked for a second list. All of it is built, in two uploads (headless-tested: whole races + screenshots; NOT yet tried by him):**
+  - **v 2026-11-14b, the rules:**
+    - All gates the same size; the 6 small island gates are gone (Daniel: too many gates and too little penalty made people stop caring about the questions). 6 gates now.
+    - **Wrong answer = the gate bounces you back** `RACE.gateBounce` (9000) up the path, from a standstill, same question, until you get it right; the lane you tried gets a ✗. Going round the side of the gate bounces you too. Only the FIRST try counts for the word list / Auto level. Right = boost + gift, as before.
+    - **Skid = hold a turn for more than `RACE.skidAfter` (1 s).** No more double-tap.
+    - **Soft things** (bush, snowman: `soft: true` in `SPRITE_SIZES`): plough through, keep 55% speed, spray of snow. **Hard things** (tree, rock, cabin): loud `clack`, keep 30% speed, knocked round away from it (`hardHitTurn`). Nothing stops you dead any more.
+    - Rimon explosions are only heard within `RACE.soundReach` (quieter with distance). (That was the "bots crashing" noise.)
+  - **v 2026-11-14c, the new track** (hand-written piece by piece in race-track.js, section "THE RIDE"; about 3 min 20 s):
+    1. snowfield on top, long fairly straight downhill (gate 1)
+    2. a very sharp bend into deep woods (tall snowy pines, `pineSnow`): 8 skid bends, 4 splits, gate 2 in a clearing (about 50 s)
+    3. over a stone BRIDGE, a 270° loop, and through the TUNNEL under that bridge
+    4. the side of a steep mountain (wall right, drop left): gate 3, then the big wide curve OR the shortcut on its inside (narrow, rocks and trees to weave through, 20% faster), gate 4
+    5. hills: the path weaves between them; 3 splits where one way rides up a long slope and jumps off; 2 tilted (banked) bends; gates 5 and 6
+    6. the last stretch, beach, ramp into the Kinneret
+    - **Very sharp bends need a skid** (`RACE.sharpFrom` / `sharpFull` / `sharpSteer`). **Tilted bends** hold the sled in and are 10% faster (`bankHelp`, `bankSpeed`, `bankTilt`).
+    - **Mountain goats** (10 of them) wander across the path. Bump one: it is knocked flying and stays away 12 s; you keep 50% speed.
+  - Claude's choices: 6 gates; the shortcut is the same length as the big curve (the path is one line with two lanes) but faster; bots skid (slow down) in the sharp bends and get bounced by gates like players.
+  - **Things to watch when Daniel plays:** are the sharp bends too hard for kids (lower `sharpSteer`, or the `sharp` numbers in "THE RIDE")? Does holding a gentle bend for 1 s start skids he didn't want (raise `skidAfter`)? Is the bounce the right distance? Is the woods section long enough (he said "a minute")?
 - **Daniel tried it on v 12p: "its great!"** Steps 1–4 of 6 done (1 road + driving, 2 answer gates, 3 bots, 4 gifts), plus real 3D. Still to do: 5 multiplayer polish, 6 polish (sounds, podium).
-- **Daniel played v 13d (2026-11-14): "It's very good."** He asked for a list of changes. Part 1 built in **v 2026-11-14a** (headless-tested: whole races + screenshots; NOT yet tried by him):
+- **Daniel played v 13d (2026-11-14): "It's very good."** He asked for a list of changes, built in **v 2026-11-14a** (he played it and sent the second list above; some of 14a was changed again by it):
   - **Tilt steering removed** (hard to tilt and watch at once). Touch only.
   - **Skid:** double-tap a side and hold (Shift on a computer). The sled swings round almost twice as far and faster, top speed drops to 72%. All `skid…` settings in `RACE`.
   - **Start hint:** a dashed circle on each side + "hold to turn / double-tap and hold to skid", through the countdown and 5 s after Go.
@@ -81,7 +99,6 @@
   - **Sled + rider rounder:** built from smooth balls and pipes.
   - **Softer sounds:** crash, sleds bumping, and being hit are soft thuds/hisses now (no beeps).
   - Claude's choices (Daniel didn't pick): big gates give gifts too; hands full = keep the old gift; a thrown rimon can't hurt its thrower; 💣 icon.
-- **Part 2 of that list, NOT built yet:** sharper bends in places; shortcuts that cut over the hill a bend goes round (risky: you can fly); banked (tilted) bends you can zoom round.
 - **v 2026-11-13d (Daniel asked: step 4, plus "realistic and fun, like a kart game", sled sitting on the landscape, plenty of jumps, alternate paths, a jump into the Kinneret). Headless-tested (whole races by an autopilot + screenshots), NOT yet tried by Daniel:**
   - **Gift boxes:** rows of 🎁 across the path (about every 240 segments, back 5 s after being taken). One gift at a time: 🍌 banana peel (dropped behind; whoever slides over it spins out) or 🥭 mango (flies ahead down the path, spins out the first sled it hits). In front you mostly get peels, further back mostly mangoes. Use it with the big round button on the right, or Space. A hit = spinning for 1 s at 35% speed, then safe for 2.5 s. Bots take and use them too.
   - **Steering:** in a bend the path turns away, so you steer round it (`curveSteer` 0.5); the sled slides a little before it grips (`grip` 5); `turnRate` 1.8 (was 1.5); only a little steering in the air. **Carve boost:** a whole bend on the path at speed → blue, then golden sparks → a boost when the bend ends.

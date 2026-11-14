@@ -298,7 +298,7 @@ function drawSegmentExtras(ctx, seg, mist) {
   const fade = (c) => rgbText(mixRgb(c, C.haze, mist));
   if (seg.island > 0.02) {
     const rocky = mixRgb(C.slopeRock, C.slopeSnow, seg.snow * 0.7);
-    polygon(ctx, a.x - seg.island * a.unit, a.y, a.x + seg.island * a.unit, a.y, b.x + seg.island2 * b.unit, b.y, b.x - seg.island2 * b.unit, b.y, fade(rocky));
+    polygon(ctx, a.x + (seg.islandAt - seg.island) * a.unit, a.y, a.x + (seg.islandAt + seg.island) * a.unit, a.y, b.x + (seg.islandAt2 + seg.island2) * b.unit, b.y, b.x + (seg.islandAt2 - seg.island2) * b.unit, b.y, fade(rocky));
   }
   for (const ramp of seg.ramps || []) {
     const l = ramp.offset - ramp.half, r = ramp.offset + ramp.half;
@@ -327,6 +327,7 @@ function spritePicture(type) {
     bushSnow: () => paintBush(g, W, H, true),
     oak: () => paintOak(g, W, H, false),
     oakSnow: () => paintOak(g, W, H, true),
+    pineSnow: () => paintPine(g, W, H),
     olive: () => paintOlive(g, W, H),
     almond: () => paintAlmond(g, W, H),
     palm: () => paintPalm(g, W, H),
@@ -396,6 +397,19 @@ function paintOak(g, W, H, snowy) {
   if (snowy) {
     blob(g, W, H, [[0.3, 0.3, 0.12], [0.5, 0.16, 0.15], [0.71, 0.3, 0.12]], "#cbd9e8");
     blob(g, W, H, [[0.31, 0.27, 0.11], [0.51, 0.13, 0.14], [0.71, 0.27, 0.11]], "#f6f9fc");
+  }
+}
+
+// A tall snowy tree of the deep woods: a trunk and four layers of dark branches with snow on them.
+function paintPine(g, W, H) {
+  g.fillStyle = "#5b3f26";
+  g.fillRect(W * 0.46, H * 0.72, W * 0.08, H * 0.28);
+  for (const [top, bottom, half] of [[0.5, 0.84, 0.46], [0.33, 0.66, 0.38], [0.17, 0.48, 0.29], [0.02, 0.3, 0.2]]) {
+    g.fillStyle = "#2c5a3a";
+    g.beginPath(); g.moveTo(W * 0.5, H * top); g.lineTo(W * (0.5 + half), H * bottom); g.lineTo(W * (0.5 - half), H * bottom); g.closePath(); g.fill();
+    g.fillStyle = "#f6f9fc"; // the snow on the upper part of each layer
+    const mid = top + (bottom - top) * 0.55;
+    g.beginPath(); g.moveTo(W * 0.5, H * top); g.lineTo(W * (0.5 + half * 0.55), H * mid); g.lineTo(W * 0.5, H * (mid - 0.03)); g.lineTo(W * (0.5 - half * 0.55), H * mid); g.closePath(); g.fill();
   }
 }
 
@@ -619,7 +633,8 @@ function drawRaceScene(ctx, w, h, scene) {
     extrasOn.get(index).push({ z, x, icon, lift });
   };
   for (const thing of scene.things || []) {
-    if (thing.kind === "rimon") putExtra(thing.y, thing.x, "💣", thing.air || 0);
+    if (thing.kind === "goat") putExtra(thing.y, thing.x, "🐐", (thing.air || 0) + 250);
+    else if (thing.kind === "rimon") putExtra(thing.y, thing.x, "💣", thing.air || 0);
     else putExtra(thing.y, thing.x, thing.kind === "banana" ? "🍌" : "🥭", thing.kind === "banana" ? 0 : 250);
   }
 

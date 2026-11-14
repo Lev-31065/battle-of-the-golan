@@ -16,6 +16,7 @@ function raceNewRound() {
     startAt: 0, finishers: [], firstFinishAt: null, lastFinishAt: 0,
     things: [],   // banana peels and rimonim lying on the path, mangoes and rimonim flying down it
     booms: [],    // rimonim that just blew up: { id, x, y, at } (so every phone can show the explosion)
+    goats: {},    // mountain goats that were bumped lately: goat id → { at (when), dir (which way it flew) }
     nextThing: 1, // (each one gets its own number)
   };
   server.winner = null;
@@ -73,6 +74,7 @@ function raceStartGame() {
   });
   server.race.things = [];
   server.race.booms = [];
+  server.race.goats = {};
   server.race.startAt = server.time + RACE.countdown;
 }
 
@@ -81,6 +83,7 @@ function raceHandle(p, msg) {
   if (server.time < server.race.startAt) return; // no moving before "Go!"
   if (msg.type === "gift") { raceGiveGift(p, Number(msg.gate)); return; } // "I got this gate's question right"
   if (msg.type === "use") { raceUseItem(p, msg.how); return; }            // "I'm using my gift" (how: "drop" = leave a rimon behind me)
+  if (msg.type === "goat") { raceGoatHit(Number(msg.id), Number(msg.dir) < 0 ? -1 : 1); return; } // "I bumped into this goat"
   if (msg.type !== "move") return;
   const x = Number(msg.x), y = Number(msg.y), speed = Number(msg.speed), steer = Number(msg.steer);
   if (![x, y, speed, steer].every(Number.isFinite)) return;
@@ -254,6 +257,17 @@ function raceHit(q, thing) {
   if (owner && !owner.bot && owner.id !== q.id) toast(`🎯 You got ${q.name}!`, `🎯 פְּגִיעָה! ${q.name}`, owner.id);
 }
 
+// ---------- Mountain goats ----------
+// Goats wander about on the path (race-track.js: every phone works out where each one is from
+// the clock). When a sled bumps one, it is knocked flying and stays away for RACE.goatAway
+// seconds. The referee only remembers WHICH goats were bumped, and when, and tells everyone.
+function raceGoatHit(id, dir) {
+  const goat = TRACK.goats[id];
+  const last = server.race.goats[id];
+  if (!goat || (last && server.time - last.at < RACE.goatAway)) return; // no such goat, or it is already away
+  server.race.goats[id] = { at: server.time, dir };
+}
+
 // ---------- Bots: computer sleds ----------
 // Bots are players the referee drives itself (bot: true). They only exist during a race:
 // they join when the host taps Start (until there are RACE.bots sleds) and leave when
@@ -343,13 +357,14 @@ function raceMoveBot(p, dt) {
   // Where the path splits around an island: pick a way round (once), and stay on that side.
   const islandSoon = Math.max(segment.island, findSegment(p.y + 12 * RACE.segmentLength).island, findSegment(p.y + 25 * RACE.segmentLength).island);
   const islandAhead = Math.max(islandSoon, findSegment(p.y + 55 * RACE.segmentLength).island);
-  const onIsland = Math.abs(p.x) < segment.island;
+  const islandAt = segment.island > 0 ? segment.islandAt : findSegment(p.y + 25 * RACE.segmentLength).islandAt; // (where the island's middle is)
+  const onIsland = Math.abs(p.x - islandAt) < segment.island;
   if (islandAhead === 0) p.forkSide = 0;
   else {
-    if (!p.forkSide) p.forkSide = Math.abs(p.x) > 0.3 ? Math.sign(p.x) : Math.random() < 0.5 ? -1 : 1; // (the side it is on already)
+    if (!p.forkSide) p.forkSide = Math.abs(p.x - islandAt) > 0.3 ? Math.sign(p.x - islandAt) : Math.random() < 0.5 ? -1 : 1; // (the side it is on already)
     // Each way round is 1.25 wide, so its middle is about 0.6 out from the island's edge.
     // (Coming up to the island the path is still narrow: then it just keeps to that side.)
-    target = p.forkSide * Math.min(room, islandSoon + 0.6 + p.lane * 0.15);
+    target = Math.max(-room, Math.min(room, islandAt + p.forkSide * (islandSoon + 0.6 + p.lane * 0.15)));
   }
 
   // Look ahead for trees and rocks standing in the way, and aim past them.
@@ -369,7 +384,7 @@ function raceMoveBot(p, dt) {
       // than cutting across in front of it. Only if there is really no room: the other side.)
       let spot = sprite.offset + mySide * reach;
       if (Math.abs(spot) > room) spot = sprite.offset + mySide * (reach - 0.12);
-      if (Math.abs(spot) > segment.width - 0.08 || Math.abs(spot) < segment.island + 0.3) spot = sprite.offset - mySide * reach;
+      if (Math.abs(spot) > segment.width - 0.08 || Math.abs(spot - segment.islandAt) < segment.island + 0.3) spot = sprite.offset - mySide * reach;
       target = spot;
     }
   }
@@ -404,9 +419,14 @@ function raceMoveBot(p, dt) {
   const gap = p.y - best;
   const catchUp = !humans.length ? 1 : gap > RACE.botCatchUp ? 0.9 : gap < -RACE.botCatchUp ? 1.08 : 1;
   const boosting = server.time < p.boostUntil;
+  // (A very sharp bend: it has to skid round, like a player, so it is slower there. The
+  // shortcut down the mountain face and the tilted bends are faster, like for a player.)
+  const skidding = Math.abs(segment.curve) > (RACE.sharpFrom + RACE.sharpFull) / 2;
+  const onShortcut = segment.fork && segment.fork.fastSide && segment.island > 0.3 && (p.x - segment.islandAt) * segment.fork.fastSide > segment.island;
   const top = RACE.maxSpeed * p.skill * catchUp
     * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
-    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1);
+    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
+    * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? RACE.faceSpeed : 1) * (1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
   if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
   else p.speed = Math.min(top, p.speed + RACE.accel * (boosting ? 3 : 1) * dt);
 
@@ -421,7 +441,7 @@ function raceMoveBot(p, dt) {
         const size = SPRITE_SIZES[sprite.type];
         if (!size.solid || Math.abs(p.x - sprite.offset) >= (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth) continue;
         if (size.soft) {
-          if (sprite !== p.softHit) { p.softHit = sprite; p.speed *= RACE.softHitSpeed; }
+          if (sprite !== p.softHit && server.time - (p.softAt || LONG_AGO) > 0.35) { p.softHit = sprite; p.softAt = server.time; p.speed *= RACE.softHitSpeed; }
           continue;
         }
         if (server.time - p.crashAt <= 0.5) continue;
@@ -435,6 +455,15 @@ function raceMoveBot(p, dt) {
     }
   }
   if (server.time - p.crashAt < RACE.crashShoveTime) p.x += p.crashDir * RACE.crashShove * dt;
+
+  // Bumping into a mountain goat: the goat is knocked flying, the bot is slowed down.
+  for (const goat of TRACK.goats) {
+    if (Math.abs(goat.z - p.y) > 3000) continue;
+    const last = server.race.goats[goat.id];
+    if ((last && server.time - last.at < RACE.goatAway) || !sledHitsGoat(p, goat, server.time)) continue;
+    raceGoatHit(goat.id, p.x >= GOAT_SPOT.x ? -1 : 1);
+    p.speed *= RACE.goatHitSpeed;
+  }
 
   // Sleds are solid: a bot that touches another sled gets pushed aside, just like a player.
   for (const other of Object.values(server.players)) {
@@ -484,6 +513,7 @@ function raceSnapshot(snap) {
     startAt: race.startAt, finishers: race.finishers,
     things: race.things.map((thing) => ({ id: thing.id, kind: thing.kind, x: thing.x, y: thing.y, speed: thing.speed, air: Math.round(thing.air || 0) })),
     booms: race.booms.map((boom) => ({ id: boom.id, x: boom.x, y: boom.y })), // rimonim that blew up in the last moment
+    goats: Object.keys(race.goats).filter((id) => server.time - race.goats[id].at < RACE.goatAway).map((id) => ({ id: Number(id), at: race.goats[id].at, dir: race.goats[id].dir })), // goats that are away right now
   };
 }
 
