@@ -325,10 +325,15 @@ const RACE = {
   startWidth: 1.2,        // half the width at the start and the finish
   shoulder: 1.0,          // how much ground there is beside the path before it drops down the mountainside
   lanes: 3,               // lanes at the gates (one answer over each lane)
-  maxSpeed: 4200,         // top speed (track units per second). Was 10000, then 6000, then 5500
-  accel: 1500,            // how fast you speed up on the path
-  offTrackSpeed: 0.3,     // off the path, your top speed drops to 30%
-  offTrackSlowdown: 6000, // how fast going off the path slows you down
+  maxSpeed: 3700,         // top speed on a normal slope (track units per second). Was 10000, then 6000, 5500, 4200
+  accel: 1400,            // how fast you speed up on the path
+  offTrackSpeed: 0.7,     // off the path, in the deeper snow, your top speed drops to 70% (was 30%)
+  offTrackSlowdown: 2500, // how fast going off the path (or anything else) slows you down to your top speed
+  // The slope: a sled goes faster where the path is steep, and slower where it is flat or goes uphill.
+  // (Apart from this, a skid, and the boost at a gate, the speed stays the same: no surprise boosts.)
+  slopeNormal: 0.13,      // on a slope like this (it drops 13 for every 100 forward) you go exactly `maxSpeed`
+  slopeSpeed: 0.8,        // how much the slope matters (0 = not at all; 0.8 = a slope twice as steep is about 10% faster)
+  slopeLimits: [0.7, 1.3], // …but never slower than 70% or faster than 130% because of the slope
   steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
   slowSteer: 0.35,        // even when you're barely moving, you steer at least this much of that (so you can get unstuck after a crash)
   turnRate: 1.8,          // steering TURNS the sled, and it keeps going that way until you steer back. This is how fast it turns (1.8 = from straight to turned all the way in about half a second). Was 1.5
@@ -340,16 +345,12 @@ const RACE = {
   curvePush: 0,           // an extra sideways push in bends (was 0.1; `curveSteer` below does this job now)
   maxSide: 6,             // the farthest from the middle any sled can be (the referee checks this)
   // Steering feel: a bit like a kart racing game (race-game.js)
-  curveSteer: 0.5,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself (the old way), 1 = fully real (hard!)
+  curveSteer: 0.8,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself, 1 = fully real. (Was 0.5.) With this, a bend sharper than about 18 can only be taken in a skid
   grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
   airSteer: 0.35,         // in the air you can only turn this much of normal
-  // Very sharp bends are harder still: the sharper the bend, the more it throws the sled outward.
-  sharpFrom: 8,           // bends sharper than this (a segment's `curve`) start to get harder…
-  sharpFull: 12,          // …and from this sharp on…
-  sharpSteer: 1.25,       // …`curveSteer` is this much instead (more than a sled can hold without skidding)
+  skidCurve: 18,          // bends sharper than this need a skid (bots slow down in them, like a skidding player)
   // Tilted bends ("banked", like a bowl): the tilt holds the sled in, so you can zoom round.
   bankHelp: 0.8,          // a tilted bend throws the sled outward this much LESS (0.8 = 80% less)
-  bankSpeed: 1.1,         // …and your top speed in it is this much higher
   // Skidding: hold one of the two SKID BUTTONS in the bottom corners of the screen (left button = skid left,
   // right button = skid right; on a computer: Shift + an arrow key). The sled swings round much further and
   // faster, so it takes sharp bends, but it loses speed while it skids.
@@ -360,17 +361,12 @@ const RACE = {
   skidGrip: 7,            // grip while skidding (see `grip`): higher = the skid bites sooner
   skidRecover: 3,         // after a skid, how fast the sled straightens back to a normal turn
   hintTime: 5,            // the "hold to turn, corner buttons to skid" circles stay this many seconds after "Go!"
-  carveCurve: 1.5,       // "carve boost": bends at least this sharp count…
-  carveAfter: 0.9,        // …stay on the path at speed for this many seconds of a bend, and you get a boost when it ends (blue snow = ready)
-  carveBig: 1.8,          // …and for this many seconds, a longer boost (golden snow)
-  carveBoost: [0.5, 0.9], // how long those two boosts last (seconds)
   // Snow jumps (the ramps are placed in race-track.js)
-  gravity: 2300,          // how fast a flying sled falls. Lower = longer, floatier jumps
+  gravity: 2050,          // how fast a flying sled falls. Lower = longer, floatier jumps
   rampEvery: 90,          // about one snow ramp every this many segments (lower = more jumps)
   rampLength: 12,         // how long a ramp is, in segments
   rampHeight: 450,        // how high its top is (a sled is 600 wide)
   rampWidth: 0.42,        // half the width of a small ramp (some ramps go right across the path)
-  landBoostTime: 0.8,     // land a jump on the path = a boost for this many seconds
   lakeRampLength: 16,     // the big wooden ramp at the end, into the Kinneret
   lakeRampHeight: 700,
   waterDrag: 9000,        // how fast the lake stops a sled
@@ -389,11 +385,18 @@ const RACE = {
   secretRocks: 30,        // a rock every this many segments inside it, on one side and then the other (lower = closer together = harder)
   hillRampLength: 30,     // in the hills, one way round goes up a hill and jumps off: how long that slope is (segments)…
   hillRampHeight: 1000,   // …and how high its top is
-  // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you),
-  // a mango (thrown ahead) or a rimon, a pomegranate grenade (thrown ahead OR dropped behind).
-  giftsInFront: { banana: 0.5, rimon: 0.4, mango: 0.1 },  // what you get when you are in first place (nobody ahead to throw at)…
-  giftsBehind: { banana: 0.15, rimon: 0.4, mango: 0.45 }, // …and when somebody is ahead of you
-  rimonSpeed: 2700,       // a thrown rimon flies this much faster than the sled that threw it…
+  // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you), a mango
+  // (thrown ahead; it steers itself toward the sled in front), a rimon, a pomegranate grenade (thrown ahead OR
+  // dropped behind), or GAS (a thick cloud pours out behind you: the sleds close behind can hardly see).
+  giftsInFront: { banana: 0.35, gas: 0.35, rimon: 0.25, mango: 0.05 }, // what you get when you are in first place (nobody ahead to throw at)…
+  giftsBehind: { banana: 0.15, gas: 0.1, rimon: 0.35, mango: 0.4 },    // …and when somebody is ahead of you
+  gasTime: 6,             // the gas pours out for this many seconds…
+  gasReach: 7000,         // …and blinds sleds up to this far behind you (the closer, the thicker)
+  gasThick: 0.9,          // how much of the view the thickest gas hides (1 = everything)
+  gasBotSpeed: 0.85,      // a bot in the gas slows down to this much (it can't see either)
+  mangoSee: 9000,         // a flying mango steers itself toward the nearest sled up to this far ahead of it…
+  mangoHome: 1.6,         // …this fast (road widths per second)
+  rimonSpeed: 2400,       // a thrown rimon flies this much faster than the sled that threw it…
   rimonRange: 13000,      // …and lands this far down the path, where it blows up
   rimonArc: 900,          // how high it flies on the way
   rimonBlast: 0.9,        // the explosion reaches this far sideways (in road widths; a banana peel only reaches 0.3)…
@@ -403,7 +406,7 @@ const RACE = {
   spinTime: 1.0,          // hit by a banana peel, a mango or a rimon: you spin round for this many seconds…
   spinSpeed: 0.35,        // …and drop to this much of your speed
   itemSafeTime: 2.5,      // after being hit, nothing can hit you again for this many seconds
-  mangoSpeed: 3400,       // a thrown mango flies this much faster than the sled that threw it
+  mangoSpeed: 3000,       // a thrown mango flies this much faster than the sled that threw it
   mangoRange: 18000,      // …and this far before it lands and splats
   bananaLife: 60,         // a banana peel that nobody hits melts away after this many seconds
   // Running into things. SOFT things (a bush, a snowman): you plough through in a spray of snow, but slower.
@@ -432,14 +435,15 @@ const RACE = {
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateZone: 90,           // the straight, wide stretch around each gate (in segments)
   gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
-  boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
-  boostTime: 2.5,         // …for this many seconds
+  boostSpeed: 1.25,       // right answer: top speed goes up to 125%… (was 145%)
+  boostTime: 2,           // …for this many seconds
   gateBounce: 9000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
   gateBounceTime: 0.9,    // …and the bounce takes this many seconds. (You start again from a standstill, until you get it right.)
   soundReach: 9000,       // you only hear a rimon blow up if it is this close to you (quieter the further away)
   feedbackTime: 2.5,      // seconds "Correct!" or "The answer is…" stays on the screen
   // Real 3D (race-3d.js)
   threeD: true,           // draw the race in real 3D (false = the old flat drawing; phones that can't do 3D use that anyway)
+  nearView: 300,          // every piece of path this close to you is drawn too, wherever it is along the path (the stretch above or below you on a zigzag, a bridge overhead)
   viewDistance: 900,      // how far you can see before the mist, in 3D units (a sled is 6 wide). Lower = faster on old phones
   sharpness: 2,           // the most screen dots drawn per "pixel" (phones have 2 or 3; 3 looks a bit sharper but is slower)
   bend3d: 0.6,            // how sharp the bends are in the 3D world (higher = tighter bends)
@@ -461,7 +465,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14e";
+const GAME_VERSION = "2026-11-14f";
 
 // ---------- Helpers ----------
 

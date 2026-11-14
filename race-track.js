@@ -14,7 +14,7 @@
 //          in the middle (rocks and trees: slow, like being off the path). islandAt = where the
 //          island's middle is across the path (0 = right in the middle)
 //   bank   0 = flat; -1 … 1 = this bend is TILTED like a bowl, so you can zoom round it
-//   bridge / tunnel  true = this piece is on the bridge, or in the tunnel under it (walls on both sides)
+//   bridge  true = this piece is on a bridge (walls on both sides); under = it runs under a bridge
 //   ramps  the snow jumps on this piece (most pieces have none)
 //
 // THE RIDE, from top to bottom (it is written out piece by piece further down):
@@ -45,7 +45,7 @@ const TRACK = {
   forks: [],  // places where the path splits in two around an island: { from, to (segments), kind ("woods", "hill", "face" or "secret"), jumpSide (-1 / 1: the side with the jumps, 0 = none), fastSide (-1 / 1: the shortcut side, where sleds go faster; 0 = none), fastSpeed (how much faster), secretSide (-1 / 1: the side a SECRET shortcut is hidden on; 0 = not a secret one) }
   goats: [],  // mountain goats wandering about on the path: { id, z (where it lives), range (how far it walks to each side), speed, phase }
   layout: null,   // where every piece of the path is on the map: { x, z, heading } (lists; in 3D units: one track unit = 0.01)
-  crossings: [],  // the places where the path crosses over itself (one for each loop): { upper, lower (the two segments, one above the other), bridge: [from, to], tunnel: [from, to], drop (how far below the bridge the tunnel's floor is) }. A segment on a bridge or in a tunnel has `crossing` = its one
+  crossings: [],  // the places where the path crosses over itself (one for each loop): { upper, lower (the two segments, one above the other), bridge: [from, to], tunnel: [from, to] (the pieces that run under the bridge), drop (how far below the bridge the path under it is) }. A segment on a bridge has `crossing` = its one
   waterZ: 0,  // where the Kinneret starts
 };
 
@@ -192,7 +192,7 @@ function trackProgress(z) {
   // how sharp, how steep. Then check the map: the test page draws it.)
 
   // A LOOP: over a stone bridge, round three quarters of a circle (way = 1 to the right, -1 to
-  // the left), and back through a tunnel under that same bridge. (It turns exactly 270 degrees,
+  // the left), and back UNDER that same bridge. (It turns exactly 270 degrees,
   // so the path comes back and crosses under itself.) `banked` = the loop is tilted like a bowl.
   const loops = [];
   function loop(way, sharp, banked) {
@@ -203,10 +203,10 @@ function trackProgress(z) {
     straight(75, 0.02, { calm: true });       // …the bridge is on this stretch
     c.upperTo = segments.length;
     width = 1.25;
-    turn(way * 270, sharp, 0.12, { calm: true, banked });
+    turn(way * 270, sharp, 0.05, { calm: true, banked }); // (nearly level, so the bridge is not far overhead when you come back under it)
     width = RACE.pathWidth;
     c.lowerFrom = segments.length;
-    straight(75, 0.08, { calm: true });       // …and the tunnel on this one
+    straight(75, 0.08, { calm: true });       // …and this one runs under it
     c.lowerTo = segments.length;
     loops.push(c);
     width = widthBefore;
@@ -229,21 +229,21 @@ function trackProgress(z) {
   // ----- 2. The deep woods: a path between giant trees, one very sharp bend after another (skid!) -----
   zone = "woods";
   width = 1.15;
-  turn(100, 15, 0.1);
+  turn(100, 21, 0.1);
   straight(30, 0.12);
-  turn(-120, 16, 0.1);
+  turn(-120, 22, 0.1);
   fork("secret", 1, () => { straight(45, 0.14); turn(25, 2.2, 0.15); straight(95, 0.14); }); // a secret way behind the trees on the right
-  turn(95, 15, 0.1);                        // two sharp bends in a row: right-left, like an S
-  turn(-95, 15, 0.1);
+  turn(95, 21, 0.1);                        // two sharp bends in a row: right-left, like an S
+  turn(-95, 21, 0.1);
   straight(15, 0.1);
   gate();                                   // gate 2, in a clearing in the woods
-  turn(-110, 16, 0.1);
+  turn(-110, 22, 0.1);
   fork("woods", 1, () => { straight(20, 0.14); turn(40, 3, 0.15); straight(25, 0.14); });
-  turn(130, 17, 0.1);                       // a hairpin: nearly all the way round
+  turn(130, 23, 0.1);                       // a hairpin: nearly all the way round
   straight(25, 0.12);
-  turn(-100, 15, 0.1);
+  turn(-100, 21, 0.1);
   fork("woods", -1, () => { straight(25, 0.14); turn(20, 2, 0.15); straight(30, 0.14); });
-  turn(80, 14, 0.12);
+  turn(80, 20, 0.12);
   straight(15, 0.1);
   gate();                                   // gate 3
   width = 1.0;
@@ -266,9 +266,9 @@ function trackProgress(z) {
   fork("face", -1, () => { straight(20, 0.16, cliff); turn(-100, 2.2, 0.18, cliff); straight(20, 0.16, cliff); });
   straight(40, 0.15, cliff);
   width = 1.3;
-  turn(-140, 15, 0.12, cliff);              // down the mountainside in zigzags: a hairpin to the left…
+  turn(-140, 21, 0.12, cliff);              // down the mountainside in zigzags: a hairpin to the left…
   straight(70, 0.14, cliffBack);
-  turn(140, 15, 0.12, cliffBack);           // …and one back to the right
+  turn(140, 21, 0.12, cliffBack);           // …and one back to the right
   straight(30, 0.14, cliff);
   gate();                                   // gate 5
 
@@ -285,10 +285,10 @@ function trackProgress(z) {
   turn(80, 7, 0.12);
   fork("hill", 1, () => { straight(30, 0.13); turn(30, 2.5, 0.14); straight(60, 0.13); });
   turn(70, 6.5, 0.14, { banked: true });    // a tilted bend: zoom!
-  turn(-130, 15, 0.12);                     // a hairpin round a hill
+  turn(-130, 21, 0.12);                     // a hairpin round a hill
   snow = 0.2;
   gate();                                   // gate 6
-  turn(110, 15, 0.12);
+  turn(110, 21, 0.12);
   fork("secret", -1, () => { straight(40, 0.13); turn(-30, 2.5, 0.14); straight(90, 0.13); }); // a secret way on the left
   straight(30, 0.14);
   fork("hill", -1, () => { straight(30, 0.13); turn(-25, 2, 0.14); straight(60, 0.13); });
@@ -296,8 +296,8 @@ function trackProgress(z) {
   turn(90, 7.5, 0.14, { banked: true });    // another tilted bend
   snow = 0.1;
   gate();                                   // gate 7
-  turn(120, 16, 0.12);                      // two hairpins in a row
-  turn(-120, 16, 0.12);
+  turn(120, 22, 0.12);                      // two hairpins in a row
+  turn(-120, 22, 0.12);
   straight(20, 0.13);
   gate();                                   // gate 8
 
@@ -312,7 +312,7 @@ function trackProgress(z) {
   fork("secret", 1, () => { straight(40, 0.12); turn(30, 2.5, 0.12); straight(80, 0.12); }); // the last secret way, on the right
   turn(45, 5, 0.1);
   gate();                                   // gate 9
-  turn(-100, 14, 0.1);                      // one last sharp bend
+  turn(-100, 20, 0.1);                      // one last sharp bend
   turn(55, 5, 0.08);
   gate();                                   // gate 10
   turn(-15, 2.5, 0.05);
@@ -457,7 +457,7 @@ function trackProgress(z) {
     const crossing = { upper, lower, gap, bridge, tunnel, drop: segments[upper].p1.world.y - segments[lower].p1.world.y };
     TRACK.crossings.push(crossing);
     for (let n = bridge[0]; n <= bridge[1]; n++) { segments[n].bridge = true; segments[n].walled = true; segments[n].crossing = crossing; }
-    for (let n = tunnel[0]; n <= tunnel[1]; n++) { segments[n].tunnel = true; segments[n].walled = true; segments[n].crossing = crossing; }
+    for (let n = tunnel[0]; n <= tunnel[1]; n++) segments[n].under = true; // (this piece runs UNDER the bridge, out in the open)
   }
 
   // ----- Things beside the path -----
@@ -480,7 +480,7 @@ function trackProgress(z) {
 
   for (let n = 20; n < waterIndex - 5; n++) {
     const seg = segments[n];
-    if (seg.bridge || seg.tunnel) continue; // (nothing grows on a bridge or in a tunnel)
+    if (seg.bridge || seg.under) continue; // (nothing grows on a bridge or under one)
     const progress = trackProgress(seg.p1.world.z);
     // Snow poles along the edges (not on the beach).
     if (n % 12 === 0 && seg.sand === 0) { add(n, "pole", -(seg.width + 0.08)); add(n, "pole", seg.width + 0.08); }
@@ -740,6 +740,15 @@ function sledHitsGoat(sled, goat, time) {
   goatSpot(goat, time, GOAT_SPOT);
   return Math.abs(sled.x - GOAT_SPOT.x) < (SLED_WIDTH / 2 + RACE.goatWide / 2) / RACE.roadWidth
     && GOAT_SPOT.z > sled.y - RACE.goatWide / 2 && GOAT_SPOT.z < sled.y + RACE.sledLength + RACE.goatWide / 2;
+}
+
+// ---------- The slope and the speed ----------
+// How much faster (or slower) a sled goes because of the slope under it: 1 on a normal
+// slope, more where it is steep, less where it is flat or uphill. slope = how much the ground
+// rises for every 1 forward (minus = downhill). (Phones use this for their sled, the referee for the bots.)
+function slopeSpeed(slope) {
+  const factor = 1 - (slope + RACE.slopeNormal) * RACE.slopeSpeed;
+  return Math.max(RACE.slopeLimits[0], Math.min(RACE.slopeLimits[1], factor));
 }
 
 // ---------- Heights, jumps and flying ----------

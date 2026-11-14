@@ -59,6 +59,7 @@ const dropButton = document.getElementById("drop-button"); // (a rimon only: dro
 const ITEM_NAMES = {
   banana: { icon: "🍌", en: "Banana peel", he: "קְלִפַּת בָּנָנָה", tipEn: "🍌 A banana peel! Tap the button to drop it behind you", tipHe: "🍌 קְלִפַּת בָּנָנָה!" },
   mango: { icon: "🥭", en: "Mango", he: "מַנְגּוֹ", tipEn: "🥭 A mango! Tap the button to throw it ahead", tipHe: "🥭 מַנְגּוֹ!" },
+  gas: { icon: "☁️", en: "Gas cloud", he: "עֲנַן גַּז", tipEn: "☁️ Gas! Tap the button: the sleds close behind you will hardly see a thing", tipHe: "☁️ עֲנַן גַּז!" },
   rimon: { icon: "💣", en: "Throw rimon", he: "לִזְרֹק רִמּוֹן", tipEn: "💣 A rimon! Big button = throw it ahead. Small button = drop it behind you", tipHe: "💣 רִמּוֹן!" },
 };
 const raceWinnerEl = document.getElementById("winner");
@@ -237,10 +238,9 @@ function raceUpdate(dt) {
     // A sled keeps going STRAIGHT, so in a bend the path turns away under it and you have
     // to steer round, like in a kart. (RACE.curveSteer = how much of that is real.)
     // (Much less while flying, so a jump in a bend still lands on the path.)
-    // A very SHARP bend throws the sled outward harder still (RACE.sharpSteer): only a skid gets
-    // round it. A TILTED bend holds the sled in like a bowl, so it hardly needs steering (RACE.bankHelp).
-    const sharp = Math.max(0, Math.min(1, (Math.abs(segment.curve) - RACE.sharpFrom) / (RACE.sharpFull - RACE.sharpFrom)));
-    const pull = (RACE.curveSteer + (RACE.sharpSteer - RACE.curveSteer) * sharp * sharp * (3 - 2 * sharp)) * (1 - RACE.bankHelp * Math.abs(segment.bank));
+    // (A really tight bend turns away faster than a sled can steer: only a skid gets round it.)
+    // A TILTED bend holds the sled in like a bowl, so it hardly needs steering (RACE.bankHelp).
+    const pull = RACE.curveSteer * (1 - RACE.bankHelp * Math.abs(segment.bank));
     mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
     mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
@@ -296,26 +296,13 @@ function raceUpdate(dt) {
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
       * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
       * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1)
-      * (inDeepSnow ? 1 : 1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
+      * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, slower where it is flat or uphill)
     // (A skid scrubs the speed off gently; deep snow or a hit brakes hard.)
     const braking = skidding && !inDeepSnow && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
     if (inWater) mySpeed = Math.max(0, mySpeed - RACE.waterDrag * dt); // the lake stops the sled
     else if (flying) { /* in the air it just keeps its speed */ }
     else if (mySpeed > top) mySpeed = Math.max(top, mySpeed - braking * dt);
     else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
-
-    // Carve boost: go round a whole bend on the path, at speed, and the snow under the
-    // runners turns blue (ready), then golden (even better). When the bend ends: whoosh!
-    const bend = Math.abs(segment.curve);
-    if (inDeepSnow || fraction < 0.6 || spinning) carveTime = 0;
-    else if (!flying && bend >= RACE.carveCurve) carveTime += dt;
-    else if (bend < RACE.carveCurve * 0.5) {
-      if (carveTime >= RACE.carveAfter) {
-        boostUntil = Math.max(boostUntil, gameTime + RACE.carveBoost[carveTime >= RACE.carveBig ? 1 : 0]);
-        playSound("swish");
-      }
-      carveTime = 0;
-    }
 
     // Running into things. (Trees and rocks stand beside the path, and a few right on it, so watch out!)
     //   SOFT things (a bush, a snowman): the sled ploughs right through in a big spray of
@@ -407,7 +394,6 @@ function raceUpdate(dt) {
     } else if (flew === "landed") {
       playSound("land");
       if (race3dAvailable()) race3dSplash(me.y, me.x, false); // (a puff of snow)
-      if (!offThePath(findSegment(me.y), me.x)) boostUntil = Math.max(boostUntil, gameTime + RACE.landBoostTime);
     }
 
     // Snow spraying up from the runners when turning or in deep snow.
@@ -581,6 +567,7 @@ function raceRender() {
       return {
         id: p.id, y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed,
         air: seen.air, spin: spinAngle(gameTime - seen.spinAt), float: p.y >= TRACK.waterZ && seen.air < 20,
+        gas: (p.gasUntil || -Infinity) > gameTime,
       };
     });
   // The banana peels, mangoes and rimonim on the path.
@@ -621,7 +608,8 @@ function raceRender() {
       color: (me && me.color) || RACE.colors[0],
       sleds, things,
       air: racing ? myAir + hop : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
-      charge: carveTime >= RACE.carveBig ? 2 : carveTime >= RACE.carveAfter ? 1 : 0,            // the carve boost building up (blue, then golden snow)
+      charge: 0,
+      gas: racing && (me.gasUntil || -Infinity) > gameTime, // (gas is pouring out behind my sled)
       bounce: myAir > 0 || inWater ? 0 : inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
       wobble: (sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0) // rocking after a crash…
         + (sinceBump < 0.5 ? Math.exp(-7 * sinceBump) * Math.sin(sinceBump * 26) * 0.14 * bumpDir : 0),      // …and a little after bumping a sled
@@ -637,6 +625,9 @@ function raceRender() {
   // Snow falling up high (it stops lower down, where the snow has melted).
   drawSnowfall(ctx, w, h, gameTime, findSegment(myY).snow, racing ? mySpeed / RACE.maxSpeed : 0.5, -viewTurn * w);
   if (!racing) return;
+  // Gas from a sled just ahead of me: a thick cloud over everything (but not over the race info).
+  const gas = gasAround(me);
+  if (gas > 0) drawGas(ctx, w, h, gas);
   const boosting = gameTime < boostUntil;
   if (boosting) drawBoostLines(ctx, w, h, gameTime);
 
@@ -688,6 +679,38 @@ function raceRender() {
     spinning: gameTime - spinAt < RACE.spinTime,
     inWater,
   });
+}
+
+// ---------- Gas ----------
+// A sled that uses the gas gift pours out a thick cloud for RACE.gasTime seconds. Everyone
+// up to RACE.gasReach behind it is inside the cloud: the closer, the thicker.
+// How thick the gas is around me right now: 0 = none … 1 = the thickest.
+function gasAround(me) {
+  let thick = 0;
+  for (const other of Object.values(players)) {
+    if (other.id === client.myId) continue;
+    const left = (other.gasUntil || -Infinity) - gameTime; // how many more seconds it pours out
+    const gap = other.y - me.y;                            // how far ahead of me that sled is
+    if (left <= 0 || gap < -400 || gap > RACE.gasReach) continue;
+    const near = Math.pow(1 - Math.max(0, gap) / RACE.gasReach, 0.6);
+    thick = Math.max(thick, near * Math.min(1, left / 0.7, (RACE.gasTime - left) / 0.4)); // (it thickens and clears quickly, not in one jump)
+  }
+  return thick;
+}
+
+// The cloud itself: a murky green-grey over the whole view, with darker puffs drifting through it.
+function drawGas(ctx, w, h, thick) {
+  ctx.fillStyle = `rgba(150, 165, 118, ${RACE.gasThick * thick})`;
+  ctx.fillRect(-10, -10, w + 20, h + 20);
+  const size = Math.max(w, h) * 0.32;
+  for (let k = 0; k < 8; k++) {
+    const x = w * (0.5 + 0.55 * Math.sin(gameTime * 0.6 + k * 2.1)), y = h * (0.5 + 0.5 * Math.sin(gameTime * 0.8 + k * 1.3));
+    const puff = ctx.createRadialGradient(x, y, 0, x, y, size);
+    puff.addColorStop(0, `rgba(104, 122, 80, ${0.55 * thick})`);
+    puff.addColorStop(1, "rgba(104, 122, 80, 0)");
+    ctx.fillStyle = puff;
+    ctx.fillRect(x - size, y - size, size * 2, size * 2);
+  }
 }
 
 // ---------- The winner screen ----------

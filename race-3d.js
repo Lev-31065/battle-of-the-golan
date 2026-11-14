@@ -834,7 +834,8 @@ function buildLandChunk(cx, cz) {
     nearest[k] = L.n;
     height[k] = L.h; away[k] = L.t; snow[k] = L.snow; sand[k] = L.sand; lift[k] = L.h - L.base;
     // Right under the path the ground is pushed down a little, so the path strip sits on top of it.
-    sunk[k] = L.h - 2.5 * (1 - smooth3(L.half + 18, L.half + 30, L.d));
+    // (All the way under the strip of ground that belongs to the path, and a bit beyond it, so the mountain never pokes up through it.)
+    sunk[k] = L.h - 2.5 * (1 - smooth3(L.half + SHOULDER3 + 9, L.half + SHOULDER3 + 24, L.d));
   }
   const positions = new Float32Array(count * 3), colors = new Float32Array(count * 3);
   const normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2); // (soft light + the snow picture)
@@ -970,8 +971,8 @@ function buildPathPiece(piece) {
       const ground = landColor(mid + P3.cos[n] * s * (ha + 14), midZ + P3.sin[n] * s * (ha + 14), P3.snow[n], P3.sand[n], 0, 0);
       strip(n, s * (ha + 3), s * (ha + SHOULDER3), s * (hb + 3), s * (hb + SHOULDER3), ground);
       const a = at(n, s * (ha + SHOULDER3)), b = at(n + 1, s * (hb + SHOULDER3));
-      const a2 = at(n, s * (ha + SHOULDER3 + 6)), b2 = at(n + 1, s * (hb + SHOULDER3 + 6));
-      a2[1] -= 3.5; b2[1] -= 3.5;
+      const a2 = at(n, s * (ha + SHOULDER3 + 8)), b2 = at(n + 1, s * (hb + SHOULDER3 + 8));
+      a2[1] -= 4.5; b2[1] -= 4.5;
       B.quad(a, a2, b2, b, ground);
       // The little bank along the path's edge.
       const bank = mix3(mix3(shade3(ground, 0.9), PATHC.bank, P3.snow[n] * 0.9 + 0.1), LANDC.sand, P3.sand[n]);
@@ -1029,7 +1030,6 @@ function buildPathPiece(piece) {
   const W = new MeshBuilder();
   for (let n = first; n < Math.min(last, P3.N); n++) {
     if (TRACK.segments[n].bridge) buildBridgePiece(W, n, ox, oz);
-    if (TRACK.segments[n].tunnel) buildTunnelPiece(W, n, ox, oz);
   }
   if (W.p.length) group.add(new THREE.Mesh(W.geometry(), world3d.paint));
 
@@ -1100,30 +1100,6 @@ function buildBridgePiece(B, n, ox, oz) {
   }
 }
 
-// The shape of the TUNNEL, cut across the path at point i: up one wall, over the arched roof, down the other wall.
-// Each corner is [how far sideways, how high above the path].
-function tunnelShape(i) {
-  const w = P3.half[i] + 0.9;
-  return [[-w, -0.6], [-w, 11], [-w * 0.74, 16.5], [-w * 0.32, 19.6], [w * 0.32, 19.6], [w * 0.74, 16.5], [w, 11], [w, -0.6]];
-}
-
-// One segment of the tunnel: stone walls and an arched roof (in light and dark bands, so you
-// feel the speed), and at each mouth a frame of pale stone around the opening.
-function buildTunnelPiece(B, n, ox, oz) {
-  const c = TRACK.segments[n].crossing; // (which tunnel this is)
-  const spot = (i, q, frame) => {
-    const lat = q[0] * (frame ? 1.16 : 1), up = q[1] + (!frame ? 0 : q[1] > 0 ? 3.2 : -0.4);
-    return [P3.x[i] - ox + P3.cos[i] * lat, P3.y[i] + up, P3.z[i] - oz + P3.sin[i] * lat];
-  };
-  const a = tunnelShape(n), b = tunnelShape(n + 1);
-  const stone = Math.floor(n / 2) % 2 ? STONE : STONE_DARK;
-  for (let k = 0; k < a.length - 1; k++) B.quad(spot(n, a[k]), spot(n + 1, b[k]), spot(n + 1, b[k + 1]), spot(n, a[k + 1]), k === 3 ? shade3(stone, 0.85) : stone);
-  for (const [i, shape] of [[n, a], [n + 1, b]]) {
-    if (i !== c.tunnel[0] && i !== c.tunnel[1] + 1) continue;
-    for (let k = 0; k < shape.length - 1; k++) B.quad(spot(i, shape[k]), spot(i, shape[k + 1]), spot(i, shape[k + 1], true), spot(i, shape[k], true), STONE_LIGHT);
-  }
-}
-
 // A spot on the path strip BETWEEN the path's points (f = 12.5 is halfway from point 12 to 13),
 // `lat` units sideways, lifted by `lift`. ox, oz = where the piece being built is in the world.
 function stripSpot(f, lat, ox, oz, lift) {
@@ -1170,20 +1146,33 @@ function buildRamp(B, ramp, ox, oz) {
   B.place(0, 0, 0, 0, 1);
 }
 
-function updatePath(index, ahead) {
+function updatePath(index, ahead, x, z) {
   const w3 = world3d;
+  // The pieces of path to draw: the one I am on and everything ahead of it as far as I can see…
   const from = Math.floor(Math.max(0, index - 50) / PATH_PIECE), to = Math.floor(Math.min(P3.N - 1, index + ahead) / PATH_PIECE);
-  for (let piece = from; piece <= to; piece++) {
+  const wanted = new Set();
+  for (let piece = from; piece <= to; piece++) wanted.add(piece);
+  // …AND every other piece that passes close by, however far along the path it is: the
+  // stretch above or below me on a zigzag, the one I just left behind a hairpin, a bridge overhead.
+  const close = RACE.nearView * RACE.nearView;
+  for (const i of pathPointsNear(x, z)) {
+    const dx = P3.x[i] - x, dz = P3.z[i] - z;
+    if (dx * dx + dz * dz < close) wanted.add(Math.floor(i / PATH_PIECE));
+  }
+  for (const c of TRACK.crossings) {
+    const dx = P3.x[c.upper] - x, dz = P3.z[c.upper] - z;
+    if (dx * dx + dz * dz < close * 2.2) for (let n = c.bridge[0] - 30; n <= c.bridge[1] + 30; n += 10) wanted.add(Math.floor(n / PATH_PIECE));
+  }
+  for (const piece of wanted) {
     if (w3.pathChunks.has(piece)) continue;
     const group = buildPathPiece(piece);
     w3.pathChunks.set(piece, group);
     if (group) w3.scene.add(group);
   }
   for (const [piece, group] of w3.pathChunks) {
-    if (piece < from - 1 || piece > to + 2) {
-      if (group) disposeGroup(group);
-      w3.pathChunks.delete(piece);
-    }
+    if (wanted.has(piece) || (piece >= from - 1 && piece <= to + 2)) continue;
+    if (group) disposeGroup(group);
+    w3.pathChunks.delete(piece);
   }
 }
 
@@ -1754,6 +1743,19 @@ function sledSpray(sled, pointing, speed, carve, deep, index, dt, amount, charge
   }
 }
 
+// The gas gift: big, slow, murky green puffs pour out of the back of the sled and hang in the air.
+const SPRAY_GAS = rgb3("#8fa56a"), SPRAY_GAS_DARK = rgb3("#6f8650");
+function gasPuffs(sled, pointing, dt) {
+  if (dt <= 0) return;
+  const fx = Math.sin(pointing), fz = -Math.cos(pointing);
+  const px = sled.position.x - fx * 4, py = sled.position.y + 2, pz = sled.position.z - fz * 4;
+  for (let k = Math.floor(70 * dt + Math.random()); k > 0; k--) {
+    addSpray(px + (Math.random() - 0.5) * 6, py + Math.random() * 3, pz + (Math.random() - 0.5) * 6,
+      (Math.random() - 0.5) * 7, 1 + Math.random() * 3.5, (Math.random() - 0.5) * 7,
+      1.6 + Math.random() * 1.4, 4 + Math.random() * 4, 5, 0.85, Math.random() < 0.5 ? SPRAY_GAS : SPRAY_GAS_DARK);
+  }
+}
+
 // ---------- Runner tracks ----------
 // Every sled leaves two thin tracks in the snow behind it, which slowly fade away. A track
 // is a ribbon through the last few spots the sled was at (a new spot every TRAIL_STEP units).
@@ -1920,10 +1922,6 @@ function drawRace3d(view, w, h) {
   camY = Math.max(camY, landAt(camX, camZ).h + 2.6);
   pathSpot(view.along - 1500, view.side, CAM, true);
   camY = Math.max(camY, CAM.y + 3.2);
-  // In the tunnel the camera ducks, so it stays under the roof.
-  let inTunnel = 0;
-  for (const { tunnel } of TRACK.crossings) inTunnel = Math.max(inTunnel, smooth3(tunnel[0] - 10, tunnel[0] + 4, index) * (1 - smooth3(tunnel[1] + 12, tunnel[1] + 24, index)));
-  if (inTunnel > 0) camY = Math.min(camY, sledY + 15 + (1 - inTunnel) * 12);
   pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
   const shake = (view.shake || 0) * 0.5;
   w3.camera.position.set(camX + (Math.random() - 0.5) * shake, camY + (Math.random() - 0.5) * shake, camZ);
@@ -1932,7 +1930,7 @@ function drawRace3d(view, w, h) {
   w3.sky.position.copy(w3.camera.position);
 
   // Build the world around here (the first time, all of it at once).
-  updatePath(index, Math.ceil(reach / SEG3));
+  updatePath(index, Math.ceil(reach / SEG3), sledX, sledZ);
   updateLand(camX + fx * reach * 0.35, camZ + fz * reach * 0.35, reach * 0.8, !w3.builtOnce);
   w3.builtOnce = true;
 
@@ -1962,6 +1960,7 @@ function drawRace3d(view, w, h) {
     const off = o.air > 30 || Boolean(o.float);
     sledTrail(id, sled, SPOT.y, SPOT.heading + o.turn, SPOT.index, off);
     if (!off) sledSpray(sled, SPOT.heading + o.turn, o.speed, carve, deep, SPOT.index, dt, amount * Math.max(0.5, w3.quality), charge);
+    if (o.gas) gasPuffs(sled, SPOT.heading + o.turn, dt); // (the gas gift: a thick cloud pours out behind it)
     sled.position.y += o.bounce || 0;
     seen.add(id);
     if (name) {
@@ -1974,7 +1973,7 @@ function drawRace3d(view, w, h) {
   if (view.racing) {
     place("me", view.color, {
       along: view.along, side: view.side, turn: view.turn, wobble: view.wobble, bounce: view.bounce,
-      air: view.air || 0, spin: view.spin || 0, float: view.float, speed: view.speed || 0,
+      air: view.air || 0, spin: view.spin || 0, float: view.float, speed: view.speed || 0, gas: view.gas,
     }, null, view.carve || 0, view.deep, 1, view.charge || 0);
     for (const other of view.sleds) {
       // (Nobody tells us how hard another sled is steering, so we work it out from how fast it's turning.)
@@ -1984,7 +1983,7 @@ function drawRace3d(view, w, h) {
       const deep = offThePath(findSegment(other.y), other.x);
       place(other.id, other.color, {
         along: other.y, side: other.x, turn: other.turn, wobble: 0, bounce: 0,
-        air: other.air || 0, spin: other.spin || 0, float: other.float, speed: other.speed || 0,
+        air: other.air || 0, spin: other.spin || 0, float: other.float, speed: other.speed || 0, gas: other.gas,
       }, other.name, carve, deep, 0.6, 0);
       const now = w3.sleds.get(other.id).userData;
       now.lastTurn = other.turn; now.carve = carve;

@@ -51,6 +51,7 @@ function raceResetSled(p) {
   p.spinCount = 0;          // goes up by 1 with every hit (that is how the phone notices)
   p.spinKind = "";          // what hit it last
   p.safeUntil = LONG_AGO;   // nothing can hit it until then
+  p.gasUntil = LONG_AGO;    // gas pours out behind it until then (every phone sees this)
 }
 
 // The host tapped Start: line everyone up behind the start line, four sleds per row
@@ -168,7 +169,13 @@ function raceUseItem(p, how) {
   if (!kind) return;
   p.item = null;
   const race = server.race;
-  if (kind === "banana") {
+  if (kind === "gas") {
+    // A thick cloud pours out behind the sled for a few seconds. (The phones of the sleds behind it do the rest.)
+    p.gasUntil = server.time + RACE.gasTime;
+    for (const q of Object.values(server.players)) {
+      if (!q.bot && q !== p && q.y < p.y && p.y - q.y < RACE.gasReach) toast(`☁️ ${p.name}'s gas! You can hardly see!`, "☁️ עֲנַן גַּז! קָשֶׁה לִרְאוֹת!", q.id);
+    }
+  } else if (kind === "banana") {
     // Behind the sled. (Its owner can't slip on it for the first second.)
     race.things.push({ id: race.nextThing++, kind, x: p.x, y: p.y - 350, speed: 0, owner: p.id, ownerSafeUntil: server.time + 1, until: server.time + RACE.bananaLife });
   } else if (kind === "mango") {
@@ -192,6 +199,16 @@ function raceUpdateThings(dt) {
     const from = thing.y;
     if (thing.kind === "mango" || thing.thrown) {
       thing.y += thing.speed * dt;
+      if (thing.kind === "mango") {
+        // A mango steers itself toward the nearest sled ahead of it (so you don't have to aim exactly).
+        let target = null;
+        for (const q of everyone) {
+          if (q.id === thing.owner || q.finished) continue;
+          const gap = q.y + RACE.sledLength - thing.y;
+          if (gap > 0 && gap < RACE.mangoSee && (!target || q.y < target.y)) target = q;
+        }
+        if (target) thing.x += Math.max(-RACE.mangoHome * dt, Math.min(RACE.mangoHome * dt, target.x - thing.x));
+      }
       const seg = findSegment(thing.y);
       const room = Math.max(0.1, seg.width - 0.15);
       thing.x = Math.max(-room, Math.min(room, thing.x)); // it follows the path
@@ -210,7 +227,7 @@ function raceUpdateThings(dt) {
       if (thing.kind === "rimon") raceExplode(thing); // an old rimon goes off by itself…
       return false;                                   // …and an old banana peel melts away
     }
-    const reach = thing.kind === "rimon" ? RACE.rimonTrigger : 0.3;
+    const reach = thing.kind === "rimon" ? RACE.rimonTrigger : thing.kind === "mango" ? 0.4 : 0.3;
     for (const q of everyone) {
       if (q.id === thing.owner && (thing.kind === "mango" || server.time < thing.ownerSafeUntil)) continue;
       if (q.finished || q.air > 150 || server.time < q.safeUntil) continue; // (flying sleds go right over it)
@@ -329,12 +346,10 @@ function raceMoveBot(p, dt) {
     p.y += p.speed * dt;
     return;
   }
-  // Flying off a ramp: it just keeps going until it comes down. (Land on the path = a little boost.)
+  // Flying off a ramp: it just keeps going until it comes down.
   if (p.air > 0) {
     p.y += p.speed * dt;
-    if (sledFlight(p, oldY, oldX, dt) === "landed" && p.y < TRACK.waterZ && !offThePath(findSegment(p.y), p.x)) {
-      p.boostUntil = Math.max(p.boostUntil, server.time + RACE.landBoostTime);
-    }
+    sledFlight(p, oldY, oldX, dt);
     raceCheckFinish(p);
     return;
   }
@@ -424,12 +439,15 @@ function raceMoveBot(p, dt) {
   const boosting = server.time < p.boostUntil;
   // (A very sharp bend: it has to skid round, like a player, so it is slower there. The
   // shortcut down the mountain face and the tilted bends are faster, like for a player.)
-  const skidding = Math.abs(segment.curve) > (RACE.sharpFrom + RACE.sharpFull) / 2;
+  const skidding = Math.abs(segment.curve) > RACE.skidCurve;
+  // (In somebody's gas cloud a bot can't see either, so it slows down.)
+  const gassed = Object.values(server.players).some((other) => other !== p && other.gasUntil > server.time && other.y > p.y && other.y - p.y < RACE.gasReach);
   const onShortcut = segment.fork && segment.fork.fastSide && segment.island > 0.3 && (p.x - segment.islandAt) * segment.fork.fastSide > segment.island;
   const top = RACE.maxSpeed * p.skill * catchUp
     * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
     * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
-    * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (1 + (RACE.bankSpeed - 1) * Math.abs(segment.bank));
+    * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (gassed ? RACE.gasBotSpeed : 1)
+    * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, like a player)
   if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
   else p.speed = Math.min(top, p.speed + RACE.accel * (boosting ? 3 : 1) * dt);
 
@@ -478,15 +496,6 @@ function raceMoveBot(p, dt) {
     else if (touch.lined && server.time - p.bumpAt > 0.5) { p.bumpAt = server.time; p.speed += RACE.bumpBoost; }
   }
 
-  // Carve boost, like a player's: a whole bend on the path at speed = a little boost when it ends (not every time).
-  const bend = Math.abs(segment.curve);
-  if (offThePath(segment, p.x) || fraction < 0.6) p.carveTime = 0;
-  else if (bend >= RACE.carveCurve) p.carveTime += dt;
-  else if (bend < RACE.carveCurve * 0.5) {
-    if (p.carveTime >= RACE.carveAfter && Math.random() < 0.6) p.boostUntil = Math.max(p.boostUntil, server.time + RACE.carveBoost[0]);
-    p.carveTime = 0;
-  }
-
   p.y += p.speed * dt;
   sledFlight(p, oldY, oldX, dt); // (riding off the top of a ramp: it takes off)
 
@@ -496,7 +505,7 @@ function raceMoveBot(p, dt) {
   if (p.item && server.time > p.useAt && !spinning) {
     const others = Object.values(server.players).filter((other) => other !== p && !other.finished);
     if (p.item === "rimon") {
-      const lands = RACE.rimonRange * 5500 / (5500 + RACE.rimonSpeed); // about how far ahead of ME it comes down
+      const lands = RACE.rimonRange * RACE.maxSpeed / (RACE.maxSpeed + RACE.rimonSpeed); // about how far ahead of ME it comes down
       const ahead = others.some((other) => Math.abs(other.y - p.y - lands) < RACE.rimonBlastLong * 1.5 && Math.abs(other.x - p.x) < RACE.rimonBlast);
       const behind = others.some((other) => other.y < p.y && other.y > p.y - 5000);
       if (ahead) raceUseItem(p);
@@ -504,7 +513,9 @@ function raceMoveBot(p, dt) {
     } else {
       const target = p.item === "mango" && others.some((other) =>
         other.y > p.y + RACE.sledLength && other.y < p.y + RACE.mangoRange * 0.7 && Math.abs(other.x - p.x) < 0.4);
-      if (p.item === "banana" || target || server.time > p.useAt + 5) raceUseItem(p);
+      // (Gas: when somebody is close behind, to blind them.)
+      const chased = p.item === "gas" && others.some((other) => other.y < p.y && p.y - other.y < RACE.gasReach);
+      if (p.item === "banana" || target || chased || server.time > p.useAt + 5) raceUseItem(p);
     }
   }
   raceCheckFinish(p);
