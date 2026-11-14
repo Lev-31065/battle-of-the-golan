@@ -611,15 +611,17 @@ function drawRaceScene(ctx, w, h, scene) {
     sledsOn.get(index).push(sled);
   }
 
-  // Gift boxes (🎁), banana peels and mangoes: which piece of path each one is on.
+  // Banana peels, mangoes and rimonim: which piece of path each one is on.
   const extrasOn = new Map();
   const putExtra = (z, x, icon, lift) => {
     const index = findSegment(z).index;
     if (!extrasOn.has(index)) extrasOn.set(index, []);
     extrasOn.get(index).push({ z, x, icon, lift });
   };
-  for (const box of TRACK.boxes) if (!(scene.gone && scene.gone.has(box.id))) putExtra(box.z, box.offset, "🎁", 350);
-  for (const thing of scene.things || []) putExtra(thing.y, thing.x, thing.kind === "banana" ? "🍌" : "🥭", thing.kind === "banana" ? 0 : 250);
+  for (const thing of scene.things || []) {
+    if (thing.kind === "rimon") putExtra(thing.y, thing.x, "💣", thing.air || 0);
+    else putExtra(thing.y, thing.x, thing.kind === "banana" ? "🍌" : "🥭", thing.kind === "banana" ? 0 : 250);
+  }
 
   // Then paint them far to near, each piece with the things standing on it.
   for (let i = shown.length - 1; i >= 0; i--) {
@@ -958,8 +960,11 @@ function drawGate(ctx, w, seg, info) {
   const unit = a.scale * w / 2;   // pixels per track unit, at this distance
   const tall = 2600 * unit; // (big, so you can read it from far away)
   if (tall < 6) return;
-  const poleW = Math.max(2, a.w * 0.035);
-  const edges = [-1, -1 / 3, 1 / 3, 1].map((t) => a.x + a.w * t);
+  // (A small gift gate stands over one way round an island, not over the whole path.)
+  const gate = seg.gate || { center: 0, half: seg.width };
+  const middle = a.x + a.w * gate.center / seg.width, halfW = a.w * gate.half / seg.width;
+  const poleW = Math.max(2, halfW * 0.035);
+  const edges = [-1, -1 / 3, 1 / 3, 1].map((t) => middle + halfW * t);
   const top = a.y - tall;
   ctx.fillStyle = "#334155";
   for (const x of edges) ctx.fillRect(x - poleW / 2, top, poleW, tall);
@@ -967,9 +972,9 @@ function drawGate(ctx, w, seg, info) {
   ctx.fillRect(edges[0] - poleW / 2, top, edges[3] - edges[0] + poleW, beamH);
 
   // The English word, on a white sign above the frame.
-  const signW = a.w * 0.8, signH = tall * 0.2;
-  roundedBox(ctx, a.x - signW / 2, top - signH, signW, signH, signH * 0.2, "#ffffff", "#1e3a8a", Math.max(1, signH * 0.06));
-  drawTextInBox(ctx, info ? info.english : "?", a.x, top - signH / 2, signW, signH, 200, "#1e3a8a", false);
+  const signW = halfW * (gate.side ? 1.6 : 0.8), signH = tall * 0.2;
+  roundedBox(ctx, middle - signW / 2, top - signH, signW, signH, signH * 0.2, "#ffffff", "#1e3a8a", Math.max(1, signH * 0.06));
+  drawTextInBox(ctx, info ? info.english : "🎁 ?", middle, top - signH / 2, signW, signH, 200, "#1e3a8a", false);
 
   // One Hebrew answer over each lane.
   const panelTop = top + beamH;
@@ -1042,7 +1047,7 @@ function drawGateFeedback(ctx, w, size, feedback) {
   roundedBox(ctx, x, 6, panelW, panelH, 14, PANEL_COLORS[feedback.kind]);
   const e = feedback.entry;
   let he, en;
-  if (feedback.kind === "right") { he = `✅ נָכוֹן! ${e.hebrew}`; en = `Correct! ${e.english} = ${e.hebrew} · ⚡ Speed boost!`; }
+  if (feedback.kind === "right") { he = `✅ נָכוֹן! ${e.hebrew}`; en = `Correct! ${e.english} = ${e.hebrew} · ⚡ Boost + 🎁 gift!`; }
   else if (feedback.kind === "wrong") { he = `❌ הַתְּשׁוּבָה: ${e.hebrew}`; en = `The answer is ${e.hebrew} (${e.english})`; }
   else { he = `פִּסַּפְתֶּם אֶת הַשַּׁעַר · ${e.hebrew}`; en = `Missed the gate · ${e.english} = ${e.hebrew}`; }
   drawTextInBox(ctx, he, w / 2, 6 + panelH * 0.38, panelW - 20, panelH * 0.62, size * 1.1, "#ffffff", true);
@@ -1065,6 +1070,13 @@ function drawRaceHud(ctx, w, h, info) {
     // (It fades away just before the gate, so you can see the real gate you drive under.)
     ctx.globalAlpha = info.gate.fade === undefined ? 1 : info.gate.fade;
     below = drawGatePanel(ctx, w, size, info.gate);
+    // A small gift gate: say which way round the island it is on.
+    if (info.gate.side) {
+      const left = info.gate.side < 0;
+      drawBilingualText(ctx, left ? "⬅ 🎁 שַׁעַר הַמַּתָּנוֹת בַּשְּׁבִיל הַשְּׂמָאלִי" : "🎁 שַׁעַר הַמַּתָּנוֹת בַּשְּׁבִיל הַיְּמָנִי ➡",
+        left ? "The gift gate is on the LEFT path" : "The gift gate is on the RIGHT path", w / 2, below + size * 0.95, size * 0.7, "#fde047");
+      below += size * 1.7;
+    }
     ctx.globalAlpha = 1;
   }
   // My place, bottom left. My speed, bottom right.
@@ -1073,26 +1085,53 @@ function drawRaceHud(ctx, w, h, info) {
   drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - cornerX, h - size * 1.2, size);
   if (info.spinning) drawBilingualText(ctx, "🌀 מִסְתּוֹבְבִים!", "Spinning out!", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
   else if (info.flying) drawBilingualText(ctx, "🛷 קְפִיצָה!", "Jump!", w - cornerX, h - size * 3.2, size * 0.9, "#bae6fd");
+  else if (info.skidding) drawBilingualText(ctx, "💨 הַחְלָקָה!", "Skid!", w - cornerX, h - size * 3.2, size * 0.9, "#bae6fd");
   else if (info.boosting) drawBilingualText(ctx, "⚡ טוּרְבּוֹ!", "Boost!", w - cornerX, h - size * 3.2, size * 0.9, "#fde047");
   else if (info.slowed) drawBilingualText(ctx, "🐢 אִטִּי…", "Slowed down", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
   if (info.deepSnow && !info.finishedPlace) {
     drawBilingualText(ctx, "מִחוּץ לַשְּׁבִיל — אִטִּי!", "❄️ Off the path — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");
   }
-  if (info.showArrows) {
-    // Where to tap to steer.
-    ctx.globalAlpha = 0.55;
-    if (info.tilt) {
-      drawBilingualText(ctx, "📱 הַטּוּ אֶת הַטֵּלֵפוֹן יָמִינָה וּשְׂמֹאלָה", "Tilt the phone to steer", w / 2, h * 0.9, size * 0.8);
-    } else {
-      drawBilingualText(ctx, "◀ שְׂמֹאלָה", "Hold to steer left", w * 0.2, h * 0.66, size * 0.9);
-      drawBilingualText(ctx, "יָמִינָה ▶", "Hold to steer right", w * 0.8, h * 0.66, size * 0.9);
-    }
-    ctx.globalAlpha = 1;
-  }
+  if (info.showHint) drawSteerHint(ctx, w, h, size);
   if (info.countdown !== null) {
     const go = info.countdown === "go";
     drawBilingualText(ctx, go ? "יוֹצְאִים!" : String(info.countdown), go ? "Go!" : "", w / 2, h * 0.5, size * (go ? 2.6 : 3.4), go ? "#4ade80" : "#ffffff");
   }
+}
+
+// At the start of every race: a circle on each side of the screen showing where to tap,
+// and what the taps do: hold = turn, double-tap and hold = skid.
+function drawSteerHint(ctx, w, h, size) {
+  const r = Math.min(w * 0.13, h * 0.2, 90);
+  const y = h * 0.62;
+  for (const side of [-1, 1]) {
+    const x = w / 2 + side * (w / 2 - r - Math.max(14, w * 0.04));
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+    ctx.fill();
+    ctx.setLineDash([r * 0.22, r * 0.16]);
+    ctx.lineWidth = Math.max(3, r * 0.07);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // An arrow in the circle, and under it which way that side turns.
+    ctx.font = `800 ${Math.round(r * 0.9)}px Rubik, Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.fillText(side < 0 ? "◀" : "▶", x, y);
+    ctx.textBaseline = "alphabetic";
+    drawBilingualText(ctx, side < 0 ? "שְׂמֹאלָה" : "יָמִינָה", side < 0 ? "Left" : "Right", x, y + r + size * 0.95, size * 0.8);
+  }
+  // In the middle: what the taps do.
+  const boxW = Math.min(w - 4 * r - Math.max(56, w * 0.16), 460), boxH = size * 4.4;
+  if (boxW < 120) return; // (no room between the circles on a very narrow screen)
+  const top = size * 1.5; // (near the top: above the 3… 2… 1…, and not over my sled)
+  roundedBox(ctx, (w - boxW) / 2, top, boxW, boxH, 14, "rgba(15, 23, 42, 0.62)");
+  drawTextInBox(ctx, "מַחֲזִיקִים: פּוֹנִים", w / 2, top + boxH * 0.16, boxW - 16, boxH * 0.26, size * 0.95, "#ffffff", true);
+  drawTextInBox(ctx, "Hold a side to turn", w / 2, top + boxH * 0.36, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+  drawTextInBox(ctx, "הַקָּשָׁה כְּפוּלָה וּמַחֲזִיקִים: הַחְלָקָה", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
+  drawTextInBox(ctx, "Double-tap and hold to skid (sharper turns, but slower)", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
 }
 
 // Top left: how far down the mountain everyone is. ⛰️ = the start, 🌊 = the Kinneret.

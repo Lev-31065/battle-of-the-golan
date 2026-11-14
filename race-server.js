@@ -14,8 +14,8 @@ function raceNewRound() {
   raceRemoveBots(); // (bots only exist during a race)
   server.race = {
     startAt: 0, finishers: [], firstFinishAt: null, lastFinishAt: 0,
-    boxes: {},    // gift boxes that were just taken: box id → when it comes back
-    things: [],   // banana peels lying on the path and mangoes flying down it
+    things: [],   // banana peels and rimonim lying on the path, mangoes and rimonim flying down it
+    booms: [],    // rimonim that just blew up: { id, x, y, at } (so every phone can show the explosion)
     nextThing: 1, // (each one gets its own number)
   };
   server.winner = null;
@@ -45,7 +45,8 @@ function raceNewPlayer(p) {
 function raceResetSled(p) {
   p.air = 0;                // how high above the ground (0 = on the ground)
   p.vy = 0;                 // how fast it is going up (bots only: phones work out their own)
-  p.item = null;            // "banana", "mango" or null
+  p.item = null;            // "banana", "mango", "rimon" or null
+  p.lastGiftGate = -1;      // the last gate that gave it a gift (each gate gives one only once)
   p.spinCount = 0;          // goes up by 1 with every hit (that is how the phone notices)
   p.spinKind = "";          // what hit it last
   p.safeUntil = LONG_AGO;   // nothing can hit it until then
@@ -70,16 +71,16 @@ function raceStartGame() {
     raceResetSled(p);
     p.spawnCount += 1; // tells the phone "jump to this spot"
   });
-  server.race.boxes = {};
   server.race.things = [];
+  server.race.booms = [];
   server.race.startAt = server.time + RACE.countdown;
 }
 
 function raceHandle(p, msg) {
   if (server.phase !== "playing") return;
   if (server.time < server.race.startAt) return; // no moving before "Go!"
-  if (msg.type === "box") { raceTakeBox(p, Number(msg.id)); return; } // "I drove through a gift box"
-  if (msg.type === "use") { raceUseItem(p); return; }                 // "I'm using my banana peel / mango"
+  if (msg.type === "gift") { raceGiveGift(p, Number(msg.gate)); return; } // "I got this gate's question right"
+  if (msg.type === "use") { raceUseItem(p, msg.how); return; }            // "I'm using my gift" (how: "drop" = leave a rimon behind me)
   if (msg.type !== "move") return;
   const x = Number(msg.x), y = Number(msg.y), speed = Number(msg.speed), steer = Number(msg.steer);
   if (![x, y, speed, steer].every(Number.isFinite)) return;
@@ -90,7 +91,7 @@ function raceHandle(p, msg) {
   p.y = Math.max(p.y, Math.min(y, furthest)); // (and never backwards)
   p.x = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, x));
   p.speed = Math.max(0, Math.min(RACE.maxSpeed * 2, speed));
-  p.steer = Math.max(-1, Math.min(1, steer));
+  p.steer = Math.max(-RACE.skidTurn, Math.min(RACE.skidTurn, steer)); // (in a skid a sled swings round further than 1)
   p.air = Math.max(0, Math.min(5000, Number(msg.air) || 0)); // (how high it is flying, so everyone can see the jump)
   raceCheckFinish(p);
 }
@@ -125,25 +126,40 @@ function raceUpdate(dt) {
 }
 
 
-// ---------- Gift boxes, banana peels and mangoes ----------
-// Driving through a gift box gives you ONE thing to use when you like:
+// ---------- Gifts: banana peels, mangoes and rimonim ----------
+// A RIGHT answer at a gate puts ONE gift in your hands, to use when you like:
 //   a banana peel: dropped on the path behind you. Whoever slides over it spins out.
 //   a mango: thrown straight ahead, fast. It follows the path and spins out the first sled it hits.
-// The phone says "I drove through box 12" and "I'm using it"; the referee decides the rest:
-// what was in the box, where the peels lie, where the mangoes fly and who gets hit.
+//   a rimon (a pomegranate grenade): THROWN ahead, it flies in an arc and blows up where it lands;
+//     DROPPED behind, it waits on the path and blows up when a sled comes close. The explosion is
+//     wide, so it can catch several sleds at once.
+// The phone says "I got gate 5 right" and "I'm using it"; the referee decides the rest:
+// which gift it is, where the peels lie, where the mangoes fly, and who gets hit.
 
-function raceTakeBox(p, id) {
-  const box = TRACK.boxes[id];
-  if (!box || p.item || server.time < (server.race.boxes[id] || 0)) return; // no such box, hands full, or the box is gone right now
-  if (Math.abs(p.y - box.z) > 4000) return; // (nowhere near it)
-  server.race.boxes[id] = server.time + RACE.boxRespawn;
-  // What's inside? Out in front, mostly banana peels (nobody is ahead to throw a mango at); further back, mostly mangoes.
+// Pick a gift by its chances, like { banana: 0.5, rimon: 0.4, mango: 0.1 }.
+function racePickGift(chances) {
+  let roll = Math.random() * Object.values(chances).reduce((sum, chance) => sum + chance, 0);
+  for (const kind of Object.keys(chances)) {
+    roll -= chances[kind];
+    if (roll <= 0) return kind;
+  }
+  return Object.keys(chances)[0];
+}
+
+function raceGiveGift(p, number) {
+  const gate = TRACK.gates[number];
+  if (!gate || number <= p.lastGiftGate) return;  // no such gate, or it already gave this sled its gift
+  if (Math.abs(p.y - gate.z) > 6000) return;      // (nowhere near it)
+  p.lastGiftGate = number;
+  if (p.item) return;                             // hands full: keep what you have
+  // Out in front, mostly banana peels (nobody is ahead to throw a mango at); further back, mostly things to throw.
   const inFront = Object.values(server.players).every((other) => other.y <= p.y);
-  p.item = Math.random() < (inFront ? 0.75 : 0.35) ? "banana" : "mango";
+  p.item = racePickGift(inFront ? RACE.giftsInFront : RACE.giftsBehind);
   p.useAt = server.time + 1 + Math.random() * 3; // (bots: when to use it)
 }
 
-function raceUseItem(p) {
+// how = "drop" (a rimon only: leave it behind me) or anything else (the usual way).
+function raceUseItem(p, how) {
   const kind = p.item;
   if (!kind) return;
   p.item = null;
@@ -151,38 +167,71 @@ function raceUseItem(p) {
   if (kind === "banana") {
     // Behind the sled. (Its owner can't slip on it for the first second.)
     race.things.push({ id: race.nextThing++, kind, x: p.x, y: p.y - 350, speed: 0, owner: p.id, ownerSafeUntil: server.time + 1, until: server.time + RACE.bananaLife });
-  } else {
+  } else if (kind === "mango") {
     race.things.push({ id: race.nextThing++, kind, x: p.x, y: p.y + RACE.sledLength + 100, speed: Math.max(p.speed, 2500) + RACE.mangoSpeed, owner: p.id, endY: p.y + RACE.mangoRange });
+  } else if (how === "drop") {
+    // A rimon left lying behind the sled, waiting. (Its owner is safe from it for a moment.)
+    race.things.push({ id: race.nextThing++, kind, x: p.x, y: p.y - 350, speed: 0, air: 0, owner: p.id, ownerSafeUntil: server.time + 1.5, until: server.time + RACE.rimonLife });
+  } else {
+    // A rimon thrown ahead: it flies in an arc from here to where it lands.
+    const from = p.y + RACE.sledLength;
+    race.things.push({ id: race.nextThing++, kind, x: p.x, y: from, speed: Math.max(p.speed, 2500) + RACE.rimonSpeed, air: 0, owner: p.id, thrown: true, fromY: from, landY: p.y + RACE.rimonRange });
   }
   if (race.things.length > 40) race.things.shift(); // (never too many lying around)
 }
 
 function raceUpdateThings(dt) {
   const everyone = Object.values(server.players);
-  server.race.things = server.race.things.filter((thing) => {
+  const race = server.race;
+  race.booms = race.booms.filter((boom) => server.time - boom.at < 1.5);
+  race.things = race.things.filter((thing) => {
     const from = thing.y;
-    if (thing.kind === "mango") {
+    if (thing.kind === "mango" || thing.thrown) {
       thing.y += thing.speed * dt;
       const seg = findSegment(thing.y);
       const room = Math.max(0.1, seg.width - 0.15);
       thing.x = Math.max(-room, Math.min(room, thing.x)); // it follows the path
-      // It splats when it has flown far enough, on an island, or in the lake.
-      if (thing.y > thing.endY || thing.y > TRACK.waterZ || offThePath(seg, thing.x)) return false;
-    } else if (server.time > thing.until) {
-      return false; // an old banana peel melts away
     }
+    if (thing.kind === "mango") {
+      // It splats when it has flown far enough, on an island, or in the lake.
+      if (thing.y > thing.endY || thing.y > TRACK.waterZ || offThePath(findSegment(thing.y), thing.x)) return false;
+    } else if (thing.thrown) {
+      // A thrown rimon: up and over, hitting nobody on the way, then BOOM where it lands.
+      const t = (thing.y - thing.fromY) / (thing.landY - thing.fromY);
+      thing.air = Math.sin(Math.max(0, Math.min(1, t)) * Math.PI) * RACE.rimonArc;
+      if (t < 1) return true;
+      raceExplode(thing);
+      return false;
+    } else if (server.time > thing.until) {
+      if (thing.kind === "rimon") raceExplode(thing); // an old rimon goes off by itself…
+      return false;                                   // …and an old banana peel melts away
+    }
+    const reach = thing.kind === "rimon" ? RACE.rimonTrigger : 0.3;
     for (const q of everyone) {
       if (q.id === thing.owner && (thing.kind === "mango" || server.time < thing.ownerSafeUntil)) continue;
       if (q.finished || q.air > 150 || server.time < q.safeUntil) continue; // (flying sleds go right over it)
-      if (Math.abs(q.x - thing.x) > 0.3) continue;
+      if (Math.abs(q.x - thing.x) > reach) continue;
       // (A player's spot can be a tenth of a second old, so we look a little way behind the sled too.)
       const back = q.y - 150 - (q.bot ? 0 : Math.max(0, q.speed) * 0.12), front = q.y + RACE.sledLength;
       if (thing.y < back || from > front) continue;
-      raceHit(q, thing);
+      if (thing.kind === "rimon") raceExplode(thing); else raceHit(q, thing);
       return false;
     }
     return true;
   });
+}
+
+// A rimon blows up: every sled close enough spins out. (Not the sled that THREW it; one that
+// DROPPED it can be caught, once its first safe moment is over. Sleds flying high are out of reach.)
+function raceExplode(thing) {
+  server.race.booms.push({ id: thing.id, x: thing.x, y: thing.y, at: server.time });
+  for (const q of Object.values(server.players)) {
+    if (q.id === thing.owner && (thing.thrown || server.time < thing.ownerSafeUntil)) continue;
+    if (q.finished || q.air > 300 || server.time < q.safeUntil) continue;
+    if (Math.abs(q.x - thing.x) > RACE.rimonBlast) continue;
+    if (Math.abs(q.y + RACE.sledLength / 2 - thing.y) > RACE.rimonBlastLong) continue;
+    raceHit(q, thing);
+  }
 }
 
 // A sled was hit: it spins round and loses most of its speed. (A player's phone does that
@@ -198,6 +247,7 @@ function raceHit(q, thing) {
   const owner = server.players[thing.owner];
   if (!q.bot) {
     if (thing.kind === "banana") toast("🍌 You slipped on a banana peel!", "🍌 הֶחֱלַקְתֶּם עַל קְלִפַּת בָּנָנָה!", q.id);
+    else if (thing.kind === "rimon") toast(`💥 ${owner && owner.id !== q.id ? owner.name + "'s rimon" : "A rimon"} blew up next to you!`, "💥 רִמּוֹן הִתְפּוֹצֵץ לְיָדְכֶם!", q.id);
     else toast(`🥭 ${owner ? owner.name + "'s mango" : "A mango"} hit you!`, "🥭 מַנְגּוֹ פָּגַע בָּכֶם!", q.id);
   }
   if (owner && !owner.bot && owner.id !== q.id) toast(`🎯 You got ${q.name}!`, `🎯 פְּגִיעָה! ${q.name}`, owner.id);
@@ -320,12 +370,17 @@ function raceMoveBot(p, dt) {
   p.steer += (steer - p.steer) * Math.min(1, dt * RACE.turnSpeed);
   p.x += p.steer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * dt;
 
-  // Gates: right = a boost, wrong = slowed down.
+  // Gates: right = a boost and a gift, wrong = slowed down.
+  // (A small gift gate on one way round an island only counts if the bot went that way.)
   const gate = TRACK.gates[p.gatesDone];
   if (gate && p.y >= gate.z) {
     p.gatesDone += 1;
-    if (Math.random() < RACE.botRight) p.boostUntil = server.time + RACE.boostTime;
-    else p.slowUntil = server.time + RACE.slowTime;
+    if (Math.abs(p.x - gate.center) <= gate.half) {
+      if (Math.random() < RACE.botRight) {
+        p.boostUntil = server.time + RACE.boostTime;
+        raceGiveGift(p, gate.number);
+      } else p.slowUntil = server.time + RACE.slowTime;
+    }
   }
 
   // Speed. To keep the race close, a bot far ahead of the best player eases off a
@@ -382,18 +437,22 @@ function raceMoveBot(p, dt) {
   p.y += p.speed * dt;
   sledFlight(p, oldY, oldX, dt); // (riding off the top of a ramp: it takes off)
 
-  // Gift boxes: drive through one, and use what was inside a few seconds later.
-  // (A mango waits until there is a sled ahead in the same lane, but not for ever.)
-  if (!p.item && p.air < 200) {
-    for (const box of TRACK.boxes) {
-      if (box.z < oldY || box.z > p.y + RACE.sledLength || Math.abs(p.x - box.offset) > 0.28) continue;
-      raceTakeBox(p, box.id);
-    }
-  }
+  // A gift from a gate: use it a few seconds later.
+  // (A mango waits until there is a sled ahead in the same lane, but not for ever. A rimon is
+  // thrown if a sled is about where it would land, and dropped if somebody is close behind.)
   if (p.item && server.time > p.useAt && !spinning) {
-    const target = p.item === "mango" && Object.values(server.players).some((other) =>
-      other !== p && other.y > p.y + RACE.sledLength && other.y < p.y + RACE.mangoRange * 0.7 && Math.abs(other.x - p.x) < 0.4);
-    if (p.item === "banana" || target || server.time > p.useAt + 5) raceUseItem(p);
+    const others = Object.values(server.players).filter((other) => other !== p && !other.finished);
+    if (p.item === "rimon") {
+      const lands = RACE.rimonRange * 5500 / (5500 + RACE.rimonSpeed); // about how far ahead of ME it comes down
+      const ahead = others.some((other) => Math.abs(other.y - p.y - lands) < RACE.rimonBlastLong * 1.5 && Math.abs(other.x - p.x) < RACE.rimonBlast);
+      const behind = others.some((other) => other.y < p.y && other.y > p.y - 5000);
+      if (ahead) raceUseItem(p);
+      else if (behind || server.time > p.useAt + 5) raceUseItem(p, "drop");
+    } else {
+      const target = p.item === "mango" && others.some((other) =>
+        other.y > p.y + RACE.sledLength && other.y < p.y + RACE.mangoRange * 0.7 && Math.abs(other.x - p.x) < 0.4);
+      if (p.item === "banana" || target || server.time > p.useAt + 5) raceUseItem(p);
+    }
   }
   raceCheckFinish(p);
 }
@@ -402,8 +461,8 @@ function raceSnapshot(snap) {
   const race = server.race;
   snap.race = {
     startAt: race.startAt, finishers: race.finishers,
-    gone: Object.keys(race.boxes).filter((id) => server.time < race.boxes[id]).map(Number), // the gift boxes that are taken right now
-    things: race.things.map((thing) => ({ id: thing.id, kind: thing.kind, x: thing.x, y: thing.y, speed: thing.speed })),
+    things: race.things.map((thing) => ({ id: thing.id, kind: thing.kind, x: thing.x, y: thing.y, speed: thing.speed, air: Math.round(thing.air || 0) })),
+    booms: race.booms.map((boom) => ({ id: boom.id, x: boom.x, y: boom.y })), // rimonim that blew up in the last moment
   };
 }
 

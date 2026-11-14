@@ -336,8 +336,6 @@ const RACE = {
   turnSpeed: 4,           // how quickly a BOT's sled swings round (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
   cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
-  tiltFull: 16,           // tilt steering (the 📱 button): tipping the phone this many degrees = steering all the way (lower = more sensitive). Was 25
-  tiltDeadZone: 2,        // tilt steering: tipping it less than this does nothing (so "about level" goes straight)
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0,           // an extra sideways push in bends (was 0.1; `curveSteer` below does this job now)
   maxSide: 6,             // the farthest from the middle any sled can be (the referee checks this)
@@ -345,7 +343,17 @@ const RACE = {
   curveSteer: 0.5,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself (the old way), 1 = fully real (hard!)
   grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
   airSteer: 0.35,         // in the air you can only turn this much of normal
-  carveCurve: 1.5,        // "carve boost": bends at least this sharp count…
+  // Skidding: double-tap a side of the screen and HOLD (or hold Shift on a computer). The sled swings
+  // round much further and faster, so it takes sharp bends, but it loses speed while it skids.
+  skidTapGap: 0.32,       // two taps on the same side within this many seconds = a skid
+  skidTurn: 1.9,          // how far the sled can swing round in a skid (1 = as far as normal steering, 1.9 = almost twice as far)
+  skidTurnRate: 2.2,      // …and how much faster it swings round
+  skidSpeed: 0.72,        // top speed while skidding (0.72 = 72% of normal)
+  skidBrake: 2600,        // how fast a skid slows you down to that speed
+  skidGrip: 7,            // grip while skidding (see `grip`): higher = the skid bites sooner
+  skidRecover: 3,         // after a skid, how fast the sled straightens back to a normal turn
+  hintTime: 5,            // the "hold to turn, double-tap and hold to skid" circles stay this many seconds after "Go!"
+  carveCurve: 1.5,       // "carve boost": bends at least this sharp count…
   carveAfter: 0.9,        // …stay on the path at speed for this many seconds of a bend, and you get a boost when it ends (blue snow = ready)
   carveBig: 1.8,          // …and for this many seconds, a longer boost (golden snow)
   carveBoost: [0.5, 0.9], // how long those two boosts last (seconds)
@@ -361,13 +369,23 @@ const RACE = {
   waterDrag: 9000,        // how fast the lake stops a sled
   afterFinish: 4.5,       // seconds after the last player finishes before the results show (time for the splash!)
   // Alternate paths: the path splits in two around an island of rocks and trees, then joins up again
-  forkWidth: 2.4,         // half the width of the whole split (both ways + the island)
+  forkWidth: 2.8,        // half the width of the whole split (both ways + the island)
   forkIsland: 1.1,        // half the width of the island in the middle
   forkLength: 150,        // how long a split is, in segments
-  // Gift boxes: drive through one to get a banana peel (dropped behind you) or a mango (thrown ahead)
-  boxEvery: 240,          // a row of gift boxes about every this many segments
-  boxRespawn: 5,          // a taken box comes back after this many seconds
-  spinTime: 1.0,          // hit by a banana peel or a mango: you spin round for this many seconds…
+  // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you),
+  // a mango (thrown ahead) or a rimon, a pomegranate grenade (thrown ahead OR dropped behind).
+  // Besides the big gates there is a smaller "gift gate" on one way round every island.
+  forkGateAt: 85,         // the gift gate stands this many segments into a split, on the way round WITHOUT the jumps
+  giftsInFront: { banana: 0.5, rimon: 0.4, mango: 0.1 },  // what you get when you are in first place (nobody ahead to throw at)…
+  giftsBehind: { banana: 0.15, rimon: 0.4, mango: 0.45 }, // …and when somebody is ahead of you
+  rimonSpeed: 3500,       // a thrown rimon flies this much faster than the sled that threw it…
+  rimonRange: 13000,      // …and lands this far down the path, where it blows up
+  rimonArc: 900,          // how high it flies on the way
+  rimonBlast: 0.9,        // the explosion reaches this far sideways (in road widths; a banana peel only reaches 0.3)…
+  rimonBlastLong: 1700,   // …and this far up and down the path
+  rimonTrigger: 0.45,     // a DROPPED rimon waits on the path and blows up when a sled comes this close sideways…
+  rimonLife: 25,          // …or by itself after this many seconds
+  spinTime: 1.0,          // hit by a banana peel, a mango or a rimon: you spin round for this many seconds…
   spinSpeed: 0.35,        // …and drop to this much of your speed
   itemSafeTime: 2.5,      // after being hit, nothing can hit you again for this many seconds
   mangoSpeed: 4500,       // a thrown mango flies this much faster than the sled that threw it
@@ -401,6 +419,10 @@ const RACE = {
   viewDistance: 900,      // how far you can see before the mist, in 3D units (a sled is 6 wide). Lower = faster on old phones
   sharpness: 2,           // the most screen dots drawn per "pixel" (phones have 2 or 3; 3 looks a bit sharper but is slower)
   bend3d: 0.6,            // how sharp the bends are in the 3D world (higher = tighter bends)
+  camBack: 16,            // the camera sits this far behind my sled (3D units; a sled is 6 wide). Was 13.5
+  camHeight: 13,          // …and this high above it. Higher = looking down more from above. Was 6.6
+  camAhead: 2600,         // it looks at the path this far ahead of my sled (track units). Was 1900
+  camFov: 62,             // how wide the lens is, in degrees (an upright phone gets a wider one by itself). Was 58
   // Screen (the old flat drawing)
   cameraHeight: 1700,     // how high the camera floats above the path (higher = more from above)
   fieldOfView: 100,       // how wide the camera sees (degrees)
@@ -414,7 +436,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-13d";
+const GAME_VERSION = "2026-11-14a";
 
 // ---------- Helpers ----------
 

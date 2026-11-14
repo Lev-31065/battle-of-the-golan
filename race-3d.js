@@ -243,10 +243,17 @@ MeshBuilder.prototype.place = function (x, y, z, turn, size) {
   this.cs = Math.cos(turn || 0); this.sn = Math.sin(turn || 0);
   this.k = size || 1;
 };
-MeshBuilder.prototype.vert = function (x, y, z, col) {
+// (nx, ny, nz = which way the surface faces at this corner. Only ROUND shapes give it, and only
+// a builder with `smooth = true` keeps it: see `ball`, `pipe` and `smoothGeometry` below.)
+MeshBuilder.prototype.vert = function (x, y, z, col, nx, ny, nz) {
   const X = x * this.k, Y = y * this.k, Z = z * this.k * (this.flip ? -1 : 1);
   this.p.push(this.ox + X * this.cs + Z * this.sn, this.oy + Y, this.oz - X * this.sn + Z * this.cs);
   this.c.push(col[0], col[1], col[2]);
+  if (!this.smooth) return;
+  if (!this.n) this.n = [];
+  if (nx === undefined) { this.n.push(0, 0, 0); return; } // (a flat face: worked out later)
+  const NZ = nz * (this.flip ? -1 : 1);
+  this.n.push(nx * this.cs + NZ * this.sn, ny, -nx * this.sn + NZ * this.cs);
 };
 MeshBuilder.prototype.tri = function (a, b, c, col) {
   this.vert(a[0], a[1], a[2], col); this.vert(b[0], b[1], b[2], col); this.vert(c[0], c[1], c[2], col);
@@ -298,6 +305,81 @@ MeshBuilder.prototype.blob = function (cx, cy, cz, rx, ry, rz, col, seed, lumpy,
     this.tri(v[f[0]], v[f[1]], v[f[2]], shade3(base, 0.93 + rand2(i, seed + 5) * 0.14));
   });
 };
+// ----- Round shapes (for a builder with `smooth = true`) -----
+// The shapes above look carved: every triangle is flat. These two also tell each corner
+// which way the surface faces there, so the light changes smoothly across them and they
+// look properly round (painted with `smoothPaint`).
+
+// A smooth ball (or an egg: rx, ry, rz = its size sideways, up and forward).
+MeshBuilder.prototype.ball = function (cx, cy, cz, rx, ry, rz, col, rings, around) {
+  rings = rings || 7; around = around || 12;
+  const at = (i, j) => {
+    const v = i / rings * Math.PI, u = j / around * Math.PI * 2;
+    const x = Math.sin(v) * Math.cos(u), y = Math.cos(v), z = Math.sin(v) * Math.sin(u);
+    return [cx + x * rx, cy + y * ry, cz + z * rz, x / rx, y / ry, z / rz];
+  };
+  const corner = (q) => this.vert(q[0], q[1], q[2], col, q[3], q[4], q[5]);
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < around; j++) {
+      const a = at(i, j), b = at(i, j + 1), c = at(i + 1, j + 1), d = at(i + 1, j);
+      if (i > 0) { corner(a); corner(b); corner(c); }
+      if (i < rings - 1) { corner(a); corner(c); corner(d); }
+    }
+  }
+};
+// A smooth round pipe from one point to another (the ends can be different sizes; 0 = a point).
+// capped = true closes both ends with a flat lid.
+MeshBuilder.prototype.pipe = function (a, ra, b, rb, col, capped, sides) {
+  sides = sides || 12;
+  const ax = b[0] - a[0], ay = b[1] - a[1], az = b[2] - a[2];
+  const len = Math.hypot(ax, ay, az) || 1;
+  const dx = ax / len, dy = ay / len, dz = az / len;
+  // Two directions at right angles to the pipe.
+  let ux = dy, uy = -dx, uz = 0;
+  if (Math.abs(dx) + Math.abs(dy) < 0.001) { ux = 1; uy = 0; uz = 0; }
+  const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
+  const vx = dy * uz - dz * uy, vy = dz * ux - dx * uz, vz = dx * uy - dy * ux;
+  const ring = (p, r, k) => {
+    const an = k / sides * Math.PI * 2, c = Math.cos(an), s = Math.sin(an);
+    const ox = ux * c + vx * s, oy = uy * c + vy * s, oz = uz * c + vz * s; // straight out from the middle of the pipe
+    return [p[0] + ox * r, p[1] + oy * r, p[2] + oz * r, ox, oy, oz];
+  };
+  const corner = (q) => this.vert(q[0], q[1], q[2], col, q[3], q[4], q[5]);
+  const lid = (q, way) => this.vert(q[0], q[1], q[2], col, dx * way, dy * way, dz * way);
+  for (let k = 0; k < sides; k++) {
+    const a0 = ring(a, ra, k), a1 = ring(a, ra, k + 1), b0 = ring(b, rb, k), b1 = ring(b, rb, k + 1);
+    if (rb > 0) { corner(a0); corner(a1); corner(b1); corner(a0); corner(b1); corner(b0); }
+    else { corner(a0); corner(a1); corner(b0); } // (a point at the far end)
+    if (capped && ra > 0) { lid(a0, -1); lid(a1, -1); lid([a[0], a[1], a[2]], -1); }
+    if (capped && rb > 0) { lid(b0, 1); lid(b1, 1); lid([b[0], b[1], b[2]], 1); }
+  }
+};
+// The finished shape, with smooth light. Flat faces (boxes, quads) get their own flat light,
+// and every triangle is turned to face OUT, the same way its corners say the surface faces.
+MeshBuilder.prototype.smoothGeometry = function () {
+  const p = this.p, c = this.c, n = this.n || [];
+  const swap = (arr, i, j) => { for (let k = 0; k < 3; k++) { const t = arr[i + k]; arr[i + k] = arr[j + k]; arr[j + k] = t; } };
+  for (let i = 0; i < p.length; i += 9) {
+    const ux = p[i + 3] - p[i], uy = p[i + 4] - p[i + 1], uz = p[i + 5] - p[i + 2];
+    const vx = p[i + 6] - p[i], vy = p[i + 7] - p[i + 1], vz = p[i + 8] - p[i + 2];
+    let fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx; // which way the triangle itself faces
+    const sx = n[i] + n[i + 3] + n[i + 6], sy = n[i + 1] + n[i + 4] + n[i + 7], sz = n[i + 2] + n[i + 5] + n[i + 8];
+    if (sx === 0 && sy === 0 && sz === 0) {
+      const l = Math.hypot(fx, fy, fz) || 1;
+      for (let k = 0; k < 9; k += 3) { n[i + k] = fx / l; n[i + k + 1] = fy / l; n[i + k + 2] = fz / l; }
+      continue;
+    }
+    if (fx * sx + fy * sy + fz * sz < 0) { swap(p, i + 3, i + 6); swap(c, i + 3, i + 6); swap(n, i + 3, i + 6); }
+    for (let k = 0; k < 9; k += 3) {
+      const l = Math.hypot(n[i + k], n[i + k + 1], n[i + k + 2]) || 1;
+      n[i + k] /= l; n[i + k + 1] /= l; n[i + k + 2] /= l;
+    }
+  }
+  const g = this.geometry();
+  g.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(n), 3));
+  return g;
+};
+
 MeshBuilder.prototype.geometry = function () {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(this.p), 3));
@@ -489,6 +571,9 @@ function initRace3d() {
   // One paint for everything made of colored triangles. "flatShading" gives each triangle
   // its own light or dark, which is what makes it look like carved, low-poly 3D.
   w3.paint = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+  // A soft paint for round things (the sleds, their riders, the rimon): the light changes
+  // smoothly across them, so they look rounded instead of carved.
+  w3.smoothPaint = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   // The ground's paint: soft (not carved), with a fine snow picture over it (grain, soft hollows, sparkles).
   w3.groundPaint = new THREE.MeshLambertMaterial({ vertexColors: true, map: makeSnowPicture(), side: THREE.DoubleSide });
   // Runner tracks in the snow behind each sled (see-through blue-gray, fading out).
@@ -991,11 +1076,13 @@ function standAcross(group, n) {
 const GATE_TALL = 26; // (big, so you can read it from far away)
 
 // The picture on a gate: the English word on a white sign on top, a Hebrew answer over each lane.
-function paintGate(g, W, H, info) {
+// (A gate nobody has a question on yet shows "🎁 ?": a right answer gives a gift. `small` = a
+// small gift gate on one way round an island: its sign is as wide as the whole gate.)
+function paintGate(g, W, H, info, small) {
   g.clearRect(0, 0, W, H);
-  const signH = H * 0.38, signW = W * 0.4;
+  const signH = H * 0.38, signW = W * (small ? 0.8 : 0.4);
   roundedBox(g, (W - signW) / 2, 4, signW, signH - 8, signH * 0.2, "#ffffff", "#1e3a8a", 8);
-  drawTextInBox(g, info ? info.english : "?", W / 2, signH / 2, signW, signH - 8, 200, "#1e3a8a", false);
+  drawTextInBox(g, info ? info.english : "🎁 ?", W / 2, signH / 2, signW, signH - 8, 200, "#1e3a8a", false);
   const top = H * 0.5, panelH = H * 0.5 - 4, laneW = W / 3;
   for (let lane = 0; lane < 3; lane++) {
     roundedBox(g, lane * laneW + 16, top, laneW - 32, panelH, panelH * 0.12, LANE_COLORS[lane], "#ffffff", 6);
@@ -1008,19 +1095,22 @@ function makeGates() {
   w3.gates = [];
   const steel = rgb3("#334155");
   for (const gate of TRACK.gates) {
-    const half = RACE.gateWidth * RW3;
+    // (A big gate spans the whole path. A small gift gate stands over one way round an island:
+    // `mid` = how far to the side its middle is.)
+    const half = gate.half * RW3, mid = gate.center * RW3, small = Boolean(gate.side);
     const group = new THREE.Group();
     const B = new MeshBuilder();
-    for (const t of [-1, -1 / 3, 1 / 3, 1]) B.box(t * half, GATE_TALL / 2, 0, 0.9, GATE_TALL, 0.9, steel);
-    B.box(0, GATE_TALL - 0.8, 0, half * 2 + 0.9, 1.6, 1.1, steel);
+    for (const t of [-1, -1 / 3, 1 / 3, 1]) B.box(mid + t * half, GATE_TALL / 2, 0, 0.9, GATE_TALL, 0.9, steel);
+    B.box(mid, GATE_TALL - 0.8, 0, half * 2 + 0.9, 1.6, 1.1, steel);
     group.add(new THREE.Mesh(B.geometry(), w3.paint));
     // The board: the lane answers hang under the beam, the English sign stands on top of it.
     const boardTall = 14.4;
-    const board = pictureBoard(half * 2, boardTall, 1400, 296, (g, W, H) => paintGate(g, W, H, null));
-    board.position.set(0, GATE_TALL - 1.6 - 7.2 + boardTall / 2, 0.7);
+    const board = pictureBoard(half * 2, boardTall, small ? 800 : 1400, 296, (g, W, H) => paintGate(g, W, H, null, small));
+    board.position.set(mid, GATE_TALL - 1.6 - 7.2 + boardTall / 2, 0.7);
     group.add(board);
     standAcross(group, gate.index);
-    w3.gates.push({ number: gate.number, index: gate.index, group, board, shown: "" });
+    if (small) group.position.y = stripHeight(gate.index, mid);
+    w3.gates.push({ number: gate.number, index: gate.index, group, board, shown: "", small });
   }
 }
 
@@ -1088,58 +1178,85 @@ function makeFlagPicture() {
 function makeSled(color) {
   const w3 = world3d;
   const B = new MeshBuilder();
+  B.smooth = true;         // round shapes with smooth light (balls and pipes), not carved blocks
   B.flip = true;           // (the old sizes count "forward" as plus; in the 3D world forward is minus z)
   B.place(0, 0, 0, 0, 0.06);
   const main = rgb3(color);
   const coat = mix3(main, rgb3("#5b4636"), 0.3), coatDark = mix3(main, rgb3("#2b2118"), 0.5);
-  const iron = rgb3("#3a3f44"), wood = rgb3("#8a5a2b"), rope = rgb3("#d6c08a"), white = rgb3("#f8fafc"), blue = rgb3("#1d4ed8");
-  // Runners: iron underneath, wood on top, curling up at the front.
+  const iron = rgb3("#3a3f44"), wood = rgb3("#8a5a2b"), woodDark = rgb3("#6b4423"), rope = rgb3("#d6c08a");
+  const white = rgb3("#f8fafc"), blue = rgb3("#1d4ed8"), skin = rgb3("#e8b48f"), hair = rgb3("#3b2414");
+  const trousers = rgb3("#374151"), boot = rgb3("#3b2a1c"), mitten = rgb3("#6b4a2e");
+  // Runners: round wooden rails with an iron strip underneath, curling up and back at the front.
   for (const s of [-1, 1]) {
     const x = s * 40;
-    B.box(x, 2, 60, 5, 4, 132, iron);
-    B.box(x, 6, 60, 5, 4, 132, wood);
-    B.tube([x, 4, 126], 3.4, [x, 10, 139], 3.2, 5, wood);
-    B.tube([x, 10, 139], 3.2, [x, 19, 146], 2.9, 5, wood);
-    B.tube([x, 19, 146], 2.9, [x, 26, 140], 2.4, 5, wood, true);
-    for (const z of [8, 60, 112]) B.box(x, 12.5, z, 4, 9, 4, rgb3("#6b4423"));
+    B.pipe([x, 2.4, -4], 2.3, [x, 2.4, 122], 2.3, iron, true, 8);
+    B.pipe([x, 5.6, -4], 3.3, [x, 5.6, 122], 3.3, wood, false, 10);
+    B.ball(x, 5.6, -4, 3.3, 3.3, 3.3, wood, 5, 10);
+    // The curl: a row of short pipes round part of a circle, getting thinner toward the tip.
+    let last = [x, 5.6, 122], lastR = 3.3;
+    for (let k = 1; k <= 7; k++) {
+      const an = k / 7 * 3.5, r = 3.3 - k * 0.16;
+      const next = [x, 17.6 - 12 * Math.cos(an), 122 + 12 * Math.sin(an)];
+      B.pipe(last, lastR, next, r, wood, false, 10);
+      B.ball(next[0], next[1], next[2], r, r, r, wood, 5, 10);
+      last = next; lastR = r;
+    }
+    // Posts holding the deck up, and a round rail along each side of the deck.
+    for (const z of [8, 60, 112]) B.pipe([x, 6, z], 2.4, [x, 17.5, z], 2.4, woodDark, false, 8);
+    B.pipe([s * 45, 18.6, 2], 2.6, [s * 45, 18.6, 124], 2.6, wood, false, 10);
+    B.ball(s * 45, 18.6, 2, 2.6, 2.6, 2.6, wood, 5, 10);
+    B.ball(s * 45, 18.6, 124, 2.6, 2.6, 2.6, wood, 5, 10);
     // The steering rope, from the front curl back to the rider's hands.
-    B.tube([x, 24, 141], 1, [s * 30, 25, 92], 1, 4, rope);
-    B.tube([s * 30, 25, 92], 1, [s * 22, 32, 64], 1, 4, rope);
+    B.pipe(last, 1, [s * 30, 25, 92], 1, rope, false, 6);
+    B.pipe([s * 30, 25, 92], 1, [s * 23, 33, 64], 1, rope, false, 6);
   }
-  // The deck: wooden slats.
-  ["#b98a55", "#a8784a", "#c29462", "#9f6f42", "#b3834f", "#a77649"].forEach((c, i) => B.box(0, 18.3, 12.5 + i * 21, 92, 2.6, 17, rgb3(c)));
-  // The rider: legs forward, coat, arms out to the rope.
+  // The deck: wooden slats, with a round bar across the front and the back.
+  ["#b98a55", "#a8784a", "#c29462", "#9f6f42", "#b3834f", "#a77649"].forEach((c, i) => B.box(0, 18.3, 12.5 + i * 21, 88, 2.6, 18, rgb3(c)));
+  B.pipe([-45, 18.6, 124], 2.4, [45, 18.6, 124], 2.4, wood, false, 10);
+  B.pipe([-45, 18.6, 2], 2.4, [45, 18.6, 2], 2.4, wood, false, 10);
+  // The rider. Legs forward: thigh, a round knee, shin, a rounded boot.
   for (const s of [-1, 1]) {
-    B.tube([s * 10, 25, 48], 6.5, [s * 14, 31, 80], 5.5, 6, rgb3("#374151"));
-    B.tube([s * 14, 31, 80], 5.5, [s * 16, 23, 104], 5, 6, rgb3("#374151"));
-    B.blob(s * 16, 24, 110, 5.5, 5, 8, rgb3("#3b2a1c"), 3 + s, 0.1);
-    B.tube([s * 20, 52, 42], 5, [s * 30, 42, 52], 4.6, 6, coatDark);
-    B.tube([s * 30, 42, 52], 4.6, [s * 23, 33, 63], 4.2, 6, coatDark);
-    B.blob(s * 23, 32, 65, 5, 5, 5, rgb3("#6b4a2e"), 8 + s, 0.1);
+    const hip = [s * 10, 27, 46], knee = [s * 14, 34, 78], ankle = [s * 16, 26, 102];
+    B.pipe(hip, 7.2, knee, 6.2, trousers);
+    B.ball(knee[0], knee[1], knee[2], 6.3, 6.3, 6.3, trousers, 6, 12);
+    B.pipe(knee, 6.2, ankle, 5.2, trousers);
+    B.ball(s * 16, 25, 108, 6, 6, 9.5, boot, 6, 12);
+    // Arms out to the rope: a round shoulder, upper arm, elbow, forearm, a mitten.
+    const shoulder = [s * 19, 51, 43], elbow = [s * 30, 42, 53], hand = [s * 23, 33.5, 64];
+    B.ball(shoulder[0], shoulder[1], shoulder[2], 6.6, 6.6, 6.6, coat, 6, 12);
+    B.pipe(shoulder, 5.6, elbow, 5, coatDark);
+    B.ball(elbow[0], elbow[1], elbow[2], 5.1, 5.1, 5.1, coatDark, 6, 12);
+    B.pipe(elbow, 5, hand, 4.4, coatDark);
+    B.ball(hand[0], hand[1] - 0.5, hand[2] + 1.5, 5.4, 5, 5.6, mitten, 6, 12);
     // Tzitzit: white strings hanging at both sides.
-    for (let k = 0; k < 3; k++) B.tube([s * (21 + k * 2), 27, 36 - k * 3], 0.8, [s * (26 + k * 2.5), 9, 30 - k * 4], 0.6, 3, white);
+    for (let k = 0; k < 3; k++) B.pipe([s * (21 + k * 2), 27, 36 - k * 3], 0.8, [s * (26 + k * 2.5), 9, 30 - k * 4], 0.6, white, false, 5);
   }
-  B.tube([0, 19.6, 40], 23, [0, 34, 41], 22, 9, coat);
-  B.tube([0, 30, 41], 22.6, [0, 34, 41], 22.6, 9, coatDark);            // belt
-  B.tube([0, 34, 41], 22, [0, 55, 43], 15, 9, coat, true);
+  // The body: a soft wool coat, rounded at the bottom and at the shoulders, with a belt.
+  B.ball(0, 23, 40, 21.5, 7, 19, coatDark, 6, 14);
+  B.pipe([0, 21, 40], 21.5, [0, 34, 41], 22.5, coat, false, 14);
+  B.pipe([0, 34, 41], 22.5, [0, 50, 42.5], 17, coat, false, 14);
+  B.ball(0, 49.5, 42.5, 17.2, 8.5, 15, coat, 6, 14);
+  B.pipe([0, 29.8, 40.7], 23.2, [0, 33.6, 41], 23.2, coatDark, false, 14);
   // The scarf: white with blue stripes, like a tallit.
-  B.tube([0, 54, 43], 13.5, [0, 60, 43.5], 12.5, 9, white);
-  B.tube([0, 55.4, 43], 13.8, [0, 56.6, 43], 13.6, 9, blue);
-  B.tube([0, 58, 43.3], 13.3, [0, 59.2, 43.4], 13.1, 9, blue);
+  B.pipe([0, 53.5, 43], 13.6, [0, 60, 43.5], 12.4, white, false, 14);
+  B.ball(0, 60, 43.5, 12.4, 2.4, 12.4, white, 5, 14);
+  B.pipe([0, 55.2, 43], 13.8, [0, 56.5, 43], 13.6, blue, false, 14);
+  B.pipe([0, 57.9, 43.3], 13.3, [0, 59.1, 43.4], 13.1, blue, false, 14);
   B.quad([4, 58, 31], [13, 58, 31], [20, 50, 10], [11, 49, 12], white);  // its end, flying out behind
   B.quad([10.2, 50.6, 14], [19.2, 51.4, 12.4], [18.4, 52.6, 15], [9.6, 51.6, 16.6], blue);
-  // Head: dark curly hair from behind, a face in front, ears.
-  B.blob(0, 70, 43, 13, 13.5, 13, rgb3("#3b2414"), 21, 0.22);
-  B.blob(0, 68.5, 49, 10.5, 11, 9, rgb3("#e8b48f"), 22, 0.05);
-  for (const s of [-1, 1]) B.blob(s * 12.6, 68, 44, 2.6, 4, 3, rgb3("#e8b48f"), 23, 0.05);
+  // Head: a round face, dark hair over the top and the back, ears, a little nose.
+  B.ball(0, 69.5, 46, 11.6, 12.2, 11.6, skin, 8, 14);
+  B.ball(0, 71.5, 41.5, 12.8, 12.6, 12.4, hair, 8, 14);
+  for (const s of [-1, 1]) B.ball(s * 12.2, 68.5, 45, 2.4, 3.8, 2.8, skin, 5, 8);
+  B.ball(0, 67.5, 57.5, 2.2, 2.4, 2.4, skin, 5, 8);
   // The knitted kippah, in this sled's color, with a white band around its edge.
-  B.blob(0, 81.5, 41, 9.5, 3.4, 9.5, main, 24, 0.05);
-  B.tube([0, 79.6, 41], 9.9, [0, 80.8, 41], 9.5, 9, white);
+  B.ball(0, 82.6, 41, 9.6, 3.8, 9.6, main, 6, 14);
+  B.pipe([0, 80.9, 41], 10.1, [0, 82.2, 41], 9.7, white, false, 14);
   // The flag's stick, at the back corner.
-  B.tube([-38, 19, 2], 1.1, [-38, 68, 2], 1.1, 4, rgb3("#6b4423"));
+  B.pipe([-38, 19, 2], 1.2, [-38, 68, 2], 1.2, woodDark, true, 6);
   const sled = new THREE.Group();
   sled.rotation.order = "YXZ";
-  sled.add(new THREE.Mesh(B.geometry(), w3.paint));
+  sled.add(new THREE.Mesh(B.smoothGeometry(), w3.smoothPaint));
   // The flag itself: a little picture that waves.
   if (!w3.flagPicture) w3.flagPicture = makeFlagPicture();
   const flagHolder = new THREE.Group();
@@ -1234,32 +1351,24 @@ function nameLabel(name) {
   return label;
 }
 
-// ---------- Gift boxes, banana peels and mangoes ----------
-// The gift boxes float just above the path, turning slowly. A banana peel lies on the snow.
-// A mango tumbles through the air, down the path. (Where they are comes from the referee.)
+// ---------- Banana peels, mangoes and rimonim ----------
+// A banana peel lies on the snow. A mango tumbles through the air, down the path. A rimon
+// (a pomegranate grenade) flies in an arc when thrown, or lies waiting when dropped.
+// (Where they are comes from the referee.)
 
 function makeItems() {
   const w3 = world3d;
-  const gold = rgb3("#fde047");
-  // A wrapped present with a golden ribbon and a bow, in four colors.
-  const boxShapes = ["#ef4444", "#3b82f6", "#a855f7", "#22c55e"].map((hex) => {
-    const B = new MeshBuilder(), wrap = rgb3(hex);
-    B.box(0, 0, 0, 3.2, 3.2, 3.2, wrap);
-    B.box(0, 0, 0, 3.32, 3.32, 0.7, gold);
-    B.box(0, 0, 0, 0.7, 3.32, 3.32, gold);
-    B.blob(-0.75, 2.0, 0, 0.85, 0.5, 0.5, gold, 1, 0.1);
-    B.blob(0.75, 2.0, 0, 0.85, 0.5, 0.5, gold, 2, 0.1);
-    return B.geometry();
-  });
-  w3.boxes = TRACK.boxes.map((box) => {
-    const mesh = new THREE.Mesh(boxShapes[box.id % boxShapes.length], w3.paint);
-    pathSpot(box.z, box.offset, SPOT);
-    mesh.position.set(SPOT.x, SPOT.y + 3.6, SPOT.z);
-    mesh.userData = { id: box.id, index: SPOT.index, baseY: SPOT.y + 3.6 };
-    mesh.visible = false;
-    w3.scene.add(mesh);
-    return mesh;
-  });
+  // A rimon: a round red pomegranate with its little crown on top.
+  const R = new MeshBuilder();
+  R.smooth = true;
+  R.ball(0, 0, 0, 1.7, 1.6, 1.7, rgb3("#be123c"));
+  R.ball(0.5, 0.5, 0.9, 0.7, 0.6, 0.5, rgb3("#e11d48"));
+  R.pipe([0, 1.45, 0], 0.42, [0, 2.0, 0], 0.62, rgb3("#9f1239"));
+  for (let k = 0; k < 5; k++) {
+    const an = k / 5 * Math.PI * 2;
+    R.pipe([Math.cos(an) * 0.55, 1.95, Math.sin(an) * 0.55], 0.2, [Math.cos(an) * 0.85, 2.5, Math.sin(an) * 0.85], 0.03, rgb3("#881337"));
+  }
+  w3.rimonShape = R.smoothGeometry();
   // A banana peel: four flaps lying open on the snow, and the stalk standing up.
   const P = new MeshBuilder(), yellow = rgb3("#facc15"), pale = rgb3("#fef3c7");
   for (let k = 0; k < 4; k++) {
@@ -1279,21 +1388,15 @@ function makeItems() {
   w3.mangoShape = M.geometry();
 }
 
-// Every frame: show the boxes that are nearby and not taken, and put each peel and mango where it is.
-function updateItems(view, index, reach) {
+// Every frame: put each peel, mango and rimon where it is.
+function updateItems(view) {
   const w3 = world3d;
-  for (const mesh of w3.boxes) {
-    const u = mesh.userData;
-    mesh.visible = u.index > index - 20 && u.index < index + reach / SEG3 && !(view.gone && view.gone.has(u.id));
-    if (!mesh.visible) continue;
-    mesh.rotation.y = view.time * 1.8 + u.id;
-    mesh.position.y = u.baseY + Math.sin(view.time * 3 + u.id) * 0.4;
-  }
   const live = new Set();
   for (const thing of view.things || []) {
     let mesh = w3.things.get(thing.id);
     if (!mesh) {
-      mesh = new THREE.Mesh(thing.kind === "banana" ? w3.bananaShape : w3.mangoShape, w3.paint);
+      mesh = thing.kind === "rimon" ? new THREE.Mesh(w3.rimonShape, w3.smoothPaint)
+        : new THREE.Mesh(thing.kind === "banana" ? w3.bananaShape : w3.mangoShape, w3.paint);
       mesh.scale.setScalar(1.4); // (a bit bigger than life, so you can see it coming)
       w3.scene.add(mesh);
       w3.things.set(thing.id, mesh);
@@ -1302,6 +1405,12 @@ function updateItems(view, index, reach) {
     if (thing.kind === "banana") {
       mesh.position.set(SPOT.x, SPOT.y + 0.05, SPOT.z);
       mesh.rotation.y = thing.id * 1.7;
+    } else if (thing.kind === "rimon") {
+      // Flying: up in its arc, tumbling. Lying in wait: on the snow, rocking a little.
+      const up = (thing.air || 0) * U3;
+      mesh.position.set(SPOT.x, SPOT.y + 2.2 + up, SPOT.z);
+      if (up > 0.2) mesh.rotation.set(-view.time * 11, -SPOT.heading, 0);
+      else mesh.rotation.set(0, thing.id * 1.3, Math.sin(view.time * 5 + thing.id) * 0.18);
     } else {
       mesh.position.set(SPOT.x, SPOT.y + 2.6 + Math.sin(view.time * 9 + thing.id) * 0.5, SPOT.z);
       mesh.rotation.set(-view.time * 13, -SPOT.heading, 0);
@@ -1331,6 +1440,21 @@ function race3dSplash(along, side, water) {
   }
 }
 
+// A rimon just blew up there: a ball of red and orange (pomegranate seeds!) with snow thrown up around it.
+// Called by race-game.js. along, side = where (like a sled's y and x).
+function race3dBoom(along, side) {
+  if (!world3d.ready) return;
+  pathSpot(along, side, SPOT);
+  const x = SPOT.x, y = SPOT.y + 1, z = SPOT.z;
+  const ground = P3.sand[SPOT.index] > 0.5 ? SPRAY_SAND : P3.snow[SPOT.index] > 0.3 ? SPRAY_SNOW : SPRAY_DUST;
+  for (let k = 0; k < 170; k++) {
+    const an = Math.random() * Math.PI * 2, out = 4 + Math.random() * 22, r = Math.random();
+    addSpray(x + Math.cos(an) * Math.random() * 2, y + Math.random() * 2, z + Math.sin(an) * Math.random() * 2,
+      Math.cos(an) * out, 4 + Math.random() * 20, Math.sin(an) * out,
+      0.5 + Math.random() * 0.7, 1.6 + Math.random() * 2.2, 3, 0.95, r < 0.4 ? SPRAY_RED : r < 0.65 ? SPRAY_FIRE : ground);
+  }
+}
+
 // ---------- Snow spray ----------
 // Real snow flies up when a sled cuts through it. Here that's hundreds of soft little puffs:
 // each one is thrown up and out from a runner, keeps some of the sled's speed, slows down in
@@ -1340,6 +1464,7 @@ function race3dSplash(along, side, water) {
 
 const SPRAY_MAX = 450; // the most puffs in the air at once
 const SPRAY_SNOW = [1, 1, 1], SPRAY_DUST = rgb3("#cdbf9a"), SPRAY_SAND = rgb3("#e6d6a4"), SPRAY_LEAF = rgb3("#b9c79a");
+const SPRAY_RED = rgb3("#e11d48"), SPRAY_FIRE = rgb3("#fb923c"); // a rimon blowing up
 const SPRAY_WATER = rgb3("#cfe8ff"), SPRAY_BLUE = rgb3("#38bdf8"), SPRAY_GOLD = rgb3("#fbbf24"); // the splash in the lake; the carve boost getting ready
 
 function makeSpray() {
@@ -1561,8 +1686,7 @@ function updateCrashEffects(time) {
 //   air, spin, float:    my sled flying (how high), spinning out (how far round), floating in the lake
 //   charge:       the carve boost building up (0, 1 or 2)
 //   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed, air, spin, float }]
-//   gone:         a Set of the gift boxes that are taken right now (their ids)
-//   things:       banana peels and mangoes: [{ id, kind, x, y }]
+//   things:       banana peels, mangoes and rimonim: [{ id, kind, x, y, air }]
 //   gate:         the question on the next gate ({ number, english, choices }) or null
 //   time:         the game clock
 // }
@@ -1598,7 +1722,7 @@ function drawRace3d(view, w, h) {
     w3.renderer.setPixelRatio(ratio);
     w3.renderer.setSize(w, h, false);
     w3.camera.aspect = w / h;
-    w3.camera.fov = w >= h ? 58 : 80; // (an upright phone sees less to the sides, so it gets a wider lens)
+    w3.camera.fov = w >= h ? RACE.camFov : 80; // (an upright phone sees less to the sides, so it gets a wider lens)
     w3.camera.updateProjectionMatrix();
     // (So a puff of snow is the right size on this screen.)
     w3.sprayPaint.uniforms.scale.value = h * ratio / (2 * Math.tan(w3.camera.fov * Math.PI / 360));
@@ -1607,23 +1731,24 @@ function drawRace3d(view, w, h) {
   w3.scene.fog.near = reach * 0.25;
   w3.scene.fog.far = reach;
 
-  // The camera: behind and above my sled, looking down the path ahead. (When the sled
-  // points right, the camera swings round behind it, so the world turns around me.)
+  // The camera: behind and well above my sled, looking DOWN at the path ahead, so you can
+  // see what is coming (RACE.camBack, camHeight, camAhead). (When the sled points right, the
+  // camera swings round behind it, so the world turns around me.)
   pathSpot(view.along, view.side, SPOT);
   const sledX = SPOT.x, sledY = SPOT.y, sledZ = SPOT.z, index = SPOT.index;
   const camHeading = SPOT.heading + (view.viewTurn || 0);
   const fx = Math.sin(camHeading), fz = -Math.cos(camHeading);
   const back = w >= h ? 1 : 1.5; // (an upright phone is narrow, so the camera sits further back)
   const air = (view.air || 0) * U3; // (when my sled flies, the camera rises part of the way with it)
-  let camX = sledX - fx * 13.5 * back, camZ = sledZ - fz * 13.5 * back, camY = sledY + 6.6 * back + air * 0.85;
+  let camX = sledX - fx * RACE.camBack * back, camZ = sledZ - fz * RACE.camBack * back, camY = sledY + RACE.camHeight * back + air * 0.85;
   // Never inside the mountain (a wall beside a bend, or a hilltop just behind me).
   camY = Math.max(camY, landAt(camX, camZ).h + 2.6);
   pathSpot(view.along - 1500, view.side, CAM, true);
   camY = Math.max(camY, CAM.y + 3.2);
-  pathSpot(view.along + 1900, view.side * 0.6, CAM, true);
+  pathSpot(view.along + RACE.camAhead, view.side * 0.6, CAM, true);
   const shake = (view.shake || 0) * 0.5;
   w3.camera.position.set(camX + (Math.random() - 0.5) * shake, camY + (Math.random() - 0.5) * shake, camZ);
-  LOOK.set(sledX + fx * 19, CAM.y + 2.4 + air * 0.6, sledZ + fz * 19);
+  LOOK.set(sledX + fx * RACE.camAhead * U3, CAM.y + 1 + air * 0.6, sledZ + fz * RACE.camAhead * U3);
   w3.camera.lookAt(LOOK);
   w3.sky.position.copy(w3.camera.position);
 
@@ -1640,12 +1765,12 @@ function drawRace3d(view, w, h) {
     if (shown !== gate.shown) {
       gate.shown = shown;
       const u = gate.board.userData;
-      paintGate(u.g, u.pxWide, u.pxTall, mine);
+      paintGate(u.g, u.pxWide, u.pxTall, mine, gate.small);
       u.picture.needsUpdate = true;
     }
   }
   for (const sign of w3.signs) sign.group.visible = sign.index > index - 30 && sign.index < index + reach / SEG3 + 20;
-  updateItems(view, index, reach);
+  updateItems(view);
 
   // The sleds.
   const seen = new Set();

@@ -55,6 +55,33 @@ function tone(frequency, duration, { type = "sine", volume = 0.2, slideTo = null
   oscillator.stop(start + duration + 0.02);
 }
 
+// Play a soft burst of "noise" (a hiss, like snow or a thud), instead of a clear note.
+// `from` → `to` = how bright the hiss is at the start and at the end (high = hissy, low = a dull thump).
+let noiseBuffer = null;
+function noise(duration, { volume = 0.2, from = 900, to = 150, delay = 0 } = {}) {
+  if (muted || !audioCtx) return;
+  if (!noiseBuffer) {
+    // One second of random crackle, made once and reused.
+    noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+  const start = audioCtx.currentTime + delay;
+  const source = audioCtx.createBufferSource();
+  source.buffer = noiseBuffer;
+  source.loop = true;
+  const filter = audioCtx.createBiquadFilter(); // lets only the low, soft part through
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(from, start);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(20, to), start + duration);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + duration); // fade out
+  source.connect(filter).connect(gain).connect(audioCtx.destination);
+  source.start(start, Math.random() * 0.5);
+  source.stop(start + duration + 0.02);
+}
+
 // Play several notes one after another, like a little tune.
 function melody(notes, gap, options) {
   notes.forEach((frequency, i) => tone(frequency, gap * 1.6, { ...options, delay: i * gap }));
@@ -71,7 +98,9 @@ const SOUNDS = {
   win:     () => melody([523, 659, 784, 1047, 784, 1047], 0.13, { type: "triangle", volume: 0.22 }),
   boost:   () => tone(300, 0.45, { type: "sawtooth", slideTo: 1200, volume: 0.1 }),
   bump:    () => tone(90, 0.2, { type: "square", volume: 0.2 }),          // walking into a rock
-  crash:   () => { tone(130, 0.1, { type: "square", slideTo: 50, volume: 0.25 }); tone(60, 0.3, { type: "sawtooth", slideTo: 30, volume: 0.2 }); }, // a sled hitting a tree
+  crash:   () => { noise(0.4, { volume: 0.55, from: 1400, to: 110 }); tone(85, 0.28, { type: "sine", slideTo: 40, volume: 0.3 }); }, // a sled hitting a tree: a soft, snowy crash
+  thump:   () => { noise(0.2, { volume: 0.35, from: 800, to: 140 }); tone(105, 0.14, { type: "sine", slideTo: 60, volume: 0.18 }); }, // two sleds bumping
+  skid:    () => noise(0.35, { volume: 0.14, from: 3200, to: 900 }),             // a sled starting to skid: a hiss of snow
   nudge:   () => tone(140, 0.08, { type: "sine", slideTo: 100, volume: 0.04 }), // bumping into a player (soft!)
   munch:   () => melody([520, 700], 0.05, { type: "triangle", volume: 0.07 }),  // eating berries
   throw:   () => tone(350, 0.14, { type: "triangle", slideTo: 900, volume: 0.09 }), // a whoosh (rock, ninja star)
@@ -84,7 +113,7 @@ const SOUNDS = {
   land:    () => tone(120, 0.16, { type: "sine", slideTo: 60, volume: 0.25 }),       // …and coming down: a soft thump
   splash:  () => { tone(900, 0.5, { type: "sawtooth", slideTo: 90, volume: 0.12 }); tone(1400, 0.7, { type: "triangle", slideTo: 200, volume: 0.1, delay: 0.05 }); tone(70, 0.5, { type: "sine", slideTo: 40, volume: 0.3 }); }, // into the Kinneret!
   item:    () => melody([784, 988, 1175, 1568], 0.06, { type: "triangle", volume: 0.14 }), // driving through a gift box
-  spin:    () => { tone(700, 0.7, { type: "sawtooth", slideTo: 120, volume: 0.1 }); melody([500, 420, 500, 420, 340], 0.09, { type: "square", volume: 0.07 }); }, // slipping on a banana peel
+  spin:    () => { noise(0.3, { volume: 0.4, from: 1200, to: 150 }); noise(0.7, { volume: 0.16, from: 2600, to: 400, delay: 0.1 }); tone(420, 0.6, { type: "sine", slideTo: 140, volume: 0.08 }); }, // hit by a banana peel, a mango or a rimon: a soft thud, then sliding round on the snow
 };
 
 function playSound(name) {

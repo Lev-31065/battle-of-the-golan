@@ -25,10 +25,9 @@ const TRACK = {
   length: 0,  // the whole path, start to lake (track units)
   startZ: 0,  // where the start line is
   finishZ: 0, // where the finish line is (on the beach)
-  gates: [],  // the answer gates: { number, index (which segment it stands on), z, width }
+  gates: [],  // the answer gates, in order down the path: { number, index (which segment it stands on), z, center + half (where its 3 lanes are across the path, and half their width), side (0 = a big gate right across the path; -1 / 1 = a small gift gate on the left / right way round an island) }
   ramps: [],  // snow jumps: { index (the segment it starts on), length (segments), z0, z1 (its top edge), offset + half (where it is across the path, and half its width), height, kind ("snow" or "pier") }
   forks: [],  // places where the path splits in two around an island: { from, to (segments), jumpSide (-1 / 1: the side with the jump) }
-  boxes: [],  // gift boxes: { id, z, offset }
   waterZ: 0,  // where the Kinneret starts
 };
 
@@ -135,7 +134,7 @@ function trackProgress(z) {
     let forkMade = g === 0; // (no split before the first gate: that stretch is short)
     while (made < stretch) {
       // Once in every stretch the path SPLITS in two around an island of rocks and trees, and
-      // joins up again further down. One way has a jump, the other has gift boxes.
+      // joins up again further down. One way has jumps, the other has a small gift gate.
       if (!forkMade && made > stretch * 0.2 && stretch - made > RACE.forkLength + 100) {
         forkMade = true;
         pieceWidth = RACE.forkWidth;
@@ -169,7 +168,7 @@ function trackProgress(z) {
     pieceWidth = RACE.gateWidth;
     const gateIndex = segments.length + Math.floor(RACE.gateZone / 2);
     addRoad(0, RACE.gateZone, 0, 0, -0.04 * RACE.gateZone);
-    TRACK.gates.push({ number: g, index: gateIndex, z: gateIndex * L, width: RACE.gateWidth });
+    TRACK.gates.push({ number: g, index: gateIndex, z: gateIndex * L, center: 0, half: RACE.gateWidth, side: 0 });
   }
   pieceWidth = RACE.pathWidth;
   downhill(120, -4, 0.12);          // the last stretch down
@@ -399,44 +398,36 @@ function trackProgress(z) {
   // The big wooden ramp at the very end, into the Kinneret.
   addRamp(waterIndex - RACE.lakeRampLength, RACE.lakeRampLength, 0, RACE.startWidth + 0.15, RACE.lakeRampHeight, "pier");
 
-  // ----- Gift boxes -----
-  // Rows of boxes right across the path (and at each split, on the way round WITHOUT the jump).
-  const addBoxes = (n, center, half) => {
-    const count = Math.max(2, Math.min(7, Math.round(half * 2 / 0.55)));
-    for (let k = 0; k < count; k++) {
-      TRACK.boxes.push({ id: TRACK.boxes.length, z: n * L, offset: center + ((k + 0.5) / count * 2 - 1) * half });
-    }
-  };
-  const nearRamp = (n) => { for (let k = n - RACE.rampLength - 75; k <= n + 12; k++) { if (segments[k].ramps) return true; } return false; };
-  for (let n = startIndex + 150; n < beachStart - 200;) {
-    if (segments[n].fork || nearRamp(n) || TRACK.gates.some((gate) => Math.abs(n - gate.index) < 75)) { n += 20; continue; }
-    addBoxes(n, 0, segments[n].width);
-    n += Math.round(RACE.boxEvery * (0.8 + random() * 0.4));
-  }
+  // ----- Gift gates -----
+  // Where the path splits, the way round WITHOUT the jumps has a small answer gate of its own.
+  // (Every gate gives a gift for a right answer; these are extra chances to get one.)
   for (const fork of TRACK.forks) {
-    for (const n of [fork.from + 50, fork.from + 105]) {
-      const seg = segments[n], room = (seg.width - seg.island) / 2;
-      addBoxes(n, -fork.jumpSide * (seg.island + room), room);
-    }
+    const n = fork.from + RACE.forkGateAt;
+    const seg = segments[n], room = (seg.width - seg.island) / 2; // half the width of one way round
+    if (room < 0.6) continue; // (too narrow for 3 lanes)
+    const gate = { number: 0, index: n, z: n * L, center: -fork.jumpSide * (seg.island + room), half: room - 0.04, side: -fork.jumpSide };
+    TRACK.gates.push(gate);
+    seg.gate = gate;
   }
+  // All the gates in order down the path, numbered 0, 1, 2…
+  TRACK.gates.sort((a, b) => a.z - b.z);
+  TRACK.gates.forEach((gate, i) => { gate.number = i; });
 
-  // Nothing solid on a ramp, where a jump lands, or right at a gift box.
+  // Nothing solid on a ramp or where a jump lands.
   for (const ramp of TRACK.ramps) {
     for (let k = ramp.index - 8; k <= Math.min(segments.length - 1, ramp.index + ramp.length + 75); k++) {
       segments[k].sprites = segments[k].sprites.filter((s) => !SPRITE_SIZES[s.type].solid || Math.abs(s.offset - ramp.offset) > ramp.half + 0.55);
     }
   }
-  for (const box of TRACK.boxes) {
-    const n = Math.round(box.z / L);
-    for (let k = n - 5; k <= n + 5; k++) {
-      segments[k].sprites = segments[k].sprites.filter((s) => !SPRITE_SIZES[s.type].solid || Math.abs(s.offset - box.offset) > 0.5);
-    }
-  }
 
-  // Keep the gates clear, so their poles are easy to see.
+  // Keep the gates clear, so their poles are easy to see (and nothing solid stands in a lane just before or after one).
   for (const gate of TRACK.gates) {
-    for (let k = gate.index - 4; k <= gate.index + 4; k++) {
-      segments[k].sprites = segments[k].sprites.filter((s) => Math.abs(s.offset) > RACE.gateWidth + 0.6);
+    for (let k = gate.index - 12; k <= gate.index + 12; k++) {
+      if (!gate.side) {
+        if (Math.abs(k - gate.index) <= 4) segments[k].sprites = segments[k].sprites.filter((s) => Math.abs(s.offset) > RACE.gateWidth + 0.6);
+      } else {
+        segments[k].sprites = segments[k].sprites.filter((s) => !SPRITE_SIZES[s.type].solid || Math.abs(s.offset - gate.center) > gate.half + 0.3);
+      }
     }
   }
   const finish = segments[finishIndex];

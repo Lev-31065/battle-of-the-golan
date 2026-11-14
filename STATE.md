@@ -69,8 +69,19 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-13d)
-- **Daniel tried it on v 12p: "its great!"** Steps 1–4 of 6 done (1 road + driving, 2 answer gates, 3 bots, 4 gift boxes), plus real 3D. Still to do: 5 multiplayer polish, 6 polish (sounds, podium).
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-14a)
+- **Daniel tried it on v 12p: "its great!"** Steps 1–4 of 6 done (1 road + driving, 2 answer gates, 3 bots, 4 gifts), plus real 3D. Still to do: 5 multiplayer polish, 6 polish (sounds, podium).
+- **Daniel played v 13d (2026-11-14): "It's very good."** He asked for a list of changes. Part 1 built in **v 2026-11-14a** (headless-tested: whole races + screenshots; NOT yet tried by him):
+  - **Tilt steering removed** (hard to tilt and watch at once). Touch only.
+  - **Skid:** double-tap a side and hold (Shift on a computer). The sled swings round almost twice as far and faster, top speed drops to 72%. All `skid…` settings in `RACE`.
+  - **Start hint:** a dashed circle on each side + "hold to turn / double-tap and hold to skid", through the countdown and 5 s after Go.
+  - **Camera:** higher and looking down more (`camHeight` 13, was 6.6; `camBack` 16; looks 26 ahead; lens 62°).
+  - **Gift gates instead of gift boxes:** every right answer at a gate = boost + a gift. 6 new small gates, one on the no-jump way round each island (13 gates in all). Boxes are gone.
+  - **Rimon:** big button throws it ahead (arc, explodes where it lands), small "Drop" button leaves it behind (explodes when a sled comes close, or after 25 s). Wide blast, spins out everyone in it.
+  - **Sled + rider rounder:** built from smooth balls and pipes.
+  - **Softer sounds:** crash, sleds bumping, and being hit are soft thuds/hisses now (no beeps).
+  - Claude's choices (Daniel didn't pick): big gates give gifts too; hands full = keep the old gift; a thrown rimon can't hurt its thrower; 💣 icon.
+- **Part 2 of that list, NOT built yet:** sharper bends in places; shortcuts that cut over the hill a bend goes round (risky: you can fly); banked (tilted) bends you can zoom round.
 - **v 2026-11-13d (Daniel asked: step 4, plus "realistic and fun, like a kart game", sled sitting on the landscape, plenty of jumps, alternate paths, a jump into the Kinneret). Headless-tested (whole races by an autopilot + screenshots), NOT yet tried by Daniel:**
   - **Gift boxes:** rows of 🎁 across the path (about every 240 segments, back 5 s after being taken). One gift at a time: 🍌 banana peel (dropped behind; whoever slides over it spins out) or 🥭 mango (flies ahead down the path, spins out the first sled it hits). In front you mostly get peels, further back mostly mangoes. Use it with the big round button on the right, or Space. A hit = spinning for 1 s at 35% speed, then safe for 2.5 s. Bots take and use them too.
   - **Steering:** in a bend the path turns away, so you steer round it (`curveSteer` 0.5); the sled slides a little before it grips (`grip` 5); `turnRate` 1.8 (was 1.5); only a little steering in the air. **Carve boost:** a whole bend on the path at speed → blue, then golden sparks → a boost when the bend ends.

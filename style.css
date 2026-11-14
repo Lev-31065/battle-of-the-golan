@@ -479,7 +479,6 @@ button, select, input { touch-action: manipulation; }
 .voice-button { right: 48px; }
 .leave-button { right: 86px; }
 .fullscreen-button { right: 124px; }
-.tilt-button { right: 162px; } /* (the race only) */
 
 /* Mt Hermon Racing: the gift I'm holding (a banana peel or a mango). A big round button on
    the right, up out of the way of the thumb that steers. Tap it to use the gift. */
@@ -500,6 +499,25 @@ button, select, input { touch-action: manipulation; }
   z-index: 4;
 }
 .item-button[hidden] { display: none; }
+/* With a rimon: a smaller button right under the big one, to DROP it behind you instead of throwing it. */
+.drop-button {
+  position: fixed;
+  top: 244px;
+  right: 20px;
+  width: 74px;
+  padding: 5px 0;
+  border: 3px solid #f87171;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  color: #1f2937;
+  cursor: pointer;
+  touch-action: none;
+  z-index: 4;
+}
+.drop-button[hidden] { display: none; }
+.drop-button .he { display: block; font-size: 14px; font-weight: 800; line-height: 16px; }
+.drop-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.75; }
 .item-icon { display: block; font-size: 34px; line-height: 38px; }
 .item-label .he { display: block; font-size: 12px; font-weight: 800; line-height: 14px; }
 .item-label .en { display: block; font-size: 9px; line-height: 11px; opacity: 0.75; }
