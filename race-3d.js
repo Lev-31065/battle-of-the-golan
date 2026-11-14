@@ -1076,17 +1076,18 @@ function standAcross(group, n) {
 const GATE_TALL = 26; // (big, so you can read it from far away)
 
 // The picture on a gate: the English word on a white sign on top, a Hebrew answer over each lane.
-// (A gate nobody has a question on yet shows "🎁 ?": a right answer gives a gift. `small` = a
-// small gift gate on one way round an island: its sign is as wide as the whole gate.)
-function paintGate(g, W, H, info, small) {
+// (A gate nobody has a question on yet shows "🎁 ?": a right answer gives a gift.
+// An answer I already tried and got wrong is grayed out, with a ✗.)
+function paintGate(g, W, H, info) {
   g.clearRect(0, 0, W, H);
-  const signH = H * 0.38, signW = W * (small ? 0.8 : 0.4);
+  const signH = H * 0.38, signW = W * 0.4;
   roundedBox(g, (W - signW) / 2, 4, signW, signH - 8, signH * 0.2, "#ffffff", "#1e3a8a", 8);
   drawTextInBox(g, info ? info.english : "🎁 ?", W / 2, signH / 2, signW, signH - 8, 200, "#1e3a8a", false);
   const top = H * 0.5, panelH = H * 0.5 - 4, laneW = W / 3;
   for (let lane = 0; lane < 3; lane++) {
-    roundedBox(g, lane * laneW + 16, top, laneW - 32, panelH, panelH * 0.12, LANE_COLORS[lane], "#ffffff", 6);
-    drawTextInBox(g, info ? info.choices[lane] : "?", lane * laneW + laneW / 2, top + panelH / 2, laneW - 40, panelH, 200, "#ffffff", true);
+    const tried = info && info.wrong && info.wrong[lane];
+    roundedBox(g, lane * laneW + 16, top, laneW - 32, panelH, panelH * 0.12, tried ? "#64748b" : LANE_COLORS[lane], "#ffffff", 6);
+    drawTextInBox(g, tried ? "✗" : info ? info.choices[lane] : "?", lane * laneW + laneW / 2, top + panelH / 2, laneW - 40, panelH, 200, "#ffffff", true);
   }
 }
 
@@ -1095,9 +1096,8 @@ function makeGates() {
   w3.gates = [];
   const steel = rgb3("#334155");
   for (const gate of TRACK.gates) {
-    // (A big gate spans the whole path. A small gift gate stands over one way round an island:
-    // `mid` = how far to the side its middle is.)
-    const half = gate.half * RW3, mid = gate.center * RW3, small = Boolean(gate.side);
+    // (Every gate spans the whole path.)
+    const half = gate.half * RW3, mid = gate.center * RW3;
     const group = new THREE.Group();
     const B = new MeshBuilder();
     for (const t of [-1, -1 / 3, 1 / 3, 1]) B.box(mid + t * half, GATE_TALL / 2, 0, 0.9, GATE_TALL, 0.9, steel);
@@ -1105,12 +1105,11 @@ function makeGates() {
     group.add(new THREE.Mesh(B.geometry(), w3.paint));
     // The board: the lane answers hang under the beam, the English sign stands on top of it.
     const boardTall = 14.4;
-    const board = pictureBoard(half * 2, boardTall, small ? 800 : 1400, 296, (g, W, H) => paintGate(g, W, H, null, small));
+    const board = pictureBoard(half * 2, boardTall, 1400, 296, (g, W, H) => paintGate(g, W, H, null));
     board.position.set(mid, GATE_TALL - 1.6 - 7.2 + boardTall / 2, 0.7);
     group.add(board);
     standAcross(group, gate.index);
-    if (small) group.position.y = stripHeight(gate.index, mid);
-    w3.gates.push({ number: gate.number, index: gate.index, group, board, shown: "", small });
+    w3.gates.push({ number: gate.number, index: gate.index, group, board, shown: "" });
   }
 }
 
@@ -1636,8 +1635,9 @@ function sledTrail(id, sled, groundY, pointing, index, off) {
 // ---------- Crashing: the tree shakes, and snow (or leaves) bursts off it ----------
 
 // Called by race-game.js when my sled hits something. segIndex + offset say which thing;
-// dir = which way my sled bounced (-1 left, 1 right); time = the game clock.
-function race3dCrash(segIndex, offset, dir, time) {
+// dir = which way my sled was pushed (-1 left, 1 right); time = the game clock;
+// soft = true for a bush or a snowman (I ploughed right through it: a much bigger cloud of snow).
+function race3dCrash(segIndex, offset, dir, time, soft) {
   const w3 = world3d;
   if (!w3.ready) return;
   const group = w3.pathChunks.get(Math.floor(segIndex / PATH_PIECE));
@@ -1649,9 +1649,10 @@ function race3dCrash(segIndex, offset, dir, time) {
   }
   // A burst of snow up high, of leaves and dust lower down.
   const color = TRACK.segments[segIndex].snow > 0.3 ? SPRAY_SNOW : SPRAY_LEAF;
-  for (let k = 0; k < 80; k++) {
-    addSpray(x + (Math.random() - 0.5) * 4, y + 1 + Math.random() * 9, z + (Math.random() - 0.5) * 4,
-      (Math.random() - 0.5) * 18, 2 + Math.random() * 10, (Math.random() - 0.5) * 18,
+  const fx = Math.sin(P3.heading[segIndex]), fz = -Math.cos(P3.heading[segIndex]); // (a soft thing's snow flies on down the path, with the sled)
+  for (let k = 0; k < (soft ? 150 : 80); k++) {
+    addSpray(x + (Math.random() - 0.5) * 4, y + 1 + Math.random() * (soft ? 4 : 9), z + (Math.random() - 0.5) * 4,
+      (Math.random() - 0.5) * 18 + (soft ? fx * 22 : 0), 2 + Math.random() * 10, (Math.random() - 0.5) * 18 + (soft ? fz * 22 : 0),
       0.8 + Math.random() * 0.6, 1 + Math.random() * 1.4, 1.6, 0.95, color);
   }
 }
@@ -1687,7 +1688,7 @@ function updateCrashEffects(time) {
 //   charge:       the carve boost building up (0, 1 or 2)
 //   sleds:        the other sleds: [{ id, y, x, turn, color, name, speed, air, spin, float }]
 //   things:       banana peels, mangoes and rimonim: [{ id, kind, x, y, air }]
-//   gate:         the question on the next gate ({ number, english, choices }) or null
+//   gate:         the question on the next gate ({ number, english, choices, wrong: the lanes I already tried }) or null
 //   time:         the game clock
 // }
 // Returns where my sled is on the screen: { x, y, size } in screen pixels (for the snow spray).
@@ -1761,11 +1762,11 @@ function drawRace3d(view, w, h) {
   for (const gate of w3.gates) {
     gate.group.visible = gate.index > index - 30 && gate.index < index + reach / SEG3 + 20;
     const mine = view.gate && view.gate.number === gate.number ? view.gate : null;
-    const shown = mine ? mine.english + "|" + mine.choices.join("|") : "";
+    const shown = mine ? mine.english + "|" + mine.choices.join("|") + "|" + (mine.wrong || []).join("") : "";
     if (shown !== gate.shown) {
       gate.shown = shown;
       const u = gate.board.userData;
-      paintGate(u.g, u.pxWide, u.pxTall, mine, gate.small);
+      paintGate(u.g, u.pxWide, u.pxTall, mine);
       u.picture.needsUpdate = true;
     }
   }

@@ -343,16 +343,16 @@ const RACE = {
   curveSteer: 0.5,        // in a bend, the path turns away under the sled, so you have to steer round it. 0 = the sled follows bends by itself (the old way), 1 = fully real (hard!)
   grip: 5,                // how quickly the sled's sideways slide catches up with where it points. Lower = slides more, like ice; 20 = no sliding at all
   airSteer: 0.35,         // in the air you can only turn this much of normal
-  // Skidding: double-tap a side of the screen and HOLD (or hold Shift on a computer). The sled swings
-  // round much further and faster, so it takes sharp bends, but it loses speed while it skids.
-  skidTapGap: 0.32,       // two taps on the same side within this many seconds = a skid
+  // Skidding: keep HOLDING a side of the screen (or an arrow key). After a moment the sled starts to skid:
+  // it swings round much further and faster, so it takes sharp bends, but it loses speed while it skids.
+  skidAfter: 1.0,         // hold a turn for longer than this many seconds = a skid
   skidTurn: 1.9,          // how far the sled can swing round in a skid (1 = as far as normal steering, 1.9 = almost twice as far)
   skidTurnRate: 2.2,      // …and how much faster it swings round
   skidSpeed: 0.72,        // top speed while skidding (0.72 = 72% of normal)
   skidBrake: 2600,        // how fast a skid slows you down to that speed
   skidGrip: 7,            // grip while skidding (see `grip`): higher = the skid bites sooner
   skidRecover: 3,         // after a skid, how fast the sled straightens back to a normal turn
-  hintTime: 5,            // the "hold to turn, double-tap and hold to skid" circles stay this many seconds after "Go!"
+  hintTime: 5,            // the "hold to turn, keep holding to skid" circles stay this many seconds after "Go!"
   carveCurve: 1.5,       // "carve boost": bends at least this sharp count…
   carveAfter: 0.9,        // …stay on the path at speed for this many seconds of a bend, and you get a boost when it ends (blue snow = ready)
   carveBig: 1.8,          // …and for this many seconds, a longer boost (golden snow)
@@ -374,8 +374,6 @@ const RACE = {
   forkLength: 150,        // how long a split is, in segments
   // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you),
   // a mango (thrown ahead) or a rimon, a pomegranate grenade (thrown ahead OR dropped behind).
-  // Besides the big gates there is a smaller "gift gate" on one way round every island.
-  forkGateAt: 85,         // the gift gate stands this many segments into a split, on the way round WITHOUT the jumps
   giftsInFront: { banana: 0.5, rimon: 0.4, mango: 0.1 },  // what you get when you are in first place (nobody ahead to throw at)…
   giftsBehind: { banana: 0.15, rimon: 0.4, mango: 0.45 }, // …and when somebody is ahead of you
   rimonSpeed: 3500,       // a thrown rimon flies this much faster than the sled that threw it…
@@ -391,8 +389,12 @@ const RACE = {
   mangoSpeed: 4500,       // a thrown mango flies this much faster than the sled that threw it
   mangoRange: 18000,      // …and this far before it lands and splats
   bananaLife: 60,         // a banana peel that nobody hits melts away after this many seconds
-  crashBounce: 1300,      // hitting a tree, bush or rock stops you dead and knocks you BACK at this speed
-  crashShove: 1.1,        // …and shoves you sideways, away from it, this fast (road widths per second)…
+  // Running into things. SOFT things (a bush, a snowman): you plough through in a spray of snow, but slower.
+  // HARD things (a tree, a rock, a cabin): CLACK! You keep a little of your speed and get knocked round, away from it.
+  softHitSpeed: 0.55,     // a bush or a snowman: you keep this much of your speed (0.55 = 55%)
+  hardHitSpeed: 0.3,      // a tree or a rock: you keep this much of your speed…
+  hardHitTurn: 1.5,       // …and the sled is knocked round this far, away from it (1 = as far as normal steering turns it)
+  crashShove: 1.1,        // …and shoved sideways, away from it, this fast (road widths per second)…
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
   bumpShove: 2.5,         // sleds are solid: two that touch get pushed apart sideways this fast (road widths per second)
@@ -411,8 +413,9 @@ const RACE = {
   gateShowAt: 200,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.45,       // right answer: top speed goes up to 145%…
   boostTime: 2.5,         // …for this many seconds
-  slowSpeed: 0.45,        // wrong answer: top speed drops to 45%…
-  slowTime: 1.5,          // …for this many seconds
+  gateBounce: 9000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
+  gateBounceTime: 0.9,    // …and the bounce takes this many seconds. (You start again from a standstill, until you get it right.)
+  soundReach: 9000,       // you only hear a rimon blow up if it is this close to you (quieter the further away)
   feedbackTime: 2.5,      // seconds "Correct!" or "The answer is…" stays on the screen
   // Real 3D (race-3d.js)
   threeD: true,           // draw the race in real 3D (false = the old flat drawing; phones that can't do 3D use that anyway)
@@ -436,7 +439,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14a";
+const GAME_VERSION = "2026-11-14b";
 
 // ---------- Helpers ----------
 

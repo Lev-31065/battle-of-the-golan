@@ -3,7 +3,7 @@
 //
 // The sled goes forward by itself. Hold the left half of the screen to steer left,
 // the right half to steer right (or use the arrow keys / A and D on a computer).
-// Double-tap a side and hold = a skid (sharper turns, but slower).
+// Keep holding for more than a second = a skid (sharper turns, but slower).
 // Also here: flying off the snow ramps, gifts from the gates (banana peel / mango / rimon), spinning out,
 // and the splash into the Kinneret at the end.
 // The drawing is in race-draw.js and the track in race-track.js.
@@ -16,7 +16,7 @@ let myCarve = 0;          // how hard I am steering right now (-1 … 1): for th
 let bumpAt = -Infinity;   // when I last bumped into another sled
 let bumpDir = 1;          // which way that bump pushed me
 let raceTurn = 0;         // goes up and down as the track turns (slides the mountains)
-let crashAt = -Infinity;  // when I last hit a tree (for the screen shake)
+let crashAt = -Infinity;  // when I last hit something HARD: a tree or a rock (for the screen shake)
 let crashDir = 1;         // which way that crash shoved me: -1 = left, 1 = right
 let lastRaceSend = -Infinity; // when I last told the referee where I am (game clock)
 let lastCountdown = null; // the last countdown number I beeped for
@@ -24,11 +24,15 @@ let myFinishedPlace = 0;  // my place once I've crossed the finish line (0 = sti
 let inDeepSnow = false;
 const snowPuffs = [];     // snow spraying up behind my sled (on the screen only)
 let mySledSize = 100;     // how wide my sled is on the screen, in pixels (set while drawing)
-let gateQuestion = null;  // the question on the next gate: { z, gate, entry, choices, shownAt, lane, settledAt }
+let gateQuestion = null;  // the question on the next gate: { z, gate, entry, choices, shownAt, lane, settledAt, tries (how many times I got it wrong), wrong (the lanes I already tried: [true, false, false]) }
 let gateFeedback = null;  // after a gate: { kind: "right" / "wrong" / "missed", entry, until }
 let lastGateZ = -Infinity; // the last gate I went through (its distance along the race)
 let boostUntil = -Infinity; // right answer: faster until this time
-let slowUntil = -Infinity;  // wrong answer: slower until this time
+let bounceAt = -Infinity;   // wrong answer: when the gate bounced me back up the path…
+let bounceFrom = 0;         // …from here…
+let bounceTo = 0;           // …to here (distances along the race)
+let softHit = null;         // the last bush or snowman I ploughed through (so it only slows me once)
+let softAt = -Infinity;     // …and when
 let mySlide = 0;          // how fast my sled is sliding sideways right now (road widths per second)
 let myAir = 0;            // how high my sled is above the ground (0 = on the ground)
 let myVy = 0;             // how fast it is going up (minus = coming down)
@@ -39,7 +43,9 @@ let inWater = false;      // my sled has landed in the Kinneret
 let itemUsedAt = -Infinity; // when I last used a gift (so the button hides straight away)
 let itemTips = 0;         // how many times the "tap to use it" tip was shown
 let lastItem = null;      // the gift I was holding a moment ago
-let mySkid = false;       // am I skidding right now? (double-tap and hold)
+let mySkid = false;       // am I skidding right now? (holding a turn for more than a second)
+let holdTime = 0;         // how long I have been holding this turn (seconds)
+let holdSide = 0;         // …and which way (-1 left, 1 right, 0 = not steering)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
 const seenBooms = new Set(); // the rimon explosions this phone has already shown (their ids)
 const otherSleds = new Map(); // what this phone remembers about the other sleds: id → { air, spinCount, spinAt }
@@ -58,13 +64,9 @@ const raceWinnerEl = document.getElementById("winner");
 // ---------- Steering ----------
 // Every finger on the screen counts: left half = -1 (left), right half = 1 (right).
 // A finger can slide across the middle to switch sides.
-// SKID: tap a side twice quickly and keep holding the second tap. While that finger is down
-// the sled skids: it swings round much further (sharp bends!), but it loses speed.
-// (On a computer: hold Shift while steering.)
+// SKID: keep holding a turn for more than a second (RACE.skidAfter) and the sled starts to
+// skid: it swings round much further (sharp bends!), but it loses speed. Let go to stop skidding.
 const steerFingers = new Map(); // finger (pointer id) → -1 or 1
-const skidFingers = new Set();  // the fingers that are holding a skid (the second tap of a double tap)
-let lastTapAt = -Infinity;      // when the screen was last tapped to steer (milliseconds), and on which side
-let lastTapSide = 0;
 
 function sideOfScreen(event) {
   return event.clientX < window.innerWidth / 2 ? -1 : 1;
@@ -75,23 +77,13 @@ function isOnTheTrack(target) {
 }
 window.addEventListener("pointerdown", (event) => {
   if (client.mode !== "race" || client.phase !== "playing" || !isOnTheTrack(event.target)) return;
-  const side = sideOfScreen(event), now = performance.now();
-  steerFingers.set(event.pointerId, side);
-  // The second tap of a quick double tap on the same side = a skid, for as long as it is held.
-  if (side === lastTapSide && now - lastTapAt < RACE.skidTapGap * 1000) skidFingers.add(event.pointerId);
-  lastTapAt = now;
-  lastTapSide = side;
+  steerFingers.set(event.pointerId, sideOfScreen(event));
 });
 window.addEventListener("pointermove", (event) => {
   if (steerFingers.has(event.pointerId)) steerFingers.set(event.pointerId, sideOfScreen(event));
 });
 for (const type of ["pointerup", "pointercancel"]) {
-  window.addEventListener(type, (event) => { steerFingers.delete(event.pointerId); skidFingers.delete(event.pointerId); });
-}
-
-// Am I asking for a skid right now?
-function skidInput() {
-  return skidFingers.size > 0 || keysDown.has("shift");
+  window.addEventListener(type, (event) => { steerFingers.delete(event.pointerId); });
 }
 
 // ---------- Using a gift (the banana peel, mango or rimon from a gate) ----------
@@ -180,16 +172,21 @@ function raceUpdate(dt) {
   for (const boom of raceInfo.booms || []) {
     if (seenBooms.has(boom.id)) continue;
     seenBooms.add(boom.id);
-    playSound("boom");
+    // (Only the ones near me make a noise: quieter the further away, silent past RACE.soundReach.)
+    playSound("boom", 1 - Math.abs(boom.y - me.y) / RACE.soundReach);
     if (race3dAvailable()) race3dBoom(boom.y, boom.x);
     if (Math.abs(boom.y - me.y) < 3500) crashAt = Math.max(crashAt, gameTime - 0.12); // (close by: the screen shakes a little)
   }
 
   const flying = myAir > 0;
   const steer = started && !spinning && !inWater ? steerInput() : 0;
-  // Skidding (double-tap and hold): the sled swings round faster and much further, so it
-  // can take a sharp bend, but it loses speed. Only on the ground, and only while steering.
-  const skidding = started && !spinning && !inWater && !flying && steer !== 0 && skidInput();
+  // Skidding: hold a turn for more than a second (RACE.skidAfter) and the sled starts to skid.
+  // It swings round faster and much further, so it can take a sharp bend, but it loses speed.
+  // Only on the ground. Let go (or steer the other way) and the skid is over.
+  if (steer !== 0 && Math.sign(steer) === holdSide) holdTime += dt; else holdTime = 0;
+  holdSide = Math.sign(steer);
+  const bouncing = gameTime - bounceAt < RACE.gateBounceTime; // (a gate is bouncing me back)
+  const skidding = started && !spinning && !inWater && !flying && !bouncing && holdTime >= RACE.skidAfter;
   if (skidding && !mySkid) playSound("skid");
   mySkid = skidding;
   // (After a skid the sled straightens back to a normal turn quickly, not in one jerk.)
@@ -202,7 +199,19 @@ function raceUpdate(dt) {
   mySteer -= mySteer * Math.min(1, RACE.steerReturn * dt);
   mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
-  if (started) {
+  if (started && bouncing) {
+    // A wrong answer: the gate bounces me back up the path (fast at first, then slowing down),
+    // and I start again from a standstill. I can already steer toward another lane on the way.
+    const t = Math.max(0, Math.min(1, (gameTime - bounceAt) / RACE.gateBounceTime));
+    me.y = bounceFrom + (bounceTo - bounceFrom) * (1 - (1 - t) * (1 - t));
+    mySpeed = 0;
+    mySlide = 0;
+    carveTime = 0;
+    const room = findSegment(me.y).width - 0.2;
+    me.x = Math.max(-room, Math.min(room, me.x + mySteer * RACE.steerSpeed * 0.6 * dt));
+    if (t >= 1) mySteer = 0;
+    checkGates(me); // (so the lane I'm in stays up to date)
+  } else if (started) {
     const segment = findSegment(me.y);
     const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
     const oldY = me.y, oldX = me.x;
@@ -250,14 +259,14 @@ function raceUpdate(dt) {
 
     // Off the path = much slower (deep snow up high, rough ground lower down). The island
     // in the middle of a split counts as off the path too.
-    // A right answer at a gate = a boost (faster for a moment); a wrong one = slowed down.
+    // A right answer at a gate = a boost (faster for a moment).
     inDeepSnow = !flying && !inWater && offThePath(segment, me.x);
-    const boosting = gameTime < boostUntil, slowed = gameTime < slowUntil;
+    const boosting = gameTime < boostUntil;
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
-      * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
+      * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
       * (skidding ? RACE.skidSpeed : 1);
-    // (A skid scrubs the speed off gently; deep snow, a wrong answer or a hit brake hard.)
-    const braking = skidding && !inDeepSnow && !slowed && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
+    // (A skid scrubs the speed off gently; deep snow or a hit brakes hard.)
+    const braking = skidding && !inDeepSnow && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
     if (inWater) mySpeed = Math.max(0, mySpeed - RACE.waterDrag * dt); // the lake stops the sled
     else if (flying) { /* in the air it just keeps its speed */ }
     else if (mySpeed > top) mySpeed = Math.max(top, mySpeed - braking * dt);
@@ -276,14 +285,16 @@ function raceUpdate(dt) {
       carveTime = 0;
     }
 
-    // Crashing into a tree, a snowman, a rock or a cabin.
-    // (Trees and rocks stand beside the path, and a few right on it, so watch out!)
+    // Running into things. (Trees and rocks stand beside the path, and a few right on it, so watch out!)
+    //   SOFT things (a bush, a snowman): the sled ploughs right through in a big spray of
+    //     snow. It is not stopped, only slowed down.
+    //   HARD things (a tree, a rock, a cabin): CLACK! The sled keeps only a little of its
+    //     speed, and it is knocked round to point away from the thing, so it slides off past it.
     // The sled is long: we look at everything from its back to its NOSE, so it hits the
-    // moment the nose touches (not after it's already halfway through). A hit stops the sled
-    // dead, knocks it back a little and shoves it sideways, so it never goes through anything.
+    // moment the nose touches (not after it's already halfway through).
     // (Only the solid middle counts, like a tree's trunk: `hit` in SPRITE_SIZES. You can slip under the leaves.)
     // (A sled that is flying high enough goes right over it.)
-    if (gameTime - crashAt > 0.5 && mySpeed > 0) {
+    if (mySpeed > 0) {
       const noseIndex = findSegment(me.y + RACE.sledLength).index;
       for (let i = segment.index; i <= noseIndex && gameTime !== crashAt; i++) {
         for (const sprite of TRACK.segments[i].sprites) {
@@ -291,14 +302,29 @@ function raceUpdate(dt) {
           if (!size.solid || myAir > size.h * 0.5) continue;
           const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth;
           if (Math.abs(me.x - sprite.offset) >= reach) continue;
-          // Bounce off, away from it. (If it stands beside the path, always back TOWARD the path.)
-          crashDir = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
-          mySpeed = -RACE.crashBounce * Math.max(0.4, fraction);
+          // Which way I get pushed: away from it. (If it stands beside the path, always back TOWARD the path.)
+          const away = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : me.x >= sprite.offset ? 1 : -1;
+          if (size.soft) {
+            if (sprite === softHit) continue; // (I'm still going through this one)
+            softHit = sprite;
+            softAt = gameTime;
+            mySpeed *= RACE.softHitSpeed;
+            carveTime = 0;
+            playSound("poof");
+            if (race3dAvailable()) { race3dCrash(i, sprite.offset, away, gameTime, true); race3dSplash(me.y, me.x, false); } // snow everywhere
+            continue;
+          }
+          if (gameTime - crashAt <= 0.5) continue; // (still sliding away from the last tree)
+          crashDir = away;
           crashAt = gameTime;
-          mySteer = crashDir * 0.3; // (the sled ends up pointing away from what it hit)
-          mySlide = 0;
+          mySpeed *= RACE.hardHitSpeed;
+          me.y = Math.max(me.y - 250, Math.min(me.y, i * RACE.segmentLength - RACE.sledLength)); // (the nose stops AT the tree, not inside it)
+          steerLimit = Math.max(steerLimit, RACE.hardHitTurn);
+          mySteer = crashDir * RACE.hardHitTurn; // knocked round, away from it
+          mySlide = crashDir * RACE.crashShove;
+          holdTime = 0;
           carveTime = 0;
-          playSound("crash");
+          playSound("clack");
           if (race3dAvailable()) race3dCrash(i, sprite.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
           break;
         }
@@ -341,12 +367,11 @@ function raceUpdate(dt) {
     }
 
     checkGates(me);
-
-    // Tell the referee where I am, 10 times a second.
-    if (gameTime - lastRaceSend > RACE.sendEvery / 1000) {
-      lastRaceSend = gameTime;
-      sendToServer({ type: "move", x: me.x, y: me.y, speed: mySpeed, steer: mySteer, air: Math.round(myAir) });
-    }
+  }
+  // Tell the referee where I am, 10 times a second.
+  if (started && gameTime - lastRaceSend > RACE.sendEvery / 1000) {
+    lastRaceSend = gameTime;
+    sendToServer({ type: "move", x: me.x, y: me.y, speed: mySpeed, steer: mySteer, air: Math.round(myAir) });
   }
 
   // Countdown beeps: 3… 2… 1… Go!
@@ -372,7 +397,8 @@ function raceUpdate(dt) {
 // When a gate comes into view, this phone picks a word from MY level (each phone asks its
 // own questions, like the quiz popup): the English goes on the sign, and the right Hebrew
 // plus 2 wrong ones go over the 3 lanes, in random order. Whichever lane I'm in when I
-// pass under the gate is my answer.
+// pass under the gate is my answer. Right = a boost and a gift. Wrong = the gate bounces
+// me back up the path to try again (the same question), until I get it right.
 
 // The next gate ahead of distance y: { z (its distance along the race), gate }, or null.
 function nextGateAhead(y) {
@@ -382,8 +408,7 @@ function nextGateAhead(y) {
   return null;
 }
 
-// Which lane a sideways spot is in at a gate: 0 = left, 1 = middle, 2 = right, -1 = not under the gate
-// (off the path, or on the other way round the island from a small gift gate).
+// Which lane a sideways spot is in at a gate: 0 = left, 1 = middle, 2 = right, -1 = not under the gate (off the path).
 function laneAt(x, gate) {
   const across = (x - gate.center) / gate.half; // -1 = the gate's left pole, 1 = its right pole
   if (Math.abs(across) > 1) return -1;
@@ -411,7 +436,7 @@ function checkGates(me) {
     const next = nextGateAhead(me.y);
     if (next && next.z - me.y <= RACE.gateShowAt * RACE.segmentLength) {
       const entry = pickNextWord();
-      gateQuestion = { z: next.z, gate: next.gate, entry, choices: gateChoices(entry), shownAt: gameTime, lane: laneAt(me.x, next.gate), settledAt: gameTime };
+      gateQuestion = { z: next.z, gate: next.gate, entry, choices: gateChoices(entry), shownAt: gameTime, lane: laneAt(me.x, next.gate), settledAt: gameTime, tries: 0, wrong: [false, false, false] };
       gateFeedback = null; // (the new question replaces the last "Correct!")
       try { speakSteps([{ card: null, lines: [englishLine(entry)] }]); } catch (error) { reportProblem(error); }
     }
@@ -423,36 +448,47 @@ function checkGates(me) {
     gateQuestion.lane = lane;
     gateQuestion.settledAt = gameTime;
   }
-  if (me.y < gateQuestion.z) return;
+  if (me.y < gateQuestion.z || gameTime - bounceAt < RACE.gateBounceTime) return;
 
   // Passing under the gate: the lane I'm in is my answer.
   const { entry, choices, shownAt, settledAt, gate } = gateQuestion;
-  lastGateZ = gateQuestion.z;
-  gateQuestion = null;
-  if (lane === -1 && gate.side) return; // I went the other way round the island: no question, no harm done
-  if (lane === -1) {
-    // Off the track: no answer. (Nothing is saved, but you still see the answer.)
-    gateFeedback = { kind: "missed", entry, until: gameTime + RACE.feedbackTime };
-    playSound("wrong");
-    return;
+  const right = lane !== -1 && choices[lane] === entry.hebrew;
+  // Only my FIRST try counts for my level and my word list (after that I already know one wrong answer).
+  if (gateQuestion.tries === 0 && lane !== -1) {
+    autoLevelAnswer(right, Math.max(0, settledAt - shownAt));
+    recordAnswer(entry, right);
   }
-  const right = choices[lane] === entry.hebrew;
-  autoLevelAnswer(right, Math.max(0, settledAt - shownAt));
-  recordAnswer(entry, right);
-  gateFeedback = { kind: right ? "right" : "wrong", entry, until: gameTime + RACE.feedbackTime };
   if (right) {
-    // A boost, and a gift (the referee picks which one; if my hands are full I keep what I have).
+    // Through! A boost, and a gift (the referee picks which one; if my hands are full I keep what I have).
+    lastGateZ = gateQuestion.z;
+    gateQuestion = null;
+    gateFeedback = { kind: "right", entry, until: gameTime + RACE.feedbackTime };
     boostUntil = gameTime + RACE.boostTime;
     sendToServer({ type: "gift", gate: gate.number });
     playSound("correct");
     playSound("boost");
     playSound("item");
-  } else {
-    slowUntil = gameTime + RACE.slowTime;
-    playSound("wrong");
+    // Read the right Hebrew answer out loud.
+    try { speakSteps([{ card: null, lines: [hebrewLine(entry)] }]); } catch (error) { reportProblem(error); }
+    return;
   }
-  // Read the right Hebrew answer out loud either way.
-  try { speakSteps([{ card: null, lines: [hebrewLine(entry)] }]); } catch (error) { reportProblem(error); }
+  // A wrong answer (or I went round the side of the gate): the gate BOUNCES me back up the
+  // path, and I come down again for another try, with the same question, until I get it right.
+  // (The answer I tried gets a ✗, so I don't pick it again.)
+  gateQuestion.tries += 1;
+  if (lane !== -1) gateQuestion.wrong[lane] = true;
+  gateQuestion.settledAt = gameTime;
+  gateFeedback = { kind: lane === -1 ? "missed" : "wrong", entry, until: gameTime + 1.6 };
+  bounceAt = gameTime;
+  bounceFrom = me.y;
+  bounceTo = Math.max(TRACK.startZ, gate.z - RACE.gateBounce);
+  mySpeed = 0;
+  boostUntil = -Infinity;
+  holdTime = 0;
+  playSound("wrong");
+  playSound("boing");
+  // Say the English word again.
+  try { speakSteps([{ card: null, lines: [englishLine(entry)] }]); } catch (error) { reportProblem(error); }
 }
 
 // Everyone in order: finished sleds by their place, then the rest by how far they've gone.
@@ -477,7 +513,7 @@ function raceRender() {
   const myX = racing ? me.x : 0;
 
   // A little shake right after a crash.
-  const sinceCrash = Math.max(0, gameTime - crashAt);
+  const sinceCrash = Math.max(0, Math.min(gameTime - crashAt, (gameTime - softAt) * 2 + 0.15)); // (a bush shakes the screen too, but less)
   const sinceBump = Math.max(0, gameTime - bumpAt);
   const shake = sinceCrash < 0.3 ? (1 - sinceCrash / 0.3) * 8 : 0;
   if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -497,7 +533,10 @@ function raceRender() {
     id: thing.id, kind: thing.kind, x: thing.x, air: thing.air || 0,
     y: thing.y + (thing.speed || 0) * Math.max(0, Math.min(0.2, gameTime - raceInfo.thingsAt)),
   }));
-  const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices } : null;
+  const gate = racing && gateQuestion ? { number: gateQuestion.gate.number, english: gateQuestion.entry.english, choices: gateQuestion.choices, wrong: gateQuestion.wrong } : null;
+  // (Bounced back by a gate: the sled hops through the air on the way.)
+  const sinceBounce = gameTime - bounceAt;
+  const hop = racing && sinceBounce >= 0 && sinceBounce < RACE.gateBounceTime ? Math.sin(sinceBounce / RACE.gateBounceTime * Math.PI) * 380 : 0;
   // The view turns (part of the way) with my sled, so the world swings round when I steer.
   // (In a skid the sled swings round a lot further than the view does.)
   const viewTurn = racing ? Math.max(-1.2, Math.min(1.2, mySteer)) * RACE.maxTurn * RACE.cameraTurn : 0;
@@ -511,7 +550,7 @@ function raceRender() {
       along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate,
       color: (me && me.color) || RACE.colors[0],
       sleds, things,
-      air: racing ? myAir : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
+      air: racing ? myAir + hop : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
       charge: carveTime >= RACE.carveBig ? 2 : carveTime >= RACE.carveAfter ? 1 : 0,            // the carve boost building up (blue, then golden snow)
       bounce: myAir > 0 || inWater ? 0 : inDeepSnow ? Math.sin(gameTime * 30) * 0.12 : Math.sin(gameTime * 18) * 0.03 * fraction,
       wobble: (sinceCrash < 0.7 ? Math.exp(-5 * sinceCrash) * Math.sin(sinceCrash * 24) * 0.3 * crashDir : 0) // rocking after a crash…
@@ -536,7 +575,7 @@ function raceRender() {
   // (In 3D the sled is part of the 3D world; here we only need to know where it is, for the snow spray.)
   const size = sledOnScreen ? sledOnScreen.size : Math.min(SLED_WIDTH * (raceCamera.depth / raceCamera.playerZ) * w / 2, h * 0.3);
   const bounce = inDeepSnow ? Math.sin(gameTime * 30) * size * 0.025 : Math.sin(gameTime * 18) * size * 0.006 * fraction;
-  const bottom = sledOnScreen ? sledOnScreen.y : h * (RACE.horizon + 0.5) + bounce - myAir * size / SLED_WIDTH; // (higher up the screen while flying)
+  const bottom = sledOnScreen ? sledOnScreen.y : h * (RACE.horizon + 0.5) + bounce - (myAir + hop) * size / SLED_WIDTH; // (higher up the screen while flying)
   const middle = sledOnScreen ? sledOnScreen.x : w / 2;
   mySledSize = size;
   ctx.fillStyle = "#ffffff";
@@ -565,17 +604,16 @@ function raceRender() {
     countdown: !started ? Math.max(1, Math.ceil(raceInfo.startAt - gameTime)) : sinceStart < 0.8 ? "go" : null,
     finishedPlace: myFinishedPlace,
     deepSnow: inDeepSnow,
-    showHint: !started || sinceStart < RACE.hintTime, // the "hold to turn / double-tap and hold to skid" circles
+    showHint: !started || sinceStart < RACE.hintTime, // the "hold to turn / keep holding to skid" circles
     skidding: mySkid,
     gate: gateQuestion ? {
       english: gateQuestion.entry.english, choices: gateQuestion.choices, myLane: laneAt(me.x, gateQuestion.gate),
-      side: gateQuestion.gate.side, // (a small gift gate: which way round the island it is on)
+      wrong: gateQuestion.wrong, // (the answers I already tried: they get a ✗)
       // Fully shown until the gate is 40 segments away, then fading to almost nothing at 12.
       fade: Math.max(0.12, Math.min(1, ((gateQuestion.z - me.y) / RACE.segmentLength - 12) / 28)),
     } : null,
     feedback: gateFeedback && gameTime < gateFeedback.until ? gateFeedback : null,
     boosting,
-    slowed: gameTime < slowUntil,
     flying: myAir > 120,
     spinning: gameTime - spinAt < RACE.spinTime,
     inWater,
@@ -621,6 +659,7 @@ function showRaceWinner() {
 
 function raceResetTimers() {
   crashAt = -Infinity;
+  softAt = -Infinity;
   lastRaceSend = -Infinity;
   spinAt = -Infinity;
   itemUsedAt = -Infinity;
@@ -628,13 +667,13 @@ function raceResetTimers() {
   forgetGates();
 }
 
-// Forget the gate question, "Correct!" and any boost or slowdown (a new race, or the clock jumped).
+// Forget the gate question, "Correct!" and any boost or bounce (a new race, or the clock jumped).
 function forgetGates() {
   gateQuestion = null;
   gateFeedback = null;
   lastGateZ = -Infinity;
   boostUntil = -Infinity;
-  slowUntil = -Infinity;
+  bounceAt = -Infinity;
 }
 
 function raceClear() {
@@ -643,7 +682,6 @@ function raceClear() {
   mySpeed = 0;
   myFinishedPlace = 0;
   steerFingers.clear();
-  skidFingers.clear();
   forgetGates();
   snowPuffs.length = 0;
   otherSleds.clear();
@@ -674,7 +712,10 @@ function raceOnPhase(phase) {
     lastItem = null;
     mySkid = false;
     steerLimit = 1;
-    skidFingers.clear();
+    holdTime = 0;
+    holdSide = 0;
+    softHit = null;
+    softAt = -Infinity;
     seenBooms.clear();
     for (const boom of raceInfo.booms || []) seenBooms.add(boom.id); // (not the bangs left over from the last race)
     otherSleds.clear();

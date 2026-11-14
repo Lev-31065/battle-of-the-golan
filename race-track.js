@@ -25,18 +25,20 @@ const TRACK = {
   length: 0,  // the whole path, start to lake (track units)
   startZ: 0,  // where the start line is
   finishZ: 0, // where the finish line is (on the beach)
-  gates: [],  // the answer gates, in order down the path: { number, index (which segment it stands on), z, center + half (where its 3 lanes are across the path, and half their width), side (0 = a big gate right across the path; -1 / 1 = a small gift gate on the left / right way round an island) }
+  gates: [],  // the answer gates, in order down the path: { number, index (which segment it stands on), z, center + half (where its 3 lanes are across the path, and half their width) }. They are all the same size, right across the path
   ramps: [],  // snow jumps: { index (the segment it starts on), length (segments), z0, z1 (its top edge), offset + half (where it is across the path, and half its width), height, kind ("snow" or "pier") }
   forks: [],  // places where the path splits in two around an island: { from, to (segments), jumpSide (-1 / 1: the side with the jump) }
   waterZ: 0,  // where the Kinneret starts
 };
 
-// How big each kind of sprite is in the world (width, height), whether a sled crashes into
+// How big each kind of sprite is in the world (width, height), whether a sled runs into
 // it (solid), and how wide the part you actually hit is (hit: a tree's trunk, a whole rock).
+// soft = you plough right through it in a spray of snow, only slower (a bush, a snowman);
+// the other solid things are HARD: clack! (a tree, a rock, a cabin).
 // (race-draw.js paints them flat; race-3d.js builds them in 3D.)
 const SPRITE_SIZES = {
-  bush:     { w: 760,  h: 460,  solid: true, hit: 560 },
-  bushSnow: { w: 760,  h: 500,  solid: true, hit: 560 },
+  bush:     { w: 760,  h: 460,  solid: true, soft: true, hit: 560 },
+  bushSnow: { w: 760,  h: 500,  solid: true, soft: true, hit: 560 },
   oak:      { w: 1400, h: 1500, solid: true, hit: 260 },
   oakSnow:  { w: 1400, h: 1500, solid: true, hit: 260 },
   olive:    { w: 1300, h: 1100, solid: true, hit: 300 },
@@ -44,7 +46,7 @@ const SPRITE_SIZES = {
   palm:     { w: 1000, h: 2300, solid: true, hit: 180 },
   rock:     { w: 700,  h: 400,  solid: true, hit: 620 },
   rockSnow: { w: 700,  h: 430,  solid: true, hit: 620 },
-  snowman:  { w: 480,  h: 720,  solid: true, hit: 400 },
+  snowman:  { w: 480,  h: 720,  solid: true, soft: true, hit: 400 },
   cabin:    { w: 1800, h: 1350, solid: true, hit: 1500 },
   sign:     { w: 1300, h: 1000, solid: true, hit: 1100 },
   pole:     { w: 70,   h: 650,  solid: false }, // orange-tipped snow poles that mark the path's edge
@@ -134,7 +136,7 @@ function trackProgress(z) {
     let forkMade = g === 0; // (no split before the first gate: that stretch is short)
     while (made < stretch) {
       // Once in every stretch the path SPLITS in two around an island of rocks and trees, and
-      // joins up again further down. One way has jumps, the other has a small gift gate.
+      // joins up again further down. One way has jumps.
       if (!forkMade && made > stretch * 0.2 && stretch - made > RACE.forkLength + 100) {
         forkMade = true;
         pieceWidth = RACE.forkWidth;
@@ -168,7 +170,7 @@ function trackProgress(z) {
     pieceWidth = RACE.gateWidth;
     const gateIndex = segments.length + Math.floor(RACE.gateZone / 2);
     addRoad(0, RACE.gateZone, 0, 0, -0.04 * RACE.gateZone);
-    TRACK.gates.push({ number: g, index: gateIndex, z: gateIndex * L, center: 0, half: RACE.gateWidth, side: 0 });
+    TRACK.gates.push({ number: g, index: gateIndex, z: gateIndex * L, center: 0, half: RACE.gateWidth });
   }
   pieceWidth = RACE.pathWidth;
   downhill(120, -4, 0.12);          // the last stretch down
@@ -398,21 +400,6 @@ function trackProgress(z) {
   // The big wooden ramp at the very end, into the Kinneret.
   addRamp(waterIndex - RACE.lakeRampLength, RACE.lakeRampLength, 0, RACE.startWidth + 0.15, RACE.lakeRampHeight, "pier");
 
-  // ----- Gift gates -----
-  // Where the path splits, the way round WITHOUT the jumps has a small answer gate of its own.
-  // (Every gate gives a gift for a right answer; these are extra chances to get one.)
-  for (const fork of TRACK.forks) {
-    const n = fork.from + RACE.forkGateAt;
-    const seg = segments[n], room = (seg.width - seg.island) / 2; // half the width of one way round
-    if (room < 0.6) continue; // (too narrow for 3 lanes)
-    const gate = { number: 0, index: n, z: n * L, center: -fork.jumpSide * (seg.island + room), half: room - 0.04, side: -fork.jumpSide };
-    TRACK.gates.push(gate);
-    seg.gate = gate;
-  }
-  // All the gates in order down the path, numbered 0, 1, 2…
-  TRACK.gates.sort((a, b) => a.z - b.z);
-  TRACK.gates.forEach((gate, i) => { gate.number = i; });
-
   // Nothing solid on a ramp or where a jump lands.
   for (const ramp of TRACK.ramps) {
     for (let k = ramp.index - 8; k <= Math.min(segments.length - 1, ramp.index + ramp.length + 75); k++) {
@@ -422,13 +409,7 @@ function trackProgress(z) {
 
   // Keep the gates clear, so their poles are easy to see (and nothing solid stands in a lane just before or after one).
   for (const gate of TRACK.gates) {
-    for (let k = gate.index - 12; k <= gate.index + 12; k++) {
-      if (!gate.side) {
-        if (Math.abs(k - gate.index) <= 4) segments[k].sprites = segments[k].sprites.filter((s) => Math.abs(s.offset) > RACE.gateWidth + 0.6);
-      } else {
-        segments[k].sprites = segments[k].sprites.filter((s) => !SPRITE_SIZES[s.type].solid || Math.abs(s.offset - gate.center) > gate.half + 0.3);
-      }
-    }
+    for (let k = gate.index - 4; k <= gate.index + 4; k++) segments[k].sprites = segments[k].sprites.filter((s) => Math.abs(s.offset) > RACE.gateWidth + 0.6);
   }
   const finish = segments[finishIndex];
   finish.sprites = finish.sprites.filter((s) => Math.abs(s.offset) > RACE.startWidth + 0.6);

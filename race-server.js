@@ -88,7 +88,8 @@ function raceHandle(p, msg) {
   const seconds = Math.max(0.05, server.time - p.lastMoveAt);
   const furthest = p.y + RACE.maxSpeed * 2 * seconds + RACE.segmentLength;
   p.lastMoveAt = server.time;
-  p.y = Math.max(p.y, Math.min(y, furthest)); // (and never backwards)
+  // (Backwards is fine: a gate bounces a sled back up the path after a wrong answer. But not miles back.)
+  p.y = Math.max(p.y - RACE.gateBounce - 3000, Math.min(y, furthest));
   p.x = Math.max(-RACE.maxSide, Math.min(RACE.maxSide, x));
   p.speed = Math.max(0, Math.min(RACE.maxSpeed * 2, speed));
   p.steer = Math.max(-RACE.skidTurn, Math.min(RACE.skidTurn, steer)); // (in a skid a sled swings round further than 1)
@@ -258,7 +259,7 @@ function raceHit(q, thing) {
 // they join when the host taps Start (until there are RACE.bots sleds) and leave when
 // everyone goes back to the lobby. Phones draw them like any other sled.
 // Each bot: glides down a lane, wanders to a new lane now and then, steers around trees
-// and rocks it sees ahead, and at each gate gets it right (boost) or wrong (slowed).
+// and rocks it sees ahead, and at each gate gets it right (boost + gift) or wrong (bounced back to try again).
 // Settings: RACE.bots, botNames, botSkill, botRight, botCatchUp (rules.js).
 
 const LONG_AGO = -1e9; // "never happened" (a plain number, so it travels safely to the phones)
@@ -285,7 +286,8 @@ function raceAddBots() {
       laneUntil: 0,       // when it picks a new lane
       gatesDone: 0,       // how many gates it has passed
       boostUntil: LONG_AGO,
-      slowUntil: LONG_AGO,
+      backUntil: LONG_AGO, // bounced back by a gate (a wrong answer) until then
+      gateTries: 0,       // how many times it got the gate ahead of it wrong
       spinUntil: LONG_AGO, // spinning round after a banana peel or a mango
       freeUntil: LONG_AGO, // stuck? Until then, nothing stops it
       forkSide: 0,        // which way round an island it is going (-1 left, 1 right, 0 = no island here)
@@ -323,6 +325,13 @@ function raceMoveBot(p, dt) {
     return;
   }
   const spinning = server.time < p.spinUntil;
+
+  // A wrong answer: the gate is bouncing it back up the path. Then it starts again from a standstill.
+  if (server.time < p.backUntil) {
+    p.y -= RACE.gateBounce / RACE.gateBounceTime * dt;
+    p.speed = 0;
+    return;
+  }
 
   // Pick a new lane every few seconds.
   if (server.time > p.laneUntil) {
@@ -370,16 +379,21 @@ function raceMoveBot(p, dt) {
   p.steer += (steer - p.steer) * Math.min(1, dt * RACE.turnSpeed);
   p.x += p.steer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * dt;
 
-  // Gates: right = a boost and a gift, wrong = slowed down.
-  // (A small gift gate on one way round an island only counts if the bot went that way.)
+  // Gates: right = a boost and a gift. Wrong = bounced back up the path, to try again
+  // (like a player: the second time it knows one wrong answer, so it does better).
   const gate = TRACK.gates[p.gatesDone];
   if (gate && p.y >= gate.z) {
-    p.gatesDone += 1;
-    if (Math.abs(p.x - gate.center) <= gate.half) {
-      if (Math.random() < RACE.botRight) {
-        p.boostUntil = server.time + RACE.boostTime;
-        raceGiveGift(p, gate.number);
-      } else p.slowUntil = server.time + RACE.slowTime;
+    if (Math.random() < RACE.botRight + p.gateTries * 0.25) {
+      p.gatesDone += 1;
+      p.gateTries = 0;
+      p.boostUntil = server.time + RACE.boostTime;
+      raceGiveGift(p, gate.number);
+    } else {
+      p.gateTries += 1;
+      p.backUntil = server.time + RACE.gateBounceTime;
+      p.boostUntil = LONG_AGO;
+      p.speed = 0;
+      return;
     }
   }
 
@@ -389,24 +403,31 @@ function raceMoveBot(p, dt) {
   const best = Math.max(...humans.map((other) => other.y));
   const gap = p.y - best;
   const catchUp = !humans.length ? 1 : gap > RACE.botCatchUp ? 0.9 : gap < -RACE.botCatchUp ? 1.08 : 1;
-  const boosting = server.time < p.boostUntil, slowed = server.time < p.slowUntil;
+  const boosting = server.time < p.boostUntil;
   const top = RACE.maxSpeed * p.skill * catchUp
     * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
-    * (boosting ? RACE.boostSpeed : 1) * (slowed ? RACE.slowSpeed : 1) * (spinning ? RACE.spinSpeed : 1);
+    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1);
   if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
   else p.speed = Math.min(top, p.speed + RACE.accel * (boosting ? 3 : 1) * dt);
 
-  // Crashing, exactly like a player's sled: the nose hits, it bounces back and slides round.
-  // (A bot that crashes twice in a few seconds is stuck, like among the trees on an island.
+  // Running into things, exactly like a player's sled: a bush or a snowman only slows it down;
+  // a tree or a rock takes most of its speed and knocks it aside.
+  // (A bot that hits trees twice in a few seconds is stuck, like among the trees on an island.
   // To get it going again, nothing stops it for the next two seconds.)
-  if (server.time - p.crashAt > 0.5 && p.speed > 0 && server.time > p.freeUntil) {
+  if (p.speed > 0 && server.time > p.freeUntil) {
     const noseIndex = findSegment(p.y + RACE.sledLength).index;
     for (let i = segment.index; i <= noseIndex && server.time !== p.crashAt; i++) {
       for (const sprite of TRACK.segments[i].sprites) {
         const size = SPRITE_SIZES[sprite.type];
         if (!size.solid || Math.abs(p.x - sprite.offset) >= (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth) continue;
+        if (size.soft) {
+          if (sprite !== p.softHit) { p.softHit = sprite; p.speed *= RACE.softHitSpeed; }
+          continue;
+        }
+        if (server.time - p.crashAt <= 0.5) continue;
         p.crashDir = Math.abs(sprite.offset) > segment.width ? -Math.sign(sprite.offset) : p.x >= sprite.offset ? 1 : -1;
-        p.speed = -RACE.crashBounce * Math.max(0.4, fraction);
+        p.speed *= RACE.hardHitSpeed;
+        p.y = Math.max(p.y - 250, Math.min(p.y, i * RACE.segmentLength - RACE.sledLength)); // (its nose stops AT the tree)
         if (server.time - p.crashAt < 4) p.freeUntil = server.time + 2.5;
         p.crashAt = server.time;
         break;
