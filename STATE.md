@@ -80,7 +80,7 @@
 ## Public games (v 2026-11-15c; NOT yet tried by Daniel)
 - **Play Game** now means a public game: pick Capture the Flag or the race, and the phone lands in the open public room for that game (or opens one if nobody has). Under it: **🔒 Private room** = the old screen (nickname, Create a room, Join with a code). Invite links and class games are unchanged.
 - **Daniel chose (2026-11-15):** pick a game then auto-join; the game starts by an automatic timer; made-up safe names in public games.
-- Timer: 20 s after there are enough players (race 1, Capture the Flag 2). Names look like "🦊 שׁוּעָל 27"; nobody types a name in a public game. Up to 8 players a room, 5 rooms a game.
+- Timer: 20 s after the first player is in the room, for both games (v 2026-11-15e: Daniel asked for Capture the Flag to start with just 1 player too; `PUBLIC.minPlayers`). Later players join the game in progress. Names look like "🦊 שׁוּעָל 27"; nobody types a name in a public game. Up to 8 players a room, 5 rooms a game.
 - No database: fixed PeerJS room names (see AGENTS.md).
 - Tested: referee logic headless; and two real headless browsers over the internet landed in one public Capture the Flag room, counted down and started (one earlier run lost the connection after joining: probably the hidden test browsers running slowly, but watch for it on phones).
 - Known limits: the room lives on the phone of whoever opened it; if they leave, everyone else is dropped and searches again by themselves. Joining a public race in the middle starts you at the top while the others are far ahead. If everyone leaves a room that is mid-game, nothing is left to clean up (the room just disappears).

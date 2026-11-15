@@ -513,7 +513,7 @@ const PUBLIC = {
   rooms: 5,               // how many public rooms each game can have at once
   maxPlayers: 8,          // a room with this many players is full (the next player opens the next room)
   startDelay: 20,         // the game starts by itself this many seconds after there are enough players
-  minPlayers: { ctf: 2, race: 1 }, // how many players are "enough" (the race fills up with bots, so 1)
+  minPlayers: { ctf: 1, race: 1 }, // how many players are "enough" (1 = the timer starts as soon as someone is in the room; others can still join after the game has started)
   // Made-up names: a picture, a Hebrew animal and a number, like "🦊 שׁוּעָל 27".
   animals: [
     ["🦊", "שׁוּעָל"], ["🦅", "נֶשֶׁר"], ["🦌", "צְבִי"], ["🐐", "יָעֵל"], ["🐺", "זְאֵב"], ["🐻", "דֹּב"],
@@ -526,7 +526,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15d";
+const GAME_VERSION = "2026-11-15e";
 
 // ---------- Helpers ----------
 
