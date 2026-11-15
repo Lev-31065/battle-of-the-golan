@@ -213,20 +213,26 @@ let stickPointerId = null;
 let stickStartX = 0;
 let stickStartY = 0;
 
-joystickZone.addEventListener("pointerdown", (event) => {
-  if (stickPointerId !== null) return;
+// Start the joystick under this finger. (centerX, centerY) = the middle of the joystick on
+// the screen: normally right where the finger came down, but a game can put it somewhere
+// else (Capture the Flag: a drag that starts ON my player gets a joystick centered on the
+// player). Answers true if this finger is now the joystick finger.
+function startStick(event, centerX, centerY) {
+  if (stickPointerId !== null && stickPointerId !== event.pointerId) return false; // (another finger is already on it)
   stickPointerId = event.pointerId;
-  joystickZone.setPointerCapture(event.pointerId);
-  stickStartX = event.clientX;
-  stickStartY = event.clientY;
+  // (Keep following this finger, even when it slides onto a button.)
+  try { event.target.setPointerCapture(event.pointerId); } catch (error) { /* (not every element can: then the finger is followed through `window` below) */ }
+  stickStartX = centerX;
+  stickStartY = centerY;
   joystickBase.style.left = stickStartX + "px";
   joystickBase.style.top = stickStartY + "px";
-  joystickKnob.style.transform = "translate(0px, 0px)";
   joystickBase.classList.add("active"); // bright while your thumb is on it
-});
+  moveStick(event);
+  return true;
+}
 
-joystickZone.addEventListener("pointermove", (event) => {
-  if (event.pointerId !== stickPointerId) return;
+// The joystick finger moved: the knob follows it, and the player walks that way.
+function moveStick(event) {
   let dx = event.clientX - stickStartX;
   let dy = event.clientY - stickStartY;
   const length = Math.hypot(dx, dy);
@@ -237,6 +243,15 @@ joystickZone.addEventListener("pointermove", (event) => {
   joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
   stick.x = dx / STICK_RADIUS;
   stick.y = dy / STICK_RADIUS;
+}
+
+joystickZone.addEventListener("pointerdown", (event) => {
+  startStick(event, event.clientX, event.clientY);
+});
+
+// (On `window`, so it also follows a joystick that a game started somewhere else on the screen.)
+window.addEventListener("pointermove", (event) => {
+  if (event.pointerId === stickPointerId) moveStick(event);
 });
 
 // Let go of the joystick (also used to force-stop it when a popup opens).
@@ -253,8 +268,8 @@ function resetStick() {
 function releaseStick(event) {
   if (event.pointerId === stickPointerId) resetStick();
 }
-joystickZone.addEventListener("pointerup", releaseStick);
-joystickZone.addEventListener("pointercancel", releaseStick);
+window.addEventListener("pointerup", releaseStick);
+window.addEventListener("pointercancel", releaseStick);
 
 // Action buttons react on "pointerdown" (the instant a finger touches them), not "click".
 // Phones don't send clicks while another finger is on the screen, so this is what lets

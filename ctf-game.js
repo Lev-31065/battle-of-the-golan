@@ -329,6 +329,87 @@ function throwNow(angle) {
   sendToServer({ type: "throw", angle });
 }
 
+// ---------- Tapping the map ----------
+// Besides the buttons, you can tap the map itself (settings: TOUCH in rules.js):
+//   - Holding a hand weapon (stick, hammer): tap an ENEMY (or the speed box) to swing at them.
+//   - Holding something to throw: tap ANYWHERE and it is thrown that way. Tap an enemy and it
+//     is thrown straight at them.
+//   - Holding the spear: tap, and you turn to point it that way.
+//   - Put a finger ON your own player and drag: a joystick centered on the player.
+// A "tap" is a quick touch that hardly moves. (A drag on the left half is still the joystick.)
+
+const mapTaps = new Map(); // finger (pointer id) → { x, y (where it came down), at (when), onMe (it came down on my player) }
+
+// Where the camera is right now (the top-left corner of the screen, in map units).
+function ctfCamera(p) {
+  return { x: cameraPosition(p.x, view.width, MAP.width), y: cameraPosition(p.y, view.height, MAP.height) };
+}
+
+// Touches on the map itself: not on a button, a popup or a menu.
+function isOnTheMap(target) {
+  return Boolean(target && target.closest) && !target.closest("button, .overlay, .screen, a, input, select");
+}
+
+window.addEventListener("pointerdown", (event) => {
+  if (client.mode !== "ctf" || client.phase !== "playing" || !isOnTheMap(event.target)) return;
+  const p = myPlayer();
+  if (!p || !p.alive) return;
+  // Did the finger come down on my own player? Then it is a joystick, centered on the player.
+  const camera = ctfCamera(p);
+  const myX = (p.x - camera.x) * view.scale, myY = (p.y - camera.y) * view.scale;
+  // (Unless there is an enemy under the finger and the finger is nearer to them: that is a tap on the enemy.)
+  const spot = { x: camera.x + event.clientX / view.scale, y: camera.y + event.clientY / view.scale };
+  const enemy = enemyAt(p, spot);
+  const onEnemy = enemy && Math.hypot(enemy.x - spot.x, enemy.y - spot.y) < Math.hypot(p.x - spot.x, p.y - spot.y);
+  const onMe = !onEnemy && Math.hypot(event.clientX - myX, event.clientY - myY) < TOUCH.grab;
+  if (onMe && !isBusy()) startStick(event, myX, myY);
+  mapTaps.set(event.pointerId, { x: event.clientX, y: event.clientY, at: performance.now(), onMe });
+});
+window.addEventListener("pointerup", (event) => {
+  const tap = mapTaps.get(event.pointerId);
+  mapTaps.delete(event.pointerId);
+  if (!tap || tap.onMe || client.mode !== "ctf") return;
+  if (performance.now() - tap.at > TOUCH.tapTime || Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > TOUCH.tapMove) return; // (a drag or a hold, not a tap)
+  tapTheMap(event.clientX, event.clientY);
+});
+window.addEventListener("pointercancel", (event) => mapTaps.delete(event.pointerId));
+
+// The enemy I can see (or the speed box) at this spot on the map: the nearest one to it, or null.
+function enemyAt(p, spot) {
+  let target = null, nearest = Infinity;
+  const things = Object.values(players).filter((other) =>
+    other.team !== p.team && other.alive && !(other.inLog && other.inLog !== myLogNumber()));
+  if (speedBox && speedBox.alive) things.push(speedBox);
+  for (const thing of things) {
+    const gap = Math.hypot(thing.x - spot.x, thing.y - spot.y) - (thing.radius || 20);
+    if (gap < TOUCH.target && gap < nearest) { nearest = gap; target = thing; }
+  }
+  return target;
+}
+
+// A quick tap on the map at this spot on the screen.
+function tapTheMap(screenX, screenY) {
+  const p = myPlayer();
+  if (!p || isBusy()) return;
+  const camera = ctfCamera(p);
+  const spot = { x: camera.x + screenX / view.scale, y: camera.y + screenY / view.scale };
+  const target = enemyAt(p, spot); // did I tap an enemy (or the speed box)?
+  const aimAt = target || spot;
+  if (Math.hypot(aimAt.x - p.x, aimAt.y - p.y) < 1) return; // (right on top of me: no direction)
+  const angle = Math.atan2(aimAt.y - p.y, aimAt.x - p.x);
+
+  if (canThrow(p)) {
+    throwNow(angle); // toward the enemy I tapped, or toward the spot I tapped
+  } else if (heldWeapon(p) && canAttack(p)) {
+    if (!target) return; // (a hand weapon only swings when you tap someone)
+    p.facing = angle;
+    swingWeapon();
+  } else if (p.held === "spear" && !p.carrying) {
+    p.facing = angle; // point the spear that way
+    sendMyPosition(p);
+  }
+}
+
 // ---------- Frozen (hit by a rock) ----------
 // The referee says I'm frozen: a question pops up that can't be closed, and I can't move
 // until I get one right. Each freeze has its own number (freezeId), so a late snapshot

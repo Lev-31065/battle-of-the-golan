@@ -176,6 +176,17 @@ const REVIEW_MIX = {
 const CHECKPOINT_QUESTIONS = 30;
 
 // ---------- Messages at the bottom of the screen ----------
+// ---------- Tapping the map in Capture the Flag (ctf-game.js) ----------
+// Tap an enemy while holding a hand weapon = hit. Tap anywhere while holding something to
+// throw = throw it that way (tap an enemy = throw it at them). Drag starting ON your own
+// player = a joystick centered on the player.
+const TOUCH = {
+  tapMove: 14,   // a finger that moved more than this many screen pixels was a drag, not a tap
+  tapTime: 400,  // …and one that stayed down longer than this many milliseconds was a hold, not a tap
+  grab: 48,      // a touch this close to the middle of my player (screen pixels) starts the joystick on the player
+  target: 34,    // a tap this close to an enemy's edge (map units) counts as tapping that enemy
+};
+
 const MESSAGES = {
   time: 6,           // seconds each message stays (was about 3; Daniel: "make sure they appear for a while")
   max: 3,            // at most this many at once; a 4th pushes out the oldest
@@ -535,7 +546,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15f";
+const GAME_VERSION = "2026-11-15g";
 
 // ---------- Helpers ----------
 

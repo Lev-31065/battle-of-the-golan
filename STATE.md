@@ -69,6 +69,17 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## v 2026-11-15f + 15g (headless-tested, NOT yet tried by Daniel)
+- **Why:** a little boy thought skidding was the only way to turn (the skid buttons were the only visible buttons).
+- **Race, both modes:** faded ◀ ▶ steering arrows always on screen next to the skid buttons (pictures only: the whole half of the screen steers). Skid buttons faded too. The start hint says the skid buttons are only for very sharp bends.
+- **Race, easy mode:** on by itself for guests, off for logged-in players; "🐣 Easy mode" switch in the race lobby (remembered on the phone). The sled follows the path by itself; arrows change lanes (3 lanes; at a gate = the 3 answers); it goes round trees and islands by itself; no skid buttons, no leaving the path; gifts and boosts as usual. 92% top speed (`RACE.easySpeed`; Claude's choice, so easy mode is not the fastest way to win). It always takes the open way round the mountain-face island, never the rocky shortcut (Claude's choice).
+  - Tested: whole races (about 5 min 10 s, 0 crashes, every gate answered; wrong-first and lane-wandering runs too).
+- **Race, regular mode camera:** looks the way the sled is really moving (it used to look where the nose points, which is less than the real sideways movement). Turn off with `RACE.cameraMotion: false`. To watch: is the view too swingy when just changing lanes on a straight?
+- **Capture the Flag taps (15g):** tap an enemy = hit (hand weapon) or throw at them; tap anywhere = throw that way (rock, stars, grenade); drag from your own player = joystick on the player. Tested with pretend fingers: hammer hit, no swing on empty ground, rock froze the enemy, drag walked, old joystick still works.
+  - Limits: a grenade still flies its full distance in the tapped direction (it does not stop at the tapped spot). A tap must be quick (under 0.4 s) and not move.
+- **Public Capture the Flag** starts 20 s after the first player (15e); Daniel: "Looks good".
+- **Usage SQL worked:** Daniel sees 📊 Usage.
+
 ## Usage statistics (v 2026-11-15d)
 - The game counts: times it is opened, games started and finished (which game, what kind of room, how many players), and how many different phones (a random number saved on each phone). No names. Details in AGENTS.md.
 - **Daniel must run supabase/usage.sql once** in the Supabase SQL Editor (changing the email on the last line to his game login). Until then nothing is counted and there is no Usage button. Daniel ran it once on 2026-11-15 and it failed on the last line only, because the quote marks around his email were missing (error 42703, "column does not exist"). Everything above that line got past the database's checks. Claude told him to put the quotes back and run it again; it is NOT known yet whether the second run worked. (Claude cannot test the SQL: there is no database on this computer.)
