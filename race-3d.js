@@ -533,6 +533,7 @@ const COL = {
   olive: rgb3("#75865a"), oliveLight: rgb3("#98a97c"),
   blossom: rgb3("#f6d6df"), blossomDeep: rgb3("#e9a9bf"), palm: rgb3("#3f7a3a"),
   rock: rgb3("#4a4744"), rockLight: rgb3("#6a6660"), snow: rgb3("#f7fafd"),
+  boulder: rgb3("#a08d6c"), boulderLight: rgb3("#cdbb96"),
   wood: rgb3("#8b5a2b"), woodDark: rgb3("#5e3b1c"), orange: rgb3("#f97316"), dark: rgb3("#1f2937"),
   reed: rgb3("#7c8b3e"), reedTip: rgb3("#7a5230"),
 };
@@ -620,6 +621,14 @@ const MODELS = {
     B.blob(2.0, 0.7, 0.8, 1.7, 1.3, 1.6, shade3(COL.rock, 0.9), seed + 4, 0.5, snowy ? COL.snow : null);
   },
   rockSnow(B, seed) { MODELS.rock(B, seed, true); },
+  // A BOULDER: a huge pale rock out on the mountainside (it is placed several times bigger than
+  // a normal rock). Run into one and you must answer a question (race-game.js: hitBoulder).
+  // Its sandy color is how you tell it from an ordinary rock.
+  boulder(B, seed, snowy) {
+    B.blob(0, 1.2, 0, 3.4, 2.9, 3.1, COL.boulder, seed, 0.55, snowy ? COL.snow : COL.boulderLight);
+    B.blob(1.9, 0.6, 1.0, 1.9, 1.5, 1.7, shade3(COL.boulder, 0.88), seed + 4, 0.5, snowy ? COL.snow : null);
+    B.blob(-1.8, 0.5, -0.9, 1.5, 1.2, 1.4, shade3(COL.boulder, 0.8), seed + 9, 0.5, null);
+  },
   snowman(B, seed) {
     B.blob(0, 1.9, 0, 2.1, 2.0, 2.1, COL.snow, seed, 0.08);
     B.blob(0, 4.5, 0, 1.55, 1.5, 1.55, COL.snow, seed + 1, 0.08);
@@ -958,6 +967,24 @@ function buildLandChunk(cx, cz) {
     trees.push({ x: x0 + gx * CELL, z: z0 + gz * CELL, r: size.hit / 2 * U3 * big, tall: size.h * big, soft: Boolean(size.soft), rock: Boolean(size.rock), seg: -1, offset: 0 });
     B.place(gx * CELL, y - 0.3, gz * CELL, rand2(k, cx * 3 + cz * 11) * 6.3, big);
     MODELS[type](B, k + cx * 7 + cz * 13);
+  }
+  // BOULDERS: a few huge pale rocks, well away from the path (and never on a secret trail).
+  // A sled that runs into one has to answer a question to get going again (race-game.js).
+  for (let k = 0; k < RACE.boulders * 3; k++) {
+    if (rand2(cx * 53 + k, cz * 29 - k) > 0.34) continue; // (about RACE.boulders of them in each square)
+    const gx = 2 + rand2(cx * 97 + k, cz * 37) * (GRID - 5), gz = 2 + rand2(cx * 23, cz * 151 + k) * (GRID - 5);
+    const cell = Math.floor(gz) * GRID + Math.floor(gx);
+    const t = away[cell];
+    if (t < 26 || t > 150 || steepness[cell] > 0.7 || sand[cell] > 0.1) continue;
+    const bx = x0 + gx * CELL, bz = z0 + gz * CELL;
+    if (trailAt(bx, bz, 16)) continue;
+    const fx = gx - Math.floor(gx), fz = gz - Math.floor(gz);
+    const y = (height[cell] * (1 - fx) + height[cell + 1] * fx) * (1 - fz) + (height[cell + GRID] * (1 - fx) + height[cell + GRID + 1] * fx) * fz;
+    const big = RACE.boulderSize[0] + rand2(cz * 3 + k, cx * 7) * (RACE.boulderSize[1] - RACE.boulderSize[0]);
+    const size = SPRITE_SIZES.rock;
+    trees.push({ x: bx, z: bz, r: size.hit / 2 * U3 * big, tall: size.h * big * 1.3, soft: false, rock: true, boulder: true, id: cx + "," + cz + "," + k, seg: -1, offset: 0 });
+    B.place(gx * CELL, y - 0.4, gz * CELL, rand2(k, cx * 5 + cz * 3) * 6.3, big);
+    MODELS.boulder(B, k + cx * 11 + cz * 17, snow[cell] * 1.25 + lift[cell] / 300 > 0.5);
   }
   if (B.p.length) group.add(new THREE.Mesh(B.geometry(), world3d.paint));
   group.userData.trees = trees;

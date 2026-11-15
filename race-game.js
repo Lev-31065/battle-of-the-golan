@@ -52,6 +52,13 @@ let roamVy = 0;           // …and how fast it is going up (minus = down)
 let camExtra = 0, camLast = null, lastRenderAt = 0; // (these keep the camera from jumping when I leave the path or come back to it)
 const ROAM = {}, HERE = {}; // (spare spots for trackToWorld and worldToTrack to fill in)
 const returnButton = document.getElementById("return-button"); // "back to the path" (only while I am off it)
+let leaveY = 0, leaveX = 0; // where I left the path (the "back to the path" button takes me back there)
+let camTurn = null;       // which way the camera looks right now (it swings round behind the sled smoothly)
+let anonaUntil = -Infinity; // I ate an anona (a speed boost): faster until this time
+let crashPower = 1;       // how hard my last crash was: 0 (crawling) … 1 (fast)
+let mySpins = 0;          // spin-outs I started myself (hitting a tree fast) that the referee has not counted yet
+let boulderStop = null;   // the boulder I ran into: I am stuck there until I answer its question
+const bouldersDone = new Set(); // the boulders I already answered (their ids): they can not stop me again this race
 const hardHits = new Map(); // the trees and rocks I hit lately, and when (for a moment they can not stop me again)
 let mySkid = false;       // am I skidding right now? (holding a skid button)
 let steerLimit = 1;       // how far my sled may swing round right now (1 normally, more in a skid)
@@ -68,6 +75,7 @@ const ITEM_NAMES = {
   banana: { icon: "🍌", en: "Banana peel", he: "קְלִפַּת בָּנָנָה", tipEn: "🍌 A banana peel! Tap the button to drop it behind you", tipHe: "🍌 קְלִפַּת בָּנָנָה!" },
   mango: { icon: "🥭", en: "Mango", he: "מַנְגּוֹ", tipEn: "🥭 A mango! Tap the button to throw it ahead", tipHe: "🥭 מַנְגּוֹ!" },
   gas: { icon: "☁️", en: "Gas cloud", he: "עֲנַן גַּז", tipEn: "☁️ Gas! Tap the button: the sleds close behind you will hardly see a thing", tipHe: "☁️ עֲנַן גַּז!" },
+  anona: { icon: "🍈", en: "Anona: speed boost", he: "אֲנוֹנָה", tipEn: "🍈 An anona! Tap the button for a burst of speed", tipHe: "🍈 אֲנוֹנָה! מְהִירוּת!" },
   rimon: { icon: "💣", en: "Throw rimon", he: "לִזְרֹק רִמּוֹן", tipEn: "💣 A rimon! Big button = throw it ahead. Small button = drop it behind you", tipHe: "💣 רִמּוֹן!" },
 };
 const raceWinnerEl = document.getElementById("winner");
@@ -124,6 +132,12 @@ function useMyItem(how) {
   if (how === "drop" && me.item !== "rimon") return;
   itemUsedAt = gameTime;
   sendToServer({ type: "use", how: how || "" });
+  if (me.item === "anona") {
+    // An anona is eaten, not thrown: a burst of speed, starting now.
+    anonaUntil = gameTime + RACE.anonaTime;
+    playSound("boost");
+    return;
+  }
   playSound("throw");
 }
 itemButton.addEventListener("pointerdown", (event) => {
@@ -188,7 +202,8 @@ function raceUpdate(dt) {
 
   // Was I hit by a banana peel or a mango? (The referee counts the hits; when the count goes up, I spin out.)
   if ((me.spinCount || 0) !== mySpinCount) {
-    if ((me.spinCount || 0) > mySpinCount && started) {
+    if ((me.spinCount || 0) > mySpinCount && mySpins > 0) mySpins -= 1; // (my own crash: I am spinning already)
+    else if ((me.spinCount || 0) > mySpinCount && started) {
       spinAt = gameTime;
       mySpeed *= RACE.spinSpeed;
       carveTime = 0;
@@ -233,7 +248,11 @@ function raceUpdate(dt) {
   mySteer -= mySteer * Math.min(1, RACE.steerReturn * dt);
   mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
-  if (started && bouncing) {
+  if (started && boulderStop) {
+    // I ran into a boulder: I sit here until I answer its question (the quiz popup is open).
+    mySpeed = 0;
+    mySlide = 0;
+  } else if (started && bouncing) {
     // A wrong answer: the gate bounces me back up the path (fast at first, then slowing down),
     // and I start again from a standstill. I can already steer toward another lane on the way.
     const t = Math.max(0, Math.min(1, (gameTime - bounceAt) / RACE.gateBounceTime));
@@ -258,14 +277,20 @@ function raceUpdate(dt) {
     // (A really tight bend turns away faster than a sled can steer: only a skid gets round it.)
     // A TILTED bend holds the sled in like a bowl, so it hardly needs steering (RACE.bankHelp).
     const pull = RACE.curveSteer * (1 - RACE.bankHelp * Math.abs(segment.bank));
-    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
+    // The INSIDE of a bend is a shorter, tighter way round than the outside. So on the inside
+    // the sled gets round the bend sooner (`lane` above 1), but the bend also turns away under
+    // it harder; on the outside it is the other way round. (This is what keeps a sled that
+    // holds a skid through a hairpin ON the path: the further in it cuts, the harder the bend
+    // pushes back. Before, it was sucked off the inside.)
+    const lane = Math.max(0.6, Math.min(2, 1 / (1 - me.x * segment.curve * RACE.bend3d * RACE.roadWidth / (RACE.segmentLength * RACE.segmentLength))));
+    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * lane * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
     mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
     // The way the sled points moves you sideways (faster when you're going fast)…
     // (Even when you're crawling you can still steer a bit: RACE.slowSteer. Otherwise you'd be stuck after a crash.)
     // …but not at once: snow is slippery, so the sled slides for a moment before it goes
     // where it points (RACE.grip). In the air it just keeps going the way it was going.
-    const wanted = mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer);
+    const wanted = mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * (skidding ? RACE.skidSlide : 1);
     if (inWater) mySlide = 0;
     else if (!flying) mySlide += (wanted - mySlide) * Math.min(1, (skidding ? RACE.skidGrip : RACE.grip) * dt);
     me.x += mySlide * dt;
@@ -314,16 +339,19 @@ function raceUpdate(dt) {
       showToast("🤫 A secret shortcut!", "🤫 קִצּוּר דֶּרֶךְ סוֹדִי!");
       playSound("item");
     }
+    const anona = gameTime < anonaUntil; // (I ate an anona: a burst of speed)
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
-      * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
+      * (boosting ? RACE.boostSpeed : 1) * (anona ? RACE.anonaSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
       * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1)
       * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, slower where it is flat or uphill)
-    // (A skid scrubs the speed off gently; deep snow or a hit brakes hard.)
-    const braking = skidding && !inDeepSnow && !spinning ? RACE.skidBrake : RACE.offTrackSlowdown;
+    // MOMENTUM: a sled that is going faster than this stretch allows (it just came off a steep
+    // bit, or a boost ran out) keeps its speed for a while: it only slows down gently (RACE.coast).
+    // (A skid scrubs the speed off a bit faster; deep snow or spinning out brakes hard.)
+    const braking = inDeepSnow || spinning ? RACE.offTrackSlowdown : skidding ? RACE.skidBrake : RACE.coast;
     if (inWater) mySpeed = Math.max(0, mySpeed - RACE.waterDrag * dt); // the lake stops the sled
     else if (flying) { /* in the air it just keeps its speed */ }
     else if (mySpeed > top) mySpeed = Math.max(top, mySpeed - braking * dt);
-    else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting ? 3 : 1) * dt);
+    else mySpeed = Math.min(top, mySpeed + RACE.accel * (boosting || anona ? 3 : 1) * dt);
 
     // Running into things. (Trees and rocks stand beside the path, and a few right on it, so watch out!)
     //   SOFT things (a bush, a snowman): the sled ploughs right through in a big spray of
@@ -343,16 +371,17 @@ function raceUpdate(dt) {
         const mine = hit.seg >= 0 && Math.abs(hit.seg - segment.index) < 15;
         crashDir = mine && Math.abs(hit.offset) > segment.width ? -Math.sign(hit.offset) : hit.onRight ? -1 : 1;
         crashAt = gameTime;
-        mySpeed *= hit.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
+        hardCrash(hit); // (slow = a little knock; fast = I spin out)
         me.y -= 120; // (the nose stops AT the tree, not inside it)
-        steerLimit = Math.max(steerLimit, RACE.hardHitTurn);
-        mySteer = crashDir * RACE.hardHitTurn; // knocked round, away from it
-        mySlide = crashDir * RACE.crashShove;
-        playSound("clack");
+        // Knocked round, away from it: the slower I was going, the less.
+        const knock = Math.max(0.25, RACE.hardHitTurn * crashPower);
+        steerLimit = Math.max(steerLimit, knock);
+        mySteer = crashDir * knock;
+        mySlide = crashDir * RACE.crashShove * Math.max(0.25, crashPower);
         if (race3dAvailable() && hit.seg >= 0) race3dCrash(hit.seg, hit.offset, crashDir, gameTime); // the tree shakes, snow bursts off it
       }
     }
-    if (gameTime - crashAt < RACE.crashShoveTime) me.x += crashDir * RACE.crashShove * dt;
+    if (gameTime - crashAt < RACE.crashShoveTime) me.x += crashDir * RACE.crashShove * Math.max(0.25, crashPower) * dt;
 
     // Mountain goats wander about on the path. Bump into one and it is knocked flying (it
     // comes back later), and I am slowed down. (The referee tells the other phones.)
@@ -375,7 +404,7 @@ function raceUpdate(dt) {
 
     // The mountains slide as the track turns.
     raceTurn += segment.curve * (mySpeed * dt / RACE.segmentLength) * 0.003;
-    me.y += mySpeed * dt;
+    me.y += mySpeed * lane * dt;
 
     // Jumps: riding off the top of a ramp throws the sled into the air, and gravity brings
     // it back down (sledFlight in race-track.js). Landing on the path = a little boost.
@@ -417,7 +446,7 @@ function raceUpdate(dt) {
   // Countdown beeps: 3… 2… 1… Go!
   if (!started) {
     const left = Math.ceil(raceInfo.startAt - gameTime);
-    if (left >= 1 && left <= RACE.countdown && left !== lastCountdown) {
+    if (left >= 1 && left <= 3 && left !== lastCountdown) { // (only 3… 2… 1…: ten beeps would be a lot)
       lastCountdown = left;
       playSound("tick");
     }
@@ -444,7 +473,7 @@ function sledHits(wx, wz, heading) {
   const fx = Math.sin(heading), fz = -Math.cos(heading);
   let found = null;
   const look = (thing) => {
-    if (found || myAir > thing.tall * 0.5) return;
+    if (found || myAir > thing.tall * 0.5 || (thing.boulder && bouldersDone.has(thing.id))) return;
     for (const along of [1.5, 5, 8.5]) {
       const dx = thing.x - wx - fx * along, dz = thing.z - wz - fz * along, reach = thing.r + 2.7;
       if (dx * dx + dz * dz > reach * reach) continue;
@@ -462,6 +491,21 @@ function sledHits(wx, wz, heading) {
   memory.set(found, gameTime);
   found.onRight = (found.x - wx) * Math.cos(heading) + (found.z - wz) * Math.sin(heading) > 0; // is it to the right of my sled?
   return found;
+}
+
+// A tree or a rock: CLACK. How hard depends on how fast I was going (crashPower: 0 … 1).
+// Crawling into it only nudges me. Going FAST (over RACE.spinHitFrom of top speed) I spin out,
+// like being hit by a banana peel. (The referee is told, so the other phones see me spin.)
+function hardCrash(hit) {
+  crashPower = Math.max(0, Math.min(1, mySpeed / RACE.maxSpeed));
+  mySpeed *= hit.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed; // (a rock nearly stops me)
+  playSound("clack", 0.35 + 0.65 * crashPower);
+  if (crashPower >= RACE.spinHitFrom && gameTime - spinAt > RACE.spinTime + 1) {
+    spinAt = gameTime;
+    mySpins += 1;
+    playSound("spin");
+    sendToServer({ type: "spun" });
+  }
 }
 
 // A bush or a snowman: I plough right through it in a spray of snow, only slower.
@@ -488,6 +532,8 @@ function softBump(thing, me) {
 function startRoaming(me) {
   trackToWorld(me.y, me.x, HERE);
   roaming = true;
+  leaveY = me.y; // (remember where I left the path: "back to the path" brings me back here)
+  leaveX = me.x;
   roamX = HERE.x;
   roamZ = HERE.z;
   roamHeading = HERE.heading + Math.max(-1.3, Math.min(1.3, mySteer * RACE.maxTurn));
@@ -517,11 +563,13 @@ function roamUpdate(me, dt, steer, skidding, spinning) {
   inDeepSnow = !inAir && !onPath && !trail;
   const boosting = gameTime < boostUntil;
   const steep = 1 - (slope + RACE.slopeNormal) * RACE.slopeSpeed;
+  const anona = gameTime < anonaUntil;
   const top = RACE.maxSpeed * (onPath ? 1 : trail ? trail.trail.speed : RACE.offTrackSpeed)
-    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1) * (skidding ? RACE.skidSpeed : 1)
+    * (boosting ? RACE.boostSpeed : 1) * (anona ? RACE.anonaSpeed : 1) * (spinning ? RACE.spinSpeed : 1) * (skidding ? RACE.skidSpeed : 1)
     * Math.max(RACE.roamSlope[0], Math.min(RACE.roamSlope[1], steep));
   if (!inAir) {
-    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - RACE.offTrackSlowdown * dt);
+    // (Momentum: speed I carried in is lost gently, not all at once. Spinning out still brakes hard.)
+    if (mySpeed > top) mySpeed = Math.max(top, mySpeed - (spinning ? RACE.offTrackSlowdown : onPath || trail ? RACE.coast : RACE.roamCoast) * dt);
     else mySpeed = Math.min(top, mySpeed + RACE.accel * dt);
   }
   myCarve = inAir ? 0 : steer;
@@ -564,14 +612,16 @@ function roamUpdate(me, dt, steer, skidding, spinning) {
   // Running into things: the rocks along a zigzag, trees, bushes…
   const hit = mySpeed > 0 ? sledHits(roamX, roamZ, roamHeading) : null;
   if (hit && hit.soft) softBump(hit, me);
-  else if (hit) {
+  else if (hit && hit.boulder) {
+    hitBoulder(hit);
+  } else if (hit) {
     crashDir = hit.onRight ? -1 : 1;
     crashAt = gameTime;
-    mySpeed *= hit.rock ? RACE.rockHitSpeed : RACE.hardHitSpeed;
-    roamX += Math.cos(roamHeading) * crashDir * 1.5; // shoved aside, and knocked round, away from it
-    roamZ += Math.sin(roamHeading) * crashDir * 1.5;
-    roamHeading += crashDir * 0.6;
-    playSound("clack");
+    hardCrash(hit); // (slow = a little knock; fast = I spin out)
+    const knock = Math.max(0.2, crashPower);
+    roamX += Math.cos(roamHeading) * crashDir * 1.5 * knock; // shoved aside, and knocked round, away from it (less when I was slow)
+    roamZ += Math.sin(roamHeading) * crashDir * 1.5 * knock;
+    roamHeading += crashDir * 0.6 * knock;
     if (race3dAvailable() && hit.seg >= 0) race3dCrash(hit.seg, hit.offset, crashDir, gameTime);
   }
 
@@ -588,7 +638,35 @@ function roamUpdate(me, dt, steer, skidding, spinning) {
   checkGates(me);
 }
 
-// The "back to the path" button (or the R key): a hop back onto the nearest stretch of path.
+// A BOULDER: one of the huge pale rocks out on the mountainside. It stops me dead, and a
+// question pops up (like the rocks in Capture the Flag). A right answer and my sled hops
+// right over it; after that it can not stop me again this race.
+function hitBoulder(boulder) {
+  crashAt = gameTime;
+  crashPower = 0.4;
+  mySpeed = 0;
+  boulderStop = boulder;
+  steerFingers.clear();
+  skidFingers.clear();
+  playSound("clack");
+  openQuiz({
+    title: "🪨 A boulder! Answer to hop over it", titleHe: "🪨 סֶלַע עֲנָק! עֲנוּ כְּדֵי לְדַלֵּג מֵעָלָיו",
+    closable: false,
+    onCorrect: () => {
+      if (boulderStop !== boulder) return;
+      boulderStop = null;
+      bouldersDone.add(boulder.id);
+      if (!roaming) return;
+      // Up and over!
+      roamAlt += 0.5;
+      roamVy = RACE.boulderHop;
+      mySpeed = Math.max(mySpeed, 1900);
+      playSound("boing");
+    },
+  });
+}
+
+// The "back to the path" button (or the R key): a hop back to the spot where I left the path.
 // It costs a moment: you start again from a standstill. (auto = the game did it, not me.)
 function returnToPath(me, auto) {
   if (!roaming) return;
@@ -597,9 +675,9 @@ function returnToPath(me, auto) {
   // the race, that one: the button never sends you back up the mountain if it can help it.
   // (And never past a gate I have not answered yet.)
   const next = nextGate(), last = Math.floor(((next ? next.z : TRACK.finishZ) - 600) / RACE.segmentLength);
-  let y = Math.max(TRACK.startZ, Math.min(last * RACE.segmentLength, ROAM.y)), x = ROAM.x;
-  const better = furthestPathNear(roamX, roamZ, ROAM.far * 1.5 + 40, last);
-  if (better * RACE.segmentLength > y + 3000) { y = better * RACE.segmentLength; x = 0; }
+  // Back to where I LEFT the path. (So the button, or straying too far, never works as a
+  // shortcut: to skip a piece of the path you have to find your own way back onto it.)
+  const y = Math.max(TRACK.startZ, Math.min(last * RACE.segmentLength, leaveY)), x = leaveX;
   const seg = findSegment(y), room = Math.max(0.1, seg.width - 0.3);
   stopRoaming();
   me.y = y;
@@ -784,17 +862,18 @@ function raceRender() {
   if (racing) {
     const around = (a) => Math.atan2(Math.sin(a), Math.cos(a));
     trackToWorld(myY, 0, HERE);
-    const wanted = roaming ? roamHeading : HERE.heading + Math.max(-1.2, Math.min(1.2, mySteer)) * RACE.maxTurn * RACE.cameraTurn;
+    // The camera sits BEHIND the sled and follows the way it points (RACE.cameraTurn = how much
+    // of the way), swinging round smoothly (RACE.cameraFollow), never in a jump.
+    const wanted = roaming ? roamHeading : HERE.heading + Math.max(-1.6, Math.min(1.6, mySteer)) * RACE.maxTurn * RACE.cameraTurn;
     const since = Math.max(0, Math.min(0.05, gameTime - lastRenderAt));
     lastRenderAt = gameTime;
-    // (If the view would jump, like when I leave the path or come back to it, it swings round smoothly instead.)
-    if (camLast === null) camExtra = 0;
-    else if (Math.abs(around(wanted + camExtra - camLast)) > 0.3) camExtra = around(camLast - wanted);
-    camExtra *= Math.exp(-4 * since);
-    camLast = wanted + camExtra;
-    viewTurn = around(camLast - HERE.heading);
+    if (camTurn === null) camTurn = wanted;
+    else camTurn += around(wanted - camTurn) * (1 - Math.exp(-RACE.cameraFollow * since));
+    camLast = camTurn;
+    viewTurn = around(camTurn - HERE.heading);
   } else {
     camLast = null;
+    camTurn = null;
   }
 
   // Real 3D (race-3d.js) if this phone can do it: the world is drawn on the 3D canvas
@@ -827,7 +906,7 @@ function raceRender() {
   // Gas from a sled just ahead of me: a thick cloud over everything (but not over the race info).
   const gas = gasAround(me);
   if (gas > 0) drawGas(ctx, w, h, gas);
-  const boosting = gameTime < boostUntil;
+  const boosting = gameTime < boostUntil || gameTime < anonaUntil;
   if (boosting) drawBoostLines(ctx, w, h, gameTime);
 
   // My sled, in the middle, where the track is under the camera. It bumps along in deep snow.
@@ -980,6 +1059,7 @@ function raceClear() {
   otherSleds.clear();
   myAir = 0;
   roaming = false;
+  boulderStop = null;
   inWater = false;
   raceWinnerEl.hidden = true;
 }
@@ -1016,6 +1096,12 @@ function raceOnPhase(phase) {
     mySkid = false;
     roaming = false;
     camLast = null;
+    camTurn = null;
+    anonaUntil = -Infinity;
+    mySpins = 0;
+    crashPower = 1;
+    boulderStop = null;
+    bouldersDone.clear();
     lastSecret = null;
     hardHits.clear();
     steerLimit = 1;

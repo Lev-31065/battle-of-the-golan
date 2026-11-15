@@ -123,10 +123,12 @@ function lockSideways() {
   } catch {}
 }
 // Phones only allow this right after a tap. So any tap while the game is on and the phone
-// is still upright tries again, and so does the host's tap on "Start".
+// is still upright tries again. (The host's tap on "Start" does it too, but only once the tap is
+// FINISHED: see the Start button. Turning the screen in the middle of the tap made the phone
+// forget the tap, so Start had to be tapped twice.)
 window.addEventListener("pointerdown", (event) => {
   if (window.innerHeight <= window.innerWidth) return;
-  if (client.phase === "playing" || event.target.closest("#start-button")) lockSideways();
+  if (client.phase === "playing") lockSideways();
 }, true);
 function unlockSideways() {
   try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
@@ -526,7 +528,10 @@ document.getElementById("switch-team").addEventListener("click", () => {
   const p = myPlayer();
   if (p) sendToServer({ type: "team", team: otherTeam(p.team) });
 });
-startButton.addEventListener("click", () => sendToServer({ type: "start" }));
+startButton.addEventListener("click", () => {
+  sendToServer({ type: "start" }); // (the game starts first…)
+  lockSideways();                  // …and then the phone turns sideways
+});
 
 // ---------- Leaving (🏠 in the lobby, 🚪 in the game) ----------
 // The host's phone IS the room, so if the host leaves, everyone's game ends.

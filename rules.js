@@ -312,7 +312,7 @@ const TRANSLATE = {
 // segments (race-track.js), each RACE.segmentLength long.
 const RACE = {
   // The path: one long ride from the top of Mt Hermon down to the Kinneret (race-track.js).
-  countdown: 3,           // seconds of 3… 2… 1… before the sleds can go
+  countdown: 10,          // seconds of 10… 9… 8… before the sleds can go (was 3: time to turn the phone and read the steering tips)
   segmentLength: 200,     // how long one piece of the path is
   roadWidth: 2000,        // the measuring stick for widths: the widths below are in these
   pathWidth: 1.05,        // half the width of the normal path (most of the way)
@@ -330,27 +330,30 @@ const RACE = {
   lanes: 3,               // lanes at the gates (one answer over each lane)
   maxSpeed: 3700,         // top speed on a normal slope (track units per second). Was 10000, then 6000, 5500, 4200
   accel: 1400,            // how fast you speed up on the path
+  coast: 380,             // MOMENTUM: going faster than the slope here allows (after a steep bit, or a boost), you only lose this much speed each second, so you keep your speed for a while
+  roamCoast: 1100,        // …and off the path (deep snow, running up a bank) you lose it this fast
   offTrackSpeed: 0.7,     // off the path, in the deeper snow, your top speed drops to 70% (was 30%)
   offTrackSlowdown: 2500, // how fast going off the path (or anything else) slows you down to your top speed
   // The slope: a sled goes faster where the path is steep, and slower where it is flat or goes uphill.
   // (Apart from this, a skid, and the boost at a gate, the speed stays the same: no surprise boosts.)
   slopeNormal: 0.13,      // on a slope like this (it drops 13 for every 100 forward) you go exactly `maxSpeed`
-  slopeSpeed: 0.8,        // how much the slope matters (0 = not at all; 0.8 = a slope twice as steep is about 10% faster)
-  slopeLimits: [0.7, 1.3], // …but never slower than 70% or faster than 130% because of the slope
+  slopeSpeed: 0.5,        // how much the slope matters (0 = not at all; 0.5 = a slope twice as steep is about 6% faster). Was 0.8
+  slopeLimits: [0.8, 1.15], // …but never slower than 80% or faster than 115% because of the slope (was 70% to 130%)
   steerSpeed: 1.6,        // how fast you move left and right at top speed (when turned all the way)
   slowSteer: 0.35,        // even when you're barely moving, you steer at least this much of that (so you can get unstuck after a crash)
   turnRate: 1.8,          // steering TURNS the sled, and it keeps going that way until you steer back. This is how fast it turns (1.8 = from straight to turned all the way in about half a second). Was 1.5
   steerReturn: 0,         // 0 = the sled keeps its direction when you stop steering. Higher = it slowly straightens out by itself (try 0.5 if it feels too slippery)
   turnSpeed: 4,           // how quickly a BOT's sled swings round (higher = snappier)
   maxTurn: 0.45,          // how far the sled turns round when you steer (in radians: 0.45 is about 25 degrees). Was 0.6
-  cameraTurn: 0.35,       // how much the view turns with the sled (0 = not at all, 1 = fully). Was 0.6
+  cameraTurn: 0.9,        // how much the view turns with the sled (0 = not at all, 1 = fully: the camera sits right behind the sled, wherever it points). Was 0.35
+  cameraFollow: 6,        // how quickly the camera swings round behind the sled (higher = snappier, lower = lazier)
   treesOnPath: 0.5,       // how many trees and rocks stand right ON the path, to dodge (0 = none, 1 = lots)
   curvePush: 0,           // an extra sideways push in bends (was 0.1; `curveSteer` below does this job now)
   maxSide: 20,            // the farthest from the middle of the path any sled can be, in road widths (the referee checks this)
   // Roaming: off the path, anywhere on the mountain (race-game.js: roamUpdate)
   roamTurn: 1.15,         // how fast the sled turns round out there (radians per second: 1.15 is about a third of a full turn in 2 seconds)
   roamSkidTurn: 2.1,      // …and in a skid
-  roamSlope: [0.35, 1.45], // out there the slope matters more: from 35% of your speed (struggling up a steep bank) to 145% (straight down one)
+  roamSlope: [0.5, 1.25], // out there the slope matters more: from 50% of your speed (struggling up a steep bank) to 125% (straight down one). Was 35% to 145%
   roamJoin: 1.0,          // back on the path, you are "riding the path" again once you point within this much of its direction (radians: 1.0 is about 57 degrees). Pointing more across it than that, you just cross it
   roamFar: 260,           // this far from any path (map units; a sled is 6 wide) the game puts you back on the path by itself
   // Steering feel: a bit like a kart racing game (race-game.js)
@@ -363,13 +366,14 @@ const RACE = {
   // Skidding: hold one of the two SKID BUTTONS in the bottom corners of the screen (left button = skid left,
   // right button = skid right; on a computer: Shift + an arrow key). The sled swings round much further and
   // faster, so it takes sharp bends, but it loses speed while it skids.
-  skidTurn: 1.9,          // how far the sled can swing round in a skid (1 = as far as normal steering, 1.9 = almost twice as far)
-  skidTurnRate: 2.2,      // …and how much faster it swings round
-  skidSpeed: 0.72,        // top speed while skidding (0.72 = 72% of normal)
-  skidBrake: 2600,        // how fast a skid slows you down to that speed
+  skidTurn: 1.4,          // how far the sled can swing round in a skid (1 = as far as normal steering). Was 1.9: too tight
+  skidTurnRate: 1.6,      // …and how much faster it swings round (was 2.2)
+  skidSpeed: 0.9,         // top speed while skidding (0.9 = 90% of normal). Was 0.72: too slow
+  skidBrake: 900,         // how fast a skid slows you down to that speed (was 2600)
+  skidSlide: 0.7,         // in a skid the sled swings round a long way, but it only moves SIDEWAYS this much as fast as its nose says (0.7 = 70%). Lower = a skid holds a tight bend without diving off the inside of it
   skidGrip: 7,            // grip while skidding (see `grip`): higher = the skid bites sooner
   skidRecover: 3,         // after a skid, how fast the sled straightens back to a normal turn
-  hintTime: 5,            // the "hold to turn, corner buttons to skid" circles stay this many seconds after "Go!"
+  hintTime: 10,           // the "hold to turn, corner buttons to skid" circles stay this many seconds after "Go!"
   // Snow jumps (the ramps are placed in race-track.js)
   gravity: 2050,          // how fast a flying sled falls. Lower = longer, floatier jumps
   rampEvery: 90,          // about one snow ramp every this many segments (lower = more jumps)
@@ -397,8 +401,10 @@ const RACE = {
   // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you), a mango
   // (thrown ahead; it steers itself toward the sled in front), a rimon, a pomegranate grenade (thrown ahead OR
   // dropped behind), or GAS (a thick cloud pours out behind you: the sleds close behind can hardly see).
-  giftsInFront: { banana: 0.35, gas: 0.35, rimon: 0.25, mango: 0.05 }, // what you get when you are in first place (nobody ahead to throw at)…
-  giftsBehind: { banana: 0.15, gas: 0.1, rimon: 0.35, mango: 0.4 },    // …and when somebody is ahead of you
+  giftsInFront: { banana: 0.3, gas: 0.3, rimon: 0.2, mango: 0.05, anona: 0.15 }, // what you get when you are in first place (nobody ahead to throw at)…
+  giftsBehind: { banana: 0.1, gas: 0.1, rimon: 0.25, mango: 0.3, anona: 0.25 }, // …and when somebody is ahead of you
+  anonaSpeed: 1.45,       // an ANONA (a cherimoya: sweet and full of energy) is a speed boost: top speed goes up to 145%…
+  anonaTime: 3.5,         // …for this many seconds
   gasTime: 6,             // the gas pours out for this many seconds…
   gasReach: 7000,         // …and blinds sleds up to this far behind you (the closer, the thicker)
   gasThick: 0.9,          // how much of the view the thickest gas hides (1 = everything)
@@ -424,9 +430,14 @@ const RACE = {
   hardHitSpeed: 0.3,      // a tree (or a cabin): you keep this much of your speed…
   rockHitSpeed: 0.1,      // a ROCK: you keep only this much (rocks nearly stop you)…
   hardHitTurn: 1.5,       // …and the sled is knocked round this far, away from it (1 = as far as normal steering turns it)
+  spinHitFrom: 0.75,      // hit a tree or a rock going faster than this much of top speed (0.75 = 75%) and you SPIN OUT. Slower than that, you are only knocked aside: the slower, the less
   crashShove: 1.1,        // …and shoved sideways, away from it, this fast (road widths per second)…
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
+  // Boulders: huge pale rocks out on the mountainside, off the path. Run into one and you have to answer a question to get going again (then you hop over it).
+  boulders: 3,            // about how many in each big square of mountainside (0 = none)
+  boulderSize: [2.2, 3.8], // how big they are, compared with a normal rock
+  boulderHop: 19,         // how hard a right answer throws you up and over it
   // Mountain goats wander about on the path. Bump one and it is knocked flying (it comes back later), and you are slowed down.
   goatWide: 560,          // how big a goat is to bump into (a sled is 600 wide)
   goatTall: 700,          // a sled flying higher than this goes right over it
@@ -443,6 +454,7 @@ const RACE = {
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateZone: 70,           // the straight, wide stretch around each gate (in segments)
+  gateZoneShort: 95,      // …and where two or three gates stand in a row on one long straight: how far apart they are
   gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
   boostSpeed: 1.25,       // right answer: top speed goes up to 125%… (was 145%)
   boostTime: 2,           // …for this many seconds
@@ -474,7 +486,7 @@ const RACE = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-14g";
+const GAME_VERSION = "2026-11-15a";
 
 // ---------- Helpers ----------
 

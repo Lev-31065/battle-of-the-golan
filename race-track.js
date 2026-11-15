@@ -162,11 +162,12 @@ function trackProgress(z) {
   }
 
   // An answer gate: a straight, wide, gently sloping stretch, with the gate in the middle.
-  function gate() {
+  // (zone = how long that stretch is. Several gates in a row on one long straight use RACE.gateZoneShort.)
+  function gate(zone = RACE.gateZone) {
     const before = width;
     width = RACE.gateWidth;
-    const index = segments.length + Math.floor(RACE.gateZone / 2);
-    straight(RACE.gateZone, 0.04, { calm: true });
+    const index = segments.length + Math.floor(zone / 2);
+    straight(zone, 0.04, { calm: true });
     TRACK.gates.push({ number: TRACK.gates.length, index, z: index * L, center: 0, half: RACE.gateWidth });
     width = before;
   }
@@ -271,7 +272,7 @@ function trackProgress(z) {
   turn(-90, 22, 0.1);
   straight(25, 0.12);
   fork("woods", 1, () => { straight(20, 0.14); turn(40, 3, 0.15); straight(25, 0.14); });
-  straight(30, 0.12);
+  gate();                                   // a gate on the straight through the woods
   mark.woods2 = [segments.length, 0];
   turn(110, 23, 0.1);                       // (and another one here)
   mark.woods2[1] = segments.length;
@@ -303,6 +304,7 @@ function trackProgress(z) {
   // ----- 5. The second loop: to the left, and tilted like a bowl (zoom!) -----
   snow = 0.45;
   loop(-1, 12, true);
+  gate();                                   // a gate on the straight out of the loop
 
   // ----- 6. The hills: the path weaves between them; a jump off a hill, a corner with a secret cut, another zigzag -----
   zone = "hills";
@@ -335,9 +337,13 @@ function trackProgress(z) {
   gate();                                   // gate 8
   zigzag(3, -1, 45, 24, 0.1);
   turn(40, 5, 0.08);
-  gate();                                   // gate 9
+  gate();
   turn(-15, 2.5, 0.05);
-  straight(50, 0.015, { calm: true });      // flattening out by the lake
+  // The long straight down to the lake: three gates in a row.
+  gate(RACE.gateZoneShort);
+  gate(RACE.gateZoneShort);
+  gate(RACE.gateZoneShort);                 // the last gate (14 in all)
+  straight(20, 0.015, { calm: true });      // flattening out by the lake
   zone = "beach";
   width = RACE.startWidth;
   const beachStart = segments.length;

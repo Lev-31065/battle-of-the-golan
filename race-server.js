@@ -52,6 +52,7 @@ function raceResetSled(p) {
   p.spinKind = "";          // what hit it last
   p.safeUntil = LONG_AGO;   // nothing can hit it until then
   p.gasUntil = LONG_AGO;    // gas pours out behind it until then (every phone sees this)
+  p.anonaUntil = LONG_AGO;  // (bots) an anona speeds it up until then
 }
 
 // The host tapped Start: line everyone up behind the start line, four sleds per row
@@ -86,6 +87,11 @@ function raceHandle(p, msg) {
   if (msg.type === "gift") { raceGiveGift(p, Number(msg.gate)); return; } // "I got this gate's question right"
   if (msg.type === "use") { raceUseItem(p, msg.how); return; }            // "I'm using my gift" (how: "drop" = leave a rimon behind me)
   if (msg.type === "goat") { raceGoatHit(Number(msg.id), Number(msg.dir) < 0 ? -1 : 1); return; } // "I bumped into this goat"
+  if (msg.type === "spun") {
+    // "I hit a tree or a rock going fast, and I am spinning out." (So every phone shows it.)
+    if (server.time - (p.selfSpinAt || LONG_AGO) > RACE.spinTime) { p.selfSpinAt = server.time; p.spinCount += 1; p.spinKind = "crash"; }
+    return;
+  }
   if (msg.type !== "move") return;
   const x = Number(msg.x), y = Number(msg.y), speed = Number(msg.speed), steer = Number(msg.steer);
   if (![x, y, speed, steer].every(Number.isFinite)) return;
@@ -180,7 +186,10 @@ function raceUseItem(p, how) {
   if (!kind) return;
   p.item = null;
   const race = server.race;
-  if (kind === "gas") {
+  if (kind === "anona") {
+    // An anona (a cherimoya) is a burst of speed. A player's phone speeds its own sled up; the referee does it for a bot.
+    if (p.bot) p.anonaUntil = server.time + RACE.anonaTime;
+  } else if (kind === "gas") {
     // A thick cloud pours out behind the sled for a few seconds. (The phones of the sleds behind it do the rest.)
     p.gasUntil = server.time + RACE.gasTime;
     for (const q of Object.values(server.players)) {
@@ -456,7 +465,7 @@ function raceMoveBot(p, dt) {
   const onShortcut = segment.fork && segment.fork.fastSide && segment.island > 0.3 && (p.x - segment.islandAt) * segment.fork.fastSide > segment.island;
   const top = RACE.maxSpeed * p.skill * catchUp
     * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
-    * (boosting ? RACE.boostSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
+    * (boosting ? RACE.boostSpeed : 1) * (server.time < (p.anonaUntil || LONG_AGO) ? RACE.anonaSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
     * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (gassed ? RACE.gasBotSpeed : 1)
     * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, like a player)
   if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
@@ -526,7 +535,7 @@ function raceMoveBot(p, dt) {
         other.y > p.y + RACE.sledLength && other.y < p.y + RACE.mangoRange * 0.7 && Math.abs(other.x - p.x) < 0.4);
       // (Gas: when somebody is close behind, to blind them.)
       const chased = p.item === "gas" && others.some((other) => other.y < p.y && p.y - other.y < RACE.gasReach);
-      if (p.item === "banana" || target || chased || server.time > p.useAt + 5) raceUseItem(p);
+      if (p.item === "banana" || p.item === "anona" || target || chased || server.time > p.useAt + 5) raceUseItem(p);
     }
   }
   raceCheckFinish(p);
