@@ -76,14 +76,14 @@
 - No database: fixed PeerJS room names (see AGENTS.md).
 - Tested: referee logic headless; and two real headless browsers over the internet landed in one public Capture the Flag room, counted down and started (one earlier run lost the connection after joining: probably the hidden test browsers running slowly, but watch for it on phones).
 - Known limits: the room lives on the phone of whoever opened it; if they leave, everyone else is dropped and searches again by themselves. Joining a public race in the middle starts you at the top while the others are far ahead. If everyone leaves a room that is mid-game, nothing is left to clean up (the room just disappears).
-- Not done: the privacy page and README do not mention public games.
+- The privacy page covers public games, made-up names, mastery points and the saved look (updated 2026-11-15). The README does not mention public games yet.
 
 ## Mastery points, looks, log-in card (v 2026-11-15b; headless-tested, NOT yet tried by Daniel)
 - **Mastery points:** 1 point each time a word reaches a flashcard level it never reached before. They never go down. Shown on the home screen. Guests collect them on the phone and keep them when they log in.
 - **Looks:** 🎭 "My look" on the home screen. Kova tembel 15, sunglasses 40, ninja headband 80, cowboy hat 150, wizard hat 250, crown 400 points (unlocked, not spent). Logged-in players only. Shown on the player in Capture the Flag and on the sled rider in 3D (not in the old flat race drawing).
 - **After a game:** guests get a "Want to keep your progress?" card (Log in / Not now); logging in from it comes back to the room. Logged-in players get "+N mastery points" and a message when a new look opens.
 - Claude's choices: how points are earned, the 6 looks and their prices, unlock instead of spend, the card after EVERY game for guests. A look picked after joining a room only shows from the next room.
-- Not done: privacy page doesn't mention the saved look choice (it is stored with the progress).
+- The privacy page mentions the saved look (2026-11-15).
 
 ## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-15a)
 - **Daniel played v 14g (2026-11-15): "really fun … getting way better", then a fifth list. Built in v 15a (headless-tested: whole autopilot races, crash tests, off-road test, map check, screenshots). This is the current state; older notes below may differ:**
