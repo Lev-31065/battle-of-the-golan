@@ -546,7 +546,49 @@ button, select, input { touch-action: manipulation; }
 .skid-button[hidden] { display: none; }
 .skid-left { left: 16px; }
 .skid-right { right: 16px; }
-.skid-button.held { background: rgba(56, 189, 248, 0.85); border-color: #ffffff; }
+/* The skid buttons and the steering arrows are FADED (see-through) until you press them, so they don't hide the snow. */
+.skid-button, .steer-pad { opacity: 0.5; }
+.skid-button.held { background: rgba(56, 189, 248, 0.85); border-color: #ffffff; opacity: 1; }
+/* The two steering arrows: they only SHOW where to press (the whole half of the screen steers),
+   so touches go right through them ("pointer-events: none"). They look like the skid buttons, but white.
+   Upright phone: above the skid buttons. Sideways phone: beside them. Easy mode (no skid buttons): in the corners. */
+.steer-pad {
+  position: fixed;
+  bottom: 124px;
+  width: 96px;
+  height: 96px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.5);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 4;
+}
+.steer-pad[hidden] { display: none; }
+.steer-left { left: 16px; }
+.steer-right { right: 16px; }
+.steer-pad.held { background: rgba(250, 204, 21, 0.85); color: #1f2937; opacity: 1; }
+.steer-arrow { display: block; font-size: 30px; font-weight: 800; line-height: 32px; }
+.steer-pad .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
+.steer-pad .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.8; }
+.steer-pad.easy { bottom: 16px; width: 112px; height: 112px; }
+@media (min-width: 640px) {
+  .steer-pad { bottom: 16px; }
+  .steer-left { left: 124px; }
+  .steer-right { right: 124px; }
+  .steer-left.easy { left: 16px; }
+  .steer-right.easy { right: 16px; }
+}
+/* The easy-mode switch in the race lobby. */
+.easy-button.on { border-color: #22c55e; background: #f0fdf4; }
 .skid-arrow { display: block; font-size: 30px; font-weight: 800; line-height: 30px; }
 .skid-button .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
 .skid-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.8; }
@@ -596,9 +638,16 @@ button, select, input { touch-action: manipulation; }
 }
 /* In the race (while the skid buttons are showing): messages sit BETWEEN the two skid
    buttons, or just above them on a narrow phone, so they never cover a button. */
-.skid-button:not([hidden]) ~ .toast-area { bottom: 122px; right: 16px; }
+.steer-pad:not([hidden]) ~ .toast-area { bottom: 232px; right: 16px; }
+.steer-pad.easy:not([hidden]) ~ .toast-area { bottom: 138px; }
 @media (min-width: 640px) {
-  .skid-button:not([hidden]) ~ .toast-area { bottom: 16px; left: 128px; right: 128px; }
+  .steer-pad:not([hidden]) ~ .toast-area { bottom: 16px; left: 236px; right: 236px; }
+  .steer-pad.easy:not([hidden]) ~ .toast-area { bottom: 16px; left: 144px; right: 144px; }
+}
+/* "Back to the path" sits above the right-hand buttons: higher on an upright phone, where the arrow is above the skid button. */
+.return-button { bottom: 232px; }
+@media (min-width: 640px) {
+  .return-button { bottom: 124px; }
 }
 .toast {
   max-width: 100%;

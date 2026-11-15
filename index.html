@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-15e">
+  <link rel="stylesheet" href="style.css?v=2026-11-15f">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -60,6 +60,10 @@
   <!-- Mt Hermon Racing only: the two skid buttons, in the bottom corners. Hold one to skid that way. race-game.js. -->
   <button id="skid-left" class="skid-button skid-left" type="button" aria-label="Skid left" data-game-button="race" hidden><span class="skid-arrow">↶</span><span class="he" lang="he" dir="rtl">הַחְלָקָה</span><span class="en">Skid</span></button>
   <button id="skid-right" class="skid-button skid-right" type="button" aria-label="Skid right" data-game-button="race" hidden><span class="skid-arrow">↷</span><span class="he" lang="he" dir="rtl">הַחְלָקָה</span><span class="en">Skid</span></button>
+  <!-- Mt Hermon Racing only: the two steering arrows. They only SHOW where to press: the whole left half of the
+       screen steers left and the whole right half steers right (touches go straight through them). race-game.js. -->
+  <div id="steer-left" class="steer-pad steer-left" data-game-button="race" aria-hidden="true" hidden><span class="steer-arrow">◀</span><span class="he" lang="he" dir="rtl">שְׂמֹאלָה</span><span class="en">Left</span></div>
+  <div id="steer-right" class="steer-pad steer-right" data-game-button="race" aria-hidden="true" hidden><span class="steer-arrow">▶</span><span class="he" lang="he" dir="rtl">יָמִינָה</span><span class="en">Right</span></div>
   <!-- Mt Hermon Racing only: "back to the path". It only shows while your sled is off the path. race-game.js. -->
   <button id="return-button" class="return-button" type="button" aria-label="Back to the path" data-game-button="race" hidden><span class="he" lang="he" dir="rtl">חֲזָרָה לַשְּׁבִיל</span><span class="en">↩ Back to the path</span></button>
   <!-- Leave the game (asks "Are you sure?" first). -->
@@ -302,6 +306,8 @@
       <div class="teams racers" data-modes="race" hidden>
         <div class="team team-racers"><h3><span class="he" lang="he" dir="rtl">הַמִּתְחָרִים</span><span class="en">🛷 Racers</span></h3><ul id="racer-list"></ul></div>
       </div>
+      <!-- The race only: easy mode on/off (the sled follows the path by itself; the arrows change lanes). race-game.js fills in the words. -->
+      <button id="easy-button" class="secondary-button easy-button" type="button" data-modes="race" hidden></button>
       <button id="switch-team" class="secondary-button" type="button" data-modes="ctf"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
       <button id="start-button" class="big-button" type="button" hidden><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span><span class="en">Start the battle!</span></button>
       <p id="public-wait" class="panel-sub lobby-wait public-wait" hidden></p>
@@ -309,6 +315,7 @@
       <details class="how-to" data-modes="race" hidden>
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
         <p><span class="he" lang="he" dir="rtl">הַמִּזְחֶלֶת נוֹסַעַת לְבַד. מַחֲזִיקִים אֶת <b>הַצַּד הַשְּׂמָאלִי</b> אוֹ <b>הַיְּמָנִי</b> שֶׁל הַמָּסָךְ כְּדֵי לִפְנוֹת.</span><span class="en">🛷 Your sled goes by itself. Hold the <b>left</b> or <b>right</b> side of the screen to steer.</span></p>
+        <p><span class="he" lang="he" dir="rtl"><b>מַצָּב קַל:</b> הַמִּזְחֶלֶת עוֹקֶבֶת אַחֲרֵי הַשְּׁבִיל לְבַד. לוֹחֲצִים עַל הַחִצִּים כְּדֵי לְהַחְלִיף נָתִיב.</span><span class="en">🐣 <b>Easy mode:</b> the sled follows the path by itself. Tap the arrows to change lanes (that is how you pick an answer at a gate, and how you pass another sled).</span></p>
         <p><span class="he" lang="he" dir="rtl">סִיבוּב חַד? מַחֲזִיקִים אֶת <b>כַּפְתּוֹר הַהַחְלָקָה</b> בַּפִּנָּה: הַמִּזְחֶלֶת מַחֲלִיקָה וּפוֹנָה חַד יוֹתֵר, אֲבָל מְאִטָּה.</span><span class="en">💨 A sharp bend? Hold the <b>skid button</b> in the bottom corner on that side: the sled skids and turns much sharper, but it slows down.</span></p>
         <p><span class="he" lang="he" dir="rtl">אֶפְשָׁר לָרֶדֶת מֵהַשְּׁבִיל וְלִנְסֹעַ לְכָל כִּוּוּן! בַּשֶּׁלֶג הֶעָמֹק נוֹסְעִים קְצָת יוֹתֵר לְאַט, וְיֵשׁ עֵצִים וּסְלָעִים. כַּפְתּוֹר <b>חֲזָרָה לַשְּׁבִיל</b> מַחְזִיר אֶתְכֶם.</span><span class="en">❄️ You can leave the path and go any way you like! The deep snow is a bit slower, and there are trees and rocks. The <b>Back to the path</b> button puts you back.</span></p>
         <p><span class="he" lang="he" dir="rtl">חַפְּשׂוּ <b>קִצּוּרֵי דֶּרֶךְ סוֹדִיִּים</b>: רֶוַח בֵּין הַסְּלָעִים בַּזִּיגְזָג, אוֹ שְׁבִיל צַר בֵּין הָעֵצִים.</span><span class="en">🤫 Look for <b>secret shortcuts</b>: a gap in the rocks on a zigzag, or a narrow trail between the trees.</span></p>
@@ -441,29 +448,29 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-15e"></script>
-  <script src="rules.js?v=2026-11-15e"></script>
-  <script src="sound.js?v=2026-11-15e"></script>
-  <script src="speech.js?v=2026-11-15e"></script>
-  <script src="levels-b.js?v=2026-11-15e"></script>
-  <script src="words.js?v=2026-11-15e"></script>
-  <script src="progress.js?v=2026-11-15e"></script>
-  <script src="account.js?v=2026-11-15e"></script>
-  <script src="stats.js?v=2026-11-15e"></script>
-  <script src="decks.js?v=2026-11-15e"></script>
-  <script src="looks.js?v=2026-11-15e"></script>
-  <script src="quiz.js?v=2026-11-15e"></script>
-  <script src="ctf-draw.js?v=2026-11-15e"></script>
-  <script src="race-track.js?v=2026-11-15e"></script>
-  <script src="race-draw.js?v=2026-11-15e"></script>
-  <script src="three.min.js?v=2026-11-15e"></script>
-  <script src="race-3d.js?v=2026-11-15e"></script>
-  <script src="network.js?v=2026-11-15e"></script>
-  <script src="server.js?v=2026-11-15e"></script>
-  <script src="ctf-server.js?v=2026-11-15e"></script>
-  <script src="race-server.js?v=2026-11-15e"></script>
-  <script src="game.js?v=2026-11-15e"></script>
-  <script src="ctf-game.js?v=2026-11-15e"></script>
-  <script src="race-game.js?v=2026-11-15e"></script>
+  <script src="map.js?v=2026-11-15f"></script>
+  <script src="rules.js?v=2026-11-15f"></script>
+  <script src="sound.js?v=2026-11-15f"></script>
+  <script src="speech.js?v=2026-11-15f"></script>
+  <script src="levels-b.js?v=2026-11-15f"></script>
+  <script src="words.js?v=2026-11-15f"></script>
+  <script src="progress.js?v=2026-11-15f"></script>
+  <script src="account.js?v=2026-11-15f"></script>
+  <script src="stats.js?v=2026-11-15f"></script>
+  <script src="decks.js?v=2026-11-15f"></script>
+  <script src="looks.js?v=2026-11-15f"></script>
+  <script src="quiz.js?v=2026-11-15f"></script>
+  <script src="ctf-draw.js?v=2026-11-15f"></script>
+  <script src="race-track.js?v=2026-11-15f"></script>
+  <script src="race-draw.js?v=2026-11-15f"></script>
+  <script src="three.min.js?v=2026-11-15f"></script>
+  <script src="race-3d.js?v=2026-11-15f"></script>
+  <script src="network.js?v=2026-11-15f"></script>
+  <script src="server.js?v=2026-11-15f"></script>
+  <script src="ctf-server.js?v=2026-11-15f"></script>
+  <script src="race-server.js?v=2026-11-15f"></script>
+  <script src="game.js?v=2026-11-15f"></script>
+  <script src="ctf-game.js?v=2026-11-15f"></script>
+  <script src="race-game.js?v=2026-11-15f"></script>
 </body>
 </html>

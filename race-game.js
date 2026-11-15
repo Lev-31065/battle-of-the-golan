@@ -54,6 +54,8 @@ const ROAM = {}, HERE = {}; // (spare spots for trackToWorld and worldToTrack to
 const returnButton = document.getElementById("return-button"); // "back to the path" (only while I am off it)
 let leaveY = 0, leaveX = 0; // where I left the path (the "back to the path" button takes me back there)
 let camTurn = null;       // which way the camera looks right now (it swings round behind the sled smoothly)
+let moveHeading = 0, moveAt = -Infinity; // which way my sled is really moving over the map (radians), and when we last worked it out
+let lastMapX = null, lastMapZ = 0;       // where my sled was on the map a moment ago
 let anonaUntil = -Infinity; // I ate an anona (a speed boost): faster until this time
 let crashPower = 1;       // how hard my last crash was: 0 (crawling) … 1 (fast)
 let mySpins = 0;          // spin-outs I started myself (hitting a tree fast) that the referee has not counted yet
@@ -102,6 +104,99 @@ function skidInput() {
   for (const s of skidFingers.values()) side += s;
   if (keysDown.has("shift")) side += keyboardDirection().x;
   return Math.sign(side);
+}
+
+// ---------- Easy mode ----------
+// For little kids: the sled follows the path by itself, and the two arrows only CHANGE LANES
+// (left, middle, right). At a gate, the lanes are the three answers. Anywhere else, changing
+// lanes moves the sled over a bit, so you can get past a sled in front of you.
+// No skidding and no leaving the path. Gifts, boosts and everything else work the same.
+// It is ON by itself for players who are not logged in, and OFF for players who are. The
+// "Easy mode" button in the race lobby switches it, and the phone remembers that choice.
+const EASY_KEY = "golan-race-easy";
+const easyButton = document.getElementById("easy-button");
+const steerPads = { "-1": document.getElementById("steer-left"), "1": document.getElementById("steer-right") };
+let easyMode = false;     // is THIS race in easy mode? (decided when the race starts)
+let easyLane = 0;         // the lane I picked: -1 = left, 0 = middle, 1 = right
+let easySide = 0;         // which way round an island I am going (-1 left, 1 right, 0 = no island near)
+let easyPressed = 0;      // the arrow that is held right now (so one press = one lane)
+let easyRepeatAt = 0;     // …and when holding it changes lane again
+let easyShown = null;     // (what the lobby button says right now, so we only rewrite it when it changes)
+
+// Does this player want easy mode? (Their saved choice, or: yes for guests, no for logged-in players.)
+function raceEasy() {
+  let saved = null;
+  try { saved = localStorage.getItem(EASY_KEY); } catch (error) { /* (private browsing: no saved choice) */ }
+  if (saved === "1" || saved === "0") return saved === "1";
+  return !(typeof account !== "undefined" && account.user);
+}
+easyButton.addEventListener("click", () => {
+  const now = !raceEasy();
+  try { localStorage.setItem(EASY_KEY, now ? "1" : "0"); } catch (error) { /* (it just won't be remembered) */ }
+  showEasyButton();
+});
+function showEasyButton() {
+  const on = raceEasy();
+  if (easyShown === on) return;
+  easyShown = on;
+  easyButton.classList.toggle("on", on);
+  if (on) setBilingual(easyButton, "🐣 Easy mode: ON (the sled follows the path) · tap to turn off", "🐣 מַצָּב קַל: פּוֹעֵל");
+  else setBilingual(easyButton, "🐣 Easy mode: off · tap to turn on", "🐣 מַצָּב קַל: כָּבוּי");
+}
+
+// One press of an arrow: over to the next lane on that side.
+function easyNudge(side) {
+  const before = easyLane;
+  easyLane = Math.max(-1, Math.min(1, easyLane + side));
+  if (easyLane !== before) playSound("swish", 0.5);
+}
+
+// Where my sled wants to be, sideways, in easy mode (in road widths from the middle of the path).
+function easyTarget(me, segment) {
+  const room = Math.max(0.1, segment.width - 0.3); // (stay on the path)
+  let target = Math.max(-room, Math.min(room, easyLane * RACE.easyLane));
+  // What is coming first: a gate, or a place where the path splits round an island?
+  // (We only look for islands on THIS side of the next gate: until I am through the gate,
+  // the lane I picked is my answer, and nothing else may move me out of it.)
+  const gateSoon = gateQuestion && me.y < gateQuestion.z + 600 ? gateQuestion : null;
+  const before = gateSoon ? gateSoon.z : Infinity;
+  const spots = [0, 12, 25, 55].map((n) => (me.y + n * RACE.segmentLength < before || n === 0 ? findSegment(me.y + n * RACE.segmentLength) : null));
+  const islandOf = (seg) => (seg ? seg.island : 0);
+  const islandSoon = Math.max(islandOf(spots[0]), islandOf(spots[1]), islandOf(spots[2]));
+  const islandAhead = Math.max(islandSoon, islandOf(spots[3]));
+  if (islandAhead === 0) {
+    easySide = 0;
+    // A gate: exactly in the middle of one of its three lanes (one answer each).
+    if (gateSoon) target = Math.max(-room, Math.min(room, gateSoon.gate.center + easyLane * gateSoon.gate.half * 2 / 3));
+  } else {
+    // Where the path splits round an island: left lane = the left way, right lane = the right way,
+    // middle lane = the side I am on already. (Picked once, before the island; then I stay on that side.)
+    // (Where one way is a shortcut full of rocks, like down the mountain face: always the other, open way.)
+    const first = spots.find((seg) => islandOf(seg) > 0);
+    const islandAt = first.islandAt;
+    const fork = first.fork;
+    if (!easySide) easySide = fork && fork.fastSide ? -fork.fastSide : easyLane || (Math.abs(me.x - islandAt) > 0.3 ? Math.sign(me.x - islandAt) : 1);
+    target = Math.max(-room, Math.min(room, islandAt + easySide * (islandSoon + 0.6) + easyLane * 0.2));
+  }
+  // Trees and rocks standing on the path: the sled goes round them by itself.
+  const onIsland = Math.abs(me.x - segment.islandAt) < segment.island;
+  const last = Math.min(TRACK.segments.length - 1, segment.index + RACE.easyLook);
+  for (let i = segment.index + 1; i <= last; i++) {
+    for (const sprite of TRACK.segments[i].sprites) {
+      const size = SPRITE_SIZES[sprite.type];
+      if (!size.solid) continue;
+      const reach = (SLED_WIDTH / 2 + size.hit / 2) / RACE.roadWidth + 0.15;
+      const mySide = me.x >= sprite.offset ? 1 : -1; // which side of it I am on now
+      const across = !onIsland && (target - sprite.offset) * mySide < 0 && i - segment.index < 25 && Math.abs(me.x - sprite.offset) < 2;
+      if (Math.abs(target - sprite.offset) >= reach && !across) continue;
+      // Past it on the side I am on already (only if there is really no room there: the other side).
+      let spot = sprite.offset + mySide * reach;
+      if (Math.abs(spot) > room) spot = sprite.offset + mySide * (reach - 0.12);
+      if (Math.abs(spot) > segment.width - 0.08 || Math.abs(spot - segment.islandAt) < segment.island + 0.3) spot = sprite.offset - mySide * reach;
+      target = spot;
+    }
+  }
+  return target;
 }
 
 function sideOfScreen(event) {
@@ -161,13 +256,18 @@ function spinAngle(since) {
   return (1 - (1 - t) * (1 - t)) * Math.PI * 4;
 }
 
+// Which side of the screen (or which arrow key) is held: -1 = left, 0 = none, 1 = right.
+function sideInput() {
+  let steer = keyboardDirection().x;
+  for (const side of steerFingers.values()) steer += side;
+  return Math.max(-1, Math.min(1, steer));
+}
+
 // -1 = full left, 0 = straight, 1 = full right.
 function steerInput() {
   const skid = skidInput(); // (a skid button also steers, that way)
   if (skid) return skid;
-  let steer = keyboardDirection().x;
-  for (const side of steerFingers.values()) steer += side;
-  return Math.max(-1, Math.min(1, steer));
+  return sideInput();
 }
 
 // ---------- Moving my sled every frame ----------
@@ -231,11 +331,23 @@ function raceUpdate(dt) {
   }
 
   const flying = myAir > 0;
-  const steer = started && !spinning && !inWater ? steerInput() : 0;
+  // EASY MODE: the arrows don't steer, they change lanes. One press = one lane; holding an
+  // arrow changes lane again after a moment. (Also during the countdown, to line up.)
+  if (easyMode) {
+    const pressed = inWater ? 0 : sideInput();
+    if (pressed !== easyPressed) {
+      easyPressed = pressed;
+      if (pressed) { easyNudge(pressed); easyRepeatAt = gameTime + RACE.easyRepeat; }
+    } else if (pressed && gameTime >= easyRepeatAt) {
+      easyNudge(pressed);
+      easyRepeatAt = gameTime + RACE.easyRepeat;
+    }
+  }
+  const steer = started && !spinning && !inWater && !easyMode ? steerInput() : 0;
   // Skidding: while I hold a skid button, the sled skids to that side. It swings round faster
   // and much further, so it can take a sharp bend, but it loses speed. Only on the ground.
   const bouncing = gameTime - bounceAt < RACE.gateBounceTime; // (a gate is bouncing me back)
-  const skidding = started && !spinning && !inWater && !flying && !bouncing && skidInput() !== 0;
+  const skidding = started && !easyMode && !spinning && !inWater && !flying && !bouncing && skidInput() !== 0;
   if (skidding && !mySkid) playSound("skid");
   mySkid = skidding;
   // (After a skid the sled straightens back to a normal turn quickly, not in one jerk.)
@@ -261,7 +373,12 @@ function raceUpdate(dt) {
     mySlide = 0;
     carveTime = 0;
     const room = findSegment(me.y).width - 0.2;
-    me.x = Math.max(-room, Math.min(room, me.x + mySteer * RACE.steerSpeed * 0.6 * dt));
+    if (easyMode) {
+      // (Easy mode: slide over to the lane I picked while the gate throws me back.)
+      const gap = easyTarget(me, findSegment(me.y)) - me.x;
+      me.x += Math.max(-1, Math.min(1, gap * 4)) * RACE.easyLaneSpeed * dt;
+      mySteer = 0;
+    } else me.x = Math.max(-room, Math.min(room, me.x + mySteer * RACE.steerSpeed * 0.6 * dt));
     if (t >= 1) mySteer = 0;
     checkGates(me); // (so the lane I'm in stays up to date)
   } else if (started && roaming) {
@@ -283,7 +400,7 @@ function raceUpdate(dt) {
     // holds a skid through a hairpin ON the path: the further in it cuts, the harder the bend
     // pushes back. Before, it was sucked off the inside.)
     const lane = Math.max(0.6, Math.min(2, 1 / (1 - me.x * segment.curve * RACE.bend3d * RACE.roadWidth / (RACE.segmentLength * RACE.segmentLength))));
-    mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * lane * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
+    if (!easyMode) mySteer -= segment.curve * RACE.bend3d / (RACE.segmentLength * RACE.segmentLength) * Math.max(0, mySpeed) * lane * dt / RACE.maxTurn * pull * (flying ? 0.3 : 1);
     mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer));
 
     // The way the sled points moves you sideways (faster when you're going fast)…
@@ -292,7 +409,14 @@ function raceUpdate(dt) {
     // where it points (RACE.grip). In the air it just keeps going the way it was going.
     const wanted = mySteer * RACE.steerSpeed * Math.max(fraction, RACE.slowSteer) * (skidding ? RACE.skidSlide : 1);
     if (inWater) mySlide = 0;
-    else if (!flying) mySlide += (wanted - mySlide) * Math.min(1, (skidding ? RACE.skidGrip : RACE.grip) * dt);
+    else if (easyMode) {
+      // EASY MODE: the sled follows the path by itself (bends don't pull it off), and slides
+      // over to the lane I picked. Its nose turns a little toward where it is going.
+      const gap = easyTarget(me, segment) - me.x;
+      const want = flying || spinning ? 0 : Math.max(-1, Math.min(1, gap * 4));
+      mySlide = want * RACE.easyLaneSpeed;
+      mySteer += (want * 0.7 - mySteer) * Math.min(1, 8 * dt);
+    } else if (!flying) mySlide += (wanted - mySlide) * Math.min(1, (skidding ? RACE.skidGrip : RACE.grip) * dt);
     me.x += mySlide * dt;
     me.x -= segment.curve * RACE.curvePush * fraction * fraction * dt;
     // (For the snow spray: steering, sliding or going round a bend all throw snow out sideways.)
@@ -321,8 +445,8 @@ function raceUpdate(dt) {
     // is "roaming" on the mountain itself (see roamUpdate). Not from a bridge (it has walls),
     // not on the beach, and not on a phone that draws the old flat picture (there it stops at the edge).
     const room = me.x > 0 ? segment.roomR : segment.roomL;
-    const canRoam = race3dAvailable() && !segment.walled && segment.sand < 0.3 && !inWater && me.y > TRACK.startZ && me.y < TRACK.finishZ;
-    const farthest = segment.walled ? segment.width - 0.17 : canRoam ? Infinity : segment.width + Math.min(room, RACE.shoulder * 0.8);
+    const canRoam = !easyMode && race3dAvailable() && !segment.walled && segment.sand < 0.3 && !inWater && me.y > TRACK.startZ && me.y < TRACK.finishZ;
+    const farthest = segment.walled ? segment.width - 0.17 : easyMode ? Math.max(0.1, segment.width - 0.1) : canRoam ? Infinity : segment.width + Math.min(room, RACE.shoulder * 0.8);
     me.x = Math.max(-farthest, Math.min(farthest, me.x));
     if (canRoam && !flying && Math.abs(me.x) > segment.width + room + 0.03) startRoaming(me);
 
@@ -342,7 +466,7 @@ function raceUpdate(dt) {
     const anona = gameTime < anonaUntil; // (I ate an anona: a burst of speed)
     const top = RACE.maxSpeed * (inDeepSnow ? RACE.offTrackSpeed : 1)
       * (boosting ? RACE.boostSpeed : 1) * (anona ? RACE.anonaSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
-      * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1)
+      * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (easyMode ? RACE.easySpeed : 1)
       * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, slower where it is flat or uphill)
     // MOMENTUM: a sled that is going faster than this stretch allows (it just came off a steep
     // bit, or a boost ran out) keeps its speed for a while: it only slows down gently (RACE.coast).
@@ -437,6 +561,21 @@ function raceUpdate(dt) {
 
     checkGates(me);
   }
+  // Which way is my sled really MOVING over the map? (For the camera: it looks that way. A sled
+  // that is steering hard slides sideways faster than its nose shows, so the nose is not enough.)
+  // Worked out from where the sled was a moment ago and where it is now.
+  if (roaming) { HERE.x = roamX; HERE.z = roamZ; } else trackToWorld(me.y, me.x, HERE);
+  if (lastMapX !== null) {
+    const dx = HERE.x - lastMapX, dz = HERE.z - lastMapZ, far = Math.hypot(dx, dz);
+    // (Not while a gate throws me back, not when I'm nearly stopped, and not when the sled was just put somewhere else.)
+    if (started && !bouncing && mySpeed > 500 && far > 0.02 && far < 8) {
+      moveHeading = Math.atan2(dx, -dz);
+      moveAt = gameTime;
+    }
+  }
+  lastMapX = HERE.x;
+  lastMapZ = HERE.z;
+
   // Tell the referee where I am, 10 times a second.
   if (started && gameTime - lastRaceSend > RACE.sendEvery / 1000) {
     lastRaceSend = gameTime;
@@ -536,7 +675,8 @@ function startRoaming(me) {
   leaveX = me.x;
   roamX = HERE.x;
   roamZ = HERE.z;
-  roamHeading = HERE.heading + Math.max(-1.3, Math.min(1.3, mySteer * RACE.maxTurn));
+  // (It carries on the way it was really moving, so nothing jumps as it leaves the path.)
+  roamHeading = RACE.cameraMotion && gameTime - moveAt < 0.2 ? moveHeading : HERE.heading + Math.max(-1.3, Math.min(1.3, mySteer * RACE.maxTurn));
   roamAlt = worldHeight(roamX, roamZ, findSegment(me.y).index);
   roamVy = 0;
   mySlide = 0;
@@ -859,12 +999,20 @@ function raceRender() {
   // (In a skid the sled swings round a lot further than the view does.)
   // (Roaming off the path: the view simply looks the way the sled points.)
   let viewTurn = 0;
+  let sledTurn = mySteer * RACE.maxTurn; // which way my sled is drawn pointing, compared with the path
   if (racing) {
     const around = (a) => Math.atan2(Math.sin(a), Math.cos(a));
     trackToWorld(myY, 0, HERE);
     // The camera sits BEHIND the sled and follows the way it points (RACE.cameraTurn = how much
     // of the way), swinging round smoothly (RACE.cameraFollow), never in a jump.
-    const wanted = roaming ? roamHeading : HERE.heading + Math.max(-1.6, Math.min(1.6, mySteer)) * RACE.maxTurn * RACE.cameraTurn;
+    // RACE.cameraMotion: on the path too, the camera looks the way the sled is really MOVING
+    // (the same as off the path), so a sled cutting across a bend stays in front of the camera.
+    // (Standing still, or thrown back by a gate: the old way, along the path and the sled's nose.)
+    // (Not in easy mode: there a lane change is quick and sideways, and the view should stay calm.)
+    const moving = RACE.cameraMotion && !easyMode && !roaming && gameTime - moveAt < 0.2 && gameTime - spinAt > RACE.spinTime;
+    // (The sled is then drawn pointing the way it moves, with its nose a little further into the turn.)
+    if (moving) sledTurn = around(moveHeading - HERE.heading) + mySteer * RACE.maxTurn * 0.3;
+    const wanted = roaming ? roamHeading : moving ? moveHeading : HERE.heading + Math.max(-1.6, Math.min(1.6, mySteer)) * RACE.maxTurn * RACE.cameraTurn;
     const since = Math.max(0, Math.min(0.05, gameTime - lastRenderAt));
     lastRenderAt = gameTime;
     if (camTurn === null) camTurn = wanted;
@@ -882,7 +1030,7 @@ function raceRender() {
   let sledOnScreen = null;
   if (race3dAvailable()) {
     sledOnScreen = drawRace3d({
-      along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate, free: roaming,
+      along: myY, side: myX, turn: sledTurn, viewTurn, racing, time: gameTime, gate, free: roaming,
       color: (me && me.color) || RACE.colors[0], look: me && me.look,
       sleds, things,
       air: racing ? myAir + hop : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
@@ -945,6 +1093,7 @@ function raceRender() {
     deepSnow: inDeepSnow,
     showHint: !started || sinceStart < RACE.hintTime, // the "hold to turn / corner buttons to skid" circles
     skidding: mySkid,
+    easy: easyMode,
     gate: gateQuestion ? {
       english: gateQuestion.entry.english, choices: gateQuestion.choices, myLane: laneAt(me.x, gateQuestion.gate),
       wrong: gateQuestion.wrong, // (the answers I already tried: they get a ✗)
@@ -1095,6 +1244,12 @@ function raceOnPhase(phase) {
     lastItem = null;
     mySkid = false;
     roaming = false;
+    easyMode = raceEasy(); // (easy mode or not: decided now, for the whole race)
+    easyLane = 0;
+    easySide = 0;
+    easyPressed = 0;
+    moveAt = -Infinity;
+    lastMapX = null;
     camLast = null;
     camTurn = null;
     anonaUntil = -Infinity;
@@ -1138,11 +1293,19 @@ function raceUpdateHud(p, playing) {
   dropButton.hidden = !names || p.item !== "rimon";
   returnButton.hidden = !(playing && roaming); // "back to the path": only while I am off it
   // The two skid buttons, in the bottom corners. (The one being held lights up.)
-  const skid = playing ? skidInput() : 0;
+  // (Easy mode has no skidding, so no skid buttons.)
+  const skid = playing && !easyMode ? skidInput() : 0;
+  // The two steering arrows: faded, next to the skid buttons (in easy mode: in the corners).
+  // The arrow being pressed lights up.
+  const held = playing ? sideInput() : 0;
   for (const side of [-1, 1]) {
-    skidButtons[side].hidden = !playing;
+    skidButtons[side].hidden = !playing || easyMode;
     skidButtons[side].classList.toggle("held", skid === side);
+    steerPads[side].hidden = !playing;
+    steerPads[side].classList.toggle("easy", easyMode);
+    steerPads[side].classList.toggle("held", held === side && !skid);
   }
+  if (!playing) showEasyButton(); // (in the lobby: the easy-mode switch says what it is set to)
   if (names) {
     itemIcon.textContent = names.icon;
     setBilingual(itemLabel, names.en, names.he);

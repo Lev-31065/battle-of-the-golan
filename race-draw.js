@@ -1094,7 +1094,8 @@ function drawRaceHud(ctx, w, h, info) {
     ctx.globalAlpha = 1;
   }
   // My place, bottom left. My speed, bottom right.
-  const cornerX = Math.max(70, w * 0.1) + 104; // (clear of the skid buttons in the corners)
+  // (Clear of the buttons in the corners: on a sideways phone there are two side by side, a skid button and a steering arrow; in easy mode just one arrow.)
+  const cornerX = w >= 640 ? (info.easy ? 138 : 232) + size * 3 : Math.max(70, w * 0.1) + 104;
   drawBilingualText(ctx, `מָקוֹם ${info.place}`, `${ordinal(info.place)} of ${info.racers}`, cornerX, h - size * 1.2, size * 1.2, "#fde047");
   drawBilingualText(ctx, `${info.kmh} קמ״ש`, "km/h", w - cornerX, h - size * 1.2, size);
   if (info.spinning) drawBilingualText(ctx, "🌀 מִסְתּוֹבְבִים!", "Spinning out!", w - cornerX, h - size * 3.2, size * 0.9, "#fca5a5");
@@ -1104,47 +1105,33 @@ function drawRaceHud(ctx, w, h, info) {
   if (info.deepSnow && !info.finishedPlace) {
     drawBilingualText(ctx, "מִחוּץ לַשְּׁבִיל — אִטִּי!", "❄️ Off the path — slow!", w / 2, below + size * 1.1, size * 0.75, "#bae6fd");
   }
-  if (info.showHint) drawSteerHint(ctx, w, h, size);
+  if (info.showHint) drawSteerHint(ctx, w, h, size, info.easy);
   if (info.countdown !== null) {
     const go = info.countdown === "go";
     drawBilingualText(ctx, go ? "יוֹצְאִים!" : String(info.countdown), go ? "Go!" : "", w / 2, h * 0.5, size * (go ? 2.6 : 3.4), go ? "#4ade80" : "#ffffff");
   }
 }
 
-// At the start of every race: a circle on each side of the screen showing where to tap,
-// and what holding does: hold a side = turn, hold a corner button = skid.
-function drawSteerHint(ctx, w, h, size) {
-  const r = Math.min(w * 0.13, h * 0.2, 90);
-  const y = h * 0.62;
-  for (const side of [-1, 1]) {
-    const x = w / 2 + side * (w / 2 - r - Math.max(14, w * 0.04));
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
-    ctx.fill();
-    ctx.setLineDash([r * 0.22, r * 0.16]);
-    ctx.lineWidth = Math.max(3, r * 0.07);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.stroke();
-    ctx.setLineDash([]);
-    // An arrow in the circle, and under it which way that side turns.
-    ctx.font = `800 ${Math.round(r * 0.9)}px Rubik, Arial, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-    ctx.fillText(side < 0 ? "◀" : "▶", x, y);
-    ctx.textBaseline = "alphabetic";
-    drawBilingualText(ctx, side < 0 ? "שְׂמֹאלָה" : "יָמִינָה", side < 0 ? "Left" : "Right", x, y + r + size * 0.95, size * 0.8);
-  }
-  // In the middle: what the taps do.
-  const boxW = Math.min(w - 4 * r - Math.max(56, w * 0.16), 460), boxH = size * 4.4;
-  if (boxW < 120) return; // (no room between the circles on a very narrow screen)
+// At the start of every race: a box near the top that says what the buttons do.
+// (The arrows and the skid buttons themselves are real, faded buttons at the bottom of the
+// screen all race long: see .steer-pad and .skid-button in style.css.)
+// Easy mode: the sled follows the path by itself, and the arrows change lanes.
+function drawSteerHint(ctx, w, h, size, easy) {
+  const boxW = Math.min(w - Math.max(56, w * 0.16), 460), boxH = size * 4.4;
+  if (boxW < 120) return; // (no room on a very narrow screen)
   const top = size * 1.5; // (near the top: above the 3… 2… 1…, and not over my sled)
   roundedBox(ctx, (w - boxW) / 2, top, boxW, boxH, 14, "rgba(15, 23, 42, 0.62)");
-  drawTextInBox(ctx, "מַחֲזִיקִים: פּוֹנִים", w / 2, top + boxH * 0.16, boxW - 16, boxH * 0.26, size * 0.95, "#ffffff", true);
-  drawTextInBox(ctx, "Hold a side to turn", w / 2, top + boxH * 0.36, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
-  drawTextInBox(ctx, "כַּפְתּוֹרֵי הַפִּנּוֹת: הַחְלָקָה", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
-  drawTextInBox(ctx, "Hold a corner button to skid: sharper turns, but slower", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+  if (easy) {
+    drawTextInBox(ctx, "הַמִּזְחֶלֶת נוֹסַעַת לְבַד", w / 2, top + boxH * 0.16, boxW - 16, boxH * 0.26, size * 0.95, "#ffffff", true);
+    drawTextInBox(ctx, "Easy mode: the sled follows the path by itself", w / 2, top + boxH * 0.36, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+    drawTextInBox(ctx, "◀ ▶ הַחִצִּים: מַחֲלִיפִים נָתִיב", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
+    drawTextInBox(ctx, "Tap ◀ or ▶ to change lanes", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+    return;
+  }
+  drawTextInBox(ctx, "◀ ▶ מַחֲזִיקִים חֵץ: פּוֹנִים", w / 2, top + boxH * 0.16, boxW - 16, boxH * 0.26, size * 0.95, "#ffffff", true);
+  drawTextInBox(ctx, "Hold ◀ or ▶ (or anywhere on that side) to turn", w / 2, top + boxH * 0.36, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
+  drawTextInBox(ctx, "כַּפְתּוֹרֵי הַהַחְלָקָה: רַק לְסִיבוּב חַד", w / 2, top + boxH * 0.62, boxW - 16, boxH * 0.26, size * 0.95, "#fde047", true);
+  drawTextInBox(ctx, "Skid buttons: only for a very sharp bend (sharper, but slower)", w / 2, top + boxH * 0.84, boxW - 16, boxH * 0.16, size * 0.55, "#e2e8f0", false, 600);
 }
 
 // Top left: how far down the mountain everyone is. ⛰️ = the start, 🌊 = the Kinneret.

@@ -373,7 +373,16 @@ const RACE = {
   skidSlide: 0.7,         // in a skid the sled swings round a long way, but it only moves SIDEWAYS this much as fast as its nose says (0.7 = 70%). Lower = a skid holds a tight bend without diving off the inside of it
   skidGrip: 7,            // grip while skidding (see `grip`): higher = the skid bites sooner
   skidRecover: 3,         // after a skid, how fast the sled straightens back to a normal turn
-  hintTime: 10,           // the "hold to turn, corner buttons to skid" circles stay this many seconds after "Go!"
+  hintTime: 10,           // the "hold to turn, corner buttons to skid" words stay this many seconds after "Go!"
+  // EASY MODE (for little kids): the sled follows the path by itself, and the two arrows change lanes
+  // (left, middle, right). It is on by itself for players who are not logged in; the "Easy mode" button
+  // in the race lobby turns it on or off (race-game.js: raceEasy).
+  easyLane: 1.13,         // how far apart the 3 lanes are (road widths). At a gate the lanes are the gate's own 3 lanes
+  easyLaneSpeed: 2.2,     // how fast the sled slides over to the next lane (road widths per second)
+  easyRepeat: 0.45,       // hold an arrow: it changes lane again every this many seconds
+  easySpeed: 0.92,        // top speed in easy mode (0.92 = 92%): a little slower, because it never has to skid or slow down for a bend
+  easyLook: 45,           // how many segments ahead it looks for trees and rocks standing on the path, to go round them by itself
+  cameraMotion: true,     // true = the camera looks the way the sled is really MOVING (like off the path); false = the way its nose points
   // Snow jumps (the ramps are placed in race-track.js)
   gravity: 2050,          // how fast a flying sled falls. Lower = longer, floatier jumps
   rampEvery: 90,          // about one snow ramp every this many segments (lower = more jumps)
@@ -526,7 +535,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15e";
+const GAME_VERSION = "2026-11-15f";
 
 // ---------- Helpers ----------
 
