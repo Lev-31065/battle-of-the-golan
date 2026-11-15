@@ -51,9 +51,11 @@ function peerLibraryLoaded(onError) {
 }
 
 // Create a room. handlers = { onReady(code, myId), onMessage(id, msg), onLeave(id), onError(text) }
-function hostRoom(handlers) {
+// fixedCode (public rooms only) = open the room under exactly this name. If somebody already
+// has it open, handlers.onTaken() is called (so we can join theirs instead).
+function hostRoom(handlers, fixedCode) {
   if (!peerLibraryLoaded(handlers.onError)) return;
-  const code = makeRoomCode();
+  const code = fixedCode || makeRoomCode();
   const peer = new Peer(ROOM_PREFIX + code);
   net.peer = peer;
   let ready = false;
@@ -82,7 +84,8 @@ function hostRoom(handlers) {
     if (err.type === "unavailable-id") {
       // That room code is already taken — try a different one.
       peer.destroy();
-      hostRoom(handlers);
+      if (fixedCode) handlers.onTaken();
+      else hostRoom(handlers);
     } else if (!ready) {
       handlers.onError(...friendlyError(err));
     }
@@ -126,6 +129,12 @@ function joinRoom(code, handlers) {
 // (Joiners) send a message to the host.
 function sendToHost(msg) {
   if (net.hostConn && net.hostConn.open) net.hostConn.send(msg);
+}
+
+// (Host) send a message to one joiner.
+function sendTo(id, msg) {
+  const conn = net.clients[id];
+  if (conn && conn.open) conn.send(msg);
 }
 
 // (Host) send a message to every joiner.

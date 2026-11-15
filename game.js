@@ -314,7 +314,17 @@ function openPlayScreen(classGame) {
   showScreen("play");
 }
 
-document.getElementById("play-game-button").addEventListener("click", () => openPlayScreen(false));
+// "Play Game" = a PUBLIC game: pick which game, and you are dropped into a room with
+// whoever else is playing it right now (playPublic, further down).
+// "Private room" under it = the screen with a nickname, "Create a room" and "Join" with a code.
+document.getElementById("play-game-button").addEventListener("click", () => {
+  client.pickingPublic = true;
+  setModesMessage("");
+  setModeButtons(true);
+  enterFullscreen();
+  showScreen("modes");
+});
+document.getElementById("private-button").addEventListener("click", () => openPlayScreen(false));
 // "Back" goes to wherever you came from: the teacher dashboard or the home screen.
 document.getElementById("back-button").addEventListener("click", () => {
   setHomeMessage("");
@@ -418,12 +428,100 @@ function readNickname() {
 // "Create a room" → first pick which game to play (the game-mode screen).
 createButton.addEventListener("click", () => {
   if (!readNickname()) return;
+  client.pickingPublic = false;
+  setModesMessage("");
+  setModeButtons(true);
   enterFullscreen();
   showScreen("modes");
 });
-document.getElementById("modes-back").addEventListener("click", () => showScreen("play"));
+document.getElementById("modes-back").addEventListener("click", () => {
+  if (client.pickingPublic) { publicSearch += 1; disconnect(); } // (stop looking for a public game)
+  showScreen(client.pickingPublic ? "home" : "play");
+});
 for (const button of document.querySelectorAll(".mode-button[data-mode]")) {
-  button.addEventListener("click", () => createRoom(button.dataset.mode));
+  button.addEventListener("click", () => {
+    if (client.pickingPublic) playPublic(button.dataset.mode);
+    else createRoom(button.dataset.mode);
+  });
+}
+
+// The message on the "pick a game" screen ("Finding a game…"), and its buttons on or off.
+const modesMessage = document.getElementById("modes-message");
+function setModesMessage(english, hebrew, isInfo) {
+  setBilingual(modesMessage, english || "", hebrew);
+  modesMessage.classList.toggle("info", Boolean(isInfo));
+}
+function setModeButtons(enabled) {
+  for (const button of document.querySelectorAll(".mode-button[data-mode]")) button.disabled = !enabled;
+}
+
+// ---------- Public games ----------
+// Public rooms have fixed names: "PUBLIC-race-1", "PUBLIC-race-2"… (PUBLIC in rules.js).
+// We try to OPEN room number n. If somebody already has it open, we JOIN it instead. If it
+// is full (its host says so), or nobody answers, we try the next number.
+let publicSearch = 0; // goes up each time a search starts or is called off (so an old search stops)
+function playPublic(mode, n = 1) {
+  const search = ++publicSearch;
+  const failed = (english, hebrew) => {
+    if (search !== publicSearch) return;
+    disconnect();
+    setModeButtons(true);
+    setModesMessage(english, hebrew);
+  };
+  if (n > PUBLIC.rooms) { failed("All the public games are full right now. Try again in a minute.", "כָּל הַמִּשְׂחָקִים מְלֵאִים כָּרֶגַע. נַסּוּ שׁוּב בְּעוֹד דַּקָּה."); return; }
+  const code = "PUBLIC-" + mode + "-" + n;
+  showScreen("modes");
+  setModeButtons(false);
+  setModesMessage("Finding a game…", "מְחַפְּשִׂים מִשְׂחָק…", true);
+  disconnect();
+  hostRoom({
+    // Nobody had this room open: now it is mine, and other players will land in it.
+    onReady: (roomCode, myId) => {
+      if (search !== publicSearch) { disconnect(); return; }
+      client.isHost = true;
+      client.myId = myId;
+      client.roomCode = code;
+      serverReset(myId, AUTO, { mode, public: true });
+      serverAddPlayer(myId, "", myLook());
+      applySnapshot(serverSnapshot());
+    },
+    onMessage: (id, msg) => {
+      // (A full room sends newcomers on to the next one.)
+      if (msg && msg.type === "join" && !server.players[id] && serverIsFull()) { sendTo(id, { type: "full" }); return; }
+      serverHandle(id, msg);
+    },
+    onLeave: (id) => serverRemovePlayer(id),
+    // Somebody already has it open: join them.
+    onTaken: () => {
+      if (search !== publicSearch) return;
+      joinRoom(code, {
+        onConnected: (myId) => {
+          if (search !== publicSearch) { disconnect(); return; }
+          client.myId = myId;
+          client.roomCode = code;
+          client.lastSnapshotAt = performance.now();
+          client.name = "";
+          client.joinSentAt = performance.now();
+          sendToHost({ type: "join", name: "", look: myLook() });
+        },
+        onMessage: (msg) => {
+          if (search !== publicSearch) return;
+          if (msg && msg.type === "state") applySnapshot(msg);
+          else if (msg && msg.type === "full") { disconnect(); playPublic(mode, n + 1); }
+        },
+        // The player whose phone ran the room left: straight into another public game.
+        onClose: () => {
+          if (search !== publicSearch) return;
+          backToHome("", "");
+          playPublic(mode);
+          setModesMessage("That game closed. Finding a new one…", "הַמִּשְׂחָק נִסְגַּר. מְחַפְּשִׂים מִשְׂחָק חָדָשׁ…", true);
+        },
+        // Nobody answered in that room: try the next one.
+        onError: () => { if (search === publicSearch) playPublic(mode, n + 1); },
+      });
+    },
+    onError: failed,
+  }, code);
 }
 
 // Picked a game: open the room. (mode = "ctf" for Capture the Flag; more games later.)
@@ -490,6 +588,9 @@ joinButton.addEventListener("click", () => {
 
 // Leave the game and go back to the play screen (with a message saying why).
 function backToHome(english, hebrew) {
+  const wasPublic = client.roomIsPublic;
+  publicSearch += 1; // (any search for a public game stops here)
+  client.roomIsPublic = false;
   disconnect();
   client.isHost = false;
   client.myId = null;
@@ -500,8 +601,16 @@ function backToHome(english, hebrew) {
   phoneGame().clear(); // forget the game (and close its popups)
   closeQuiz();
   leaveEl.hidden = true;
-  showScreen("play");
   setHomeButtons(true);
+  if (wasPublic) {
+    // From a public game: back to "pick a game".
+    client.pickingPublic = true;
+    showScreen("modes");
+    setModeButtons(true);
+    setModesMessage(english, hebrew);
+    return;
+  }
+  showScreen("play");
   setHomeMessage(english, hebrew);
 }
 
@@ -864,7 +973,16 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 function renderLobby(hostId) {
-  document.getElementById("lobby-code").textContent = client.roomCode;
+  // A public room has no code to share and no Start button: it says when the game will start.
+  const pub = client.roomIsPublic;
+  document.getElementById("lobby-code").textContent = pub ? "🌍" : client.roomCode;
+  document.getElementById("lobby-code-label").hidden = pub;
+  document.getElementById("public-label").hidden = !pub;
+  document.getElementById("invite-button").hidden = pub;
+  const publicWait = document.getElementById("public-wait");
+  publicWait.hidden = !pub;
+  if (pub && client.startIn === null) setBilingual(publicWait, "Waiting for one more player…", "מְחַכִּים לְעוֹד שַׂחְקָן…");
+  else if (pub) setBilingual(publicWait, `The game starts in ${client.startIn}…`, `הַמִּשְׂחָק מַתְחִיל בְּעוֹד ${client.startIn}…`);
   renderDeckPicker();
   const game = phoneGame();
   // Show only the parts of the lobby that belong to this game (data-modes in index.html).
@@ -882,13 +1000,13 @@ function renderLobby(hostId) {
       if (!belongs(p)) continue;
       const item = document.createElement("li");
       // textContent (not innerHTML) so a weird nickname can't break the page.
-      item.textContent = (p.id === hostId ? "👑 " : "") + p.name + (p.id === client.myId ? " — you · אֲנִי" : "");
+      item.textContent = (p.id === hostId && !pub ? "👑 " : "") + p.name + (p.id === client.myId ? " — you · אֲנִי" : "");
       list.appendChild(item);
     }
   }
   if (game.startText) setBilingual(startButton, game.startText.en, game.startText.he);
-  startButton.hidden = !client.isHost;
-  lobbyWait.hidden = client.isHost;
+  startButton.hidden = !client.isHost || pub;
+  lobbyWait.hidden = client.isHost || pub;
 }
 
 // ---------- Receiving the referee's snapshots ----------
@@ -940,6 +1058,8 @@ function applySnapshot(snap) {
 
   // Is this a class game (the teacher picks the words) or a normal room (everyone picks their own)?
   client.roomIsClass = Boolean(snap.classGame);
+  client.roomIsPublic = Boolean(snap.public); // a public room: made-up names, starts by itself
+  client.startIn = snap.startIn === undefined ? null : snap.startIn;
 
   // A teacher deck sent by the host? (Before switching, so it's ready to use.)
   for (const e of snap.events) {

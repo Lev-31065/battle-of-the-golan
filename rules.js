@@ -502,11 +502,31 @@ function findLook(id) {
   return LOOKS.find((look) => look.id === id) || null;
 }
 
+// ---------- Public games (game.js: playPublic, server.js) ----------
+// "Play Game" drops you into a PUBLIC room for the game you pick: anyone can land in it.
+// There is no list of rooms anywhere. Public rooms have fixed names ("PUBLIC-race-1",
+// "PUBLIC-race-2"…): your phone tries to OPEN room 1; if somebody already has it open, it
+// JOINS that one instead; if that one is full, it tries room 2, and so on.
+// Nobody is in charge of a public room, so the game starts by itself, and (because players
+// are strangers) nobody types a nickname: everyone gets a made-up animal name.
+const PUBLIC = {
+  rooms: 5,               // how many public rooms each game can have at once
+  maxPlayers: 8,          // a room with this many players is full (the next player opens the next room)
+  startDelay: 20,         // the game starts by itself this many seconds after there are enough players
+  minPlayers: { ctf: 2, race: 1 }, // how many players are "enough" (the race fills up with bots, so 1)
+  // Made-up names: a picture, a Hebrew animal and a number, like "🦊 שׁוּעָל 27".
+  animals: [
+    ["🦊", "שׁוּעָל"], ["🦅", "נֶשֶׁר"], ["🦌", "צְבִי"], ["🐐", "יָעֵל"], ["🐺", "זְאֵב"], ["🐻", "דֹּב"],
+    ["🦁", "אַרְיֵה"], ["🐆", "נָמֵר"], ["🦉", "יַנְשׁוּף"], ["🐬", "דּוֹלְפִין"], ["🐢", "צָב"], ["🐇", "אַרְנָב"],
+    ["🐎", "סוּס"], ["🐪", "גָּמָל"],
+  ],
+};
+
 // ---------- Version ----------
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15b";
+const GAME_VERSION = "2026-11-15c";
 
 // ---------- Helpers ----------
 

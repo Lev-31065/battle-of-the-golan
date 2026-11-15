@@ -69,6 +69,15 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## Public games (v 2026-11-15c; NOT yet tried by Daniel)
+- **Play Game** now means a public game: pick Capture the Flag or the race, and the phone lands in the open public room for that game (or opens one if nobody has). Under it: **🔒 Private room** = the old screen (nickname, Create a room, Join with a code). Invite links and class games are unchanged.
+- **Daniel chose (2026-11-15):** pick a game then auto-join; the game starts by an automatic timer; made-up safe names in public games.
+- Timer: 20 s after there are enough players (race 1, Capture the Flag 2). Names look like "🦊 שׁוּעָל 27"; nobody types a name in a public game. Up to 8 players a room, 5 rooms a game.
+- No database: fixed PeerJS room names (see AGENTS.md).
+- Tested: referee logic headless; and two real headless browsers over the internet landed in one public Capture the Flag room, counted down and started (one earlier run lost the connection after joining: probably the hidden test browsers running slowly, but watch for it on phones).
+- Known limits: the room lives on the phone of whoever opened it; if they leave, everyone else is dropped and searches again by themselves. Joining a public race in the middle starts you at the top while the others are far ahead. If everyone leaves a room that is mid-game, nothing is left to clean up (the room just disappears).
+- Not done: the privacy page and README do not mention public games.
+
 ## Mastery points, looks, log-in card (v 2026-11-15b; headless-tested, NOT yet tried by Daniel)
 - **Mastery points:** 1 point each time a word reaches a flashcard level it never reached before. They never go down. Shown on the home screen. Guests collect them on the phone and keep them when they log in.
 - **Looks:** 🎭 "My look" on the home screen. Kova tembel 15, sunglasses 40, ninja headband 80, cowboy hat 150, wizard hat 250, crown 400 points (unlocked, not spent). Logged-in players only. Shown on the player in Capture the Flag and on the sled rider in 3D (not in the old flat race drawing).

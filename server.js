@@ -26,6 +26,8 @@ const server = {
   customDeck: null, // if the host picked one of their own decks: { id, name, words } to send to every phone
   classGame: false, // true = a teacher's class game: only then can the host pick the words for everyone
   mode: "ctf",      // which game: "ctf" = Capture the Flag (two more games are coming)
+  public: false,    // true = a public room (PUBLIC in rules.js): made-up names, and the game starts by itself
+  autoStartAt: null, // (public rooms) when the game will start by itself (null = not enough players yet)
   // (Each game adds its own things here too, like server.flags in Capture the Flag.)
 };
 
@@ -63,6 +65,8 @@ function serverReset(hostId, deckId, options = {}) {
   server.deckSentAt = -Infinity;
   server.classGame = Boolean(options.classGame);
   server.mode = options.mode || "ctf";
+  server.public = Boolean(options.public);
+  server.autoStartAt = null;
   // A normal room is always Auto here: each phone plays the level its own player picks.
   serverSetDeck(server.classGame ? deckId : AUTO);
   server.time = 0;
@@ -90,15 +94,33 @@ function cleanName(name) {
   return String(name || "").trim().slice(0, 12) || "Player";
 }
 
+// A made-up name for a public room, like "🦊 שׁוּעָל 27" (one nobody in the room has yet).
+function publicName() {
+  let name = "";
+  for (let tries = 0; tries < 40; tries++) {
+    const animal = PUBLIC.animals[Math.floor(Math.random() * PUBLIC.animals.length)];
+    name = `${animal[0]} ${animal[1]} ${1 + Math.floor(Math.random() * 99)}`;
+    if (!Object.values(server.players).some((p) => p.name === name)) break;
+  }
+  return name;
+}
+
+// (Public rooms) is the room full? Bots do not count.
+function serverIsFull() {
+  return server.public && Object.values(server.players).filter((p) => !p.bot).length >= PUBLIC.maxPlayers;
+}
+
 function serverAddPlayer(id, name, look) {
   if (server.players[id]) return;
+  // In a public room nobody types a nickname (the players are strangers): everyone gets a made-up one.
+  if (server.public) name = publicName();
   // Closed the game and came straight back? The old "you" may still be standing there
   // (we wait 8 seconds before removing a silent phone). If someone with the same
   // nickname has been silent for 2+ seconds, that's the old you: remove it now.
   // Like a knockout, it drops any flag and loses the hammer. (Phones that are really
   // playing check in every second, so a different player with the same name is safe.)
   for (const old of Object.values(server.players)) {
-    if (old.id !== server.hostId && old.name === cleanName(name) && server.time - old.lastSeen > 2) {
+    if (!server.public && old.id !== server.hostId && old.name === cleanName(name) && server.time - old.lastSeen > 2) {
       serverRemovePlayer(old.id);
     }
   }
@@ -111,7 +133,7 @@ function serverAddPlayer(id, name, look) {
 
   const p = {
     id,
-    name: cleanName(name),
+    name: server.public ? name : cleanName(name),
     look: findLook(look) ? look : "none", // the hat (or other look) this player wears: LOOKS in rules.js
     team,
     alive: true,
@@ -157,7 +179,7 @@ function serverHandle(id, msg) {
       if (server.phase === "lobby") p.team = msg.team === "red" ? "red" : "blue";
       break;
     case "start":
-      if (id === server.hostId) serverStartGame();
+      if (id === server.hostId && !server.public) serverStartGame(); // (a public game starts by itself)
       break;
     case "deck":
       // Only the host of a CLASS game can pick the words for everyone, and not in the middle of a battle.
@@ -181,6 +203,7 @@ function serverHandle(id, msg) {
 }
 
 function serverStartGame() {
+  server.autoStartAt = null;
   serverGame().newRound();
   server.phase = "playing";
   serverGame().startGame();
@@ -209,6 +232,14 @@ function serverUpdate(dt) {
     serverGame().newRound();
   }
 
+  // A public room: once there are enough players, the game starts by itself a little later.
+  if (server.public && server.phase === "lobby") {
+    const count = Object.values(server.players).filter((p) => !p.bot).length;
+    if (count < (PUBLIC.minPlayers[server.mode] || 1)) server.autoStartAt = null;
+    else if (server.autoStartAt === null) server.autoStartAt = server.time + PUBLIC.startDelay;
+    else if (server.time >= server.autoStartAt) serverStartGame();
+  }
+
   if (server.phase !== "playing") return;
   serverGame().update(dt);
 }
@@ -224,6 +255,9 @@ function serverSnapshot() {
     deckId: server.deckId,
     classGame: server.classGame,
     mode: server.mode,
+    public: server.public,
+    startIn: server.autoStartAt === null ? null : Math.max(0, Math.ceil(server.autoStartAt - server.time)), // (public rooms) seconds until the game starts by itself
+
     players: Object.values(server.players).map((p) => ({ ...p })),
     events: server.events,
   };

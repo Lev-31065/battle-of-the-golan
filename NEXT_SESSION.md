@@ -4,9 +4,11 @@
 - Live version: **v 2026-11-15b** (shown under Privacy on the home screen). Everything is uploaded; the project folder matches the live site.
 - **v 15a = Daniel's fifth race list** (details at the top of the race section in STATE.md): one-tap start, countdown from 10, steering arrows twice as long, tight-bend "vacuum" fix, gentler skid, slow crashes nudge / fast crashes spin out, momentum, boulders with a question, "back to the path" returns to where you left it, 14 gates, anona speed-boost gift, camera follows the sled.
 - **v 15b = the "overarching" things:** mastery points, 6 looks (hats) for both games, and a log-in card after a game for guests (top of STATE.md).
-- Daniel has NOT played either yet.
+- Daniel on v 15a + 15b: "It's very good."
+- **v 15c = public games:** Play Game → pick a game → dropped into a public room (auto-start timer, made-up animal names). "🔒 Private room" under it = the old create / join with a code. Details at the top of STATE.md. Daniel has NOT tried it yet.
 
 ## Next steps
+0. Ask Daniel to try a public game with two phones (both tap Play Game → the same game). Watch for: does the second phone land in the first phone's room, does anyone get "Lost connection", is 20 s the right wait (`PUBLIC.startDelay` in rules.js), what should happen to someone who lands in the middle of a race.
 1. Ask Daniel how v 15a feels. Tuning is all in `RACE` (rules.js):
    - hairpins: `skidSlide`, `skidTurn`, `skidTurnRate`, `skidSpeed`
    - crashes: `spinHitFrom` (spin out from this speed), `hardHitTurn`, `crashShove`
@@ -31,6 +33,7 @@
   - `go.ps1 -script X -query "…" [-shot file.png]`: copies index.html into the scratchpad with a `<base href>` to the project, an error catcher, and one test script at the end; runs headless Edge (`--dump-dom`, or `--screenshot` with `--virtual-time-budget=4000`); prints what is between "RES"+"ULT" and "END"+"RES" in a `<pre>`. Edge needs `--user-data-dir`, `--enable-unsafe-swiftshader` (3D), `--allow-file-access-from-files`.
   - `t-race.js`: map check (`close` must be `[]`) + a whole autopilot race (it replaces `steerInput` and `skidInput`). `?hold=1` (holds the skid all the way round hairpins), `?noskid=1`, `?wrong=1`, `?crash=SPEED&stop=75` (puts a rock in front of the sled), `?stop=N&shot=1`, `?maponly=1`.
   - `t-roam.js`: leaves the path at `?seg=N`, hits a fake boulder (wraps `landTreesNear`), answers (`quiz.onCorrect`), presses "back to the path". `?shot=real` parks the sled in front of a real boulder.
+  - `t-public.js`: public-room referee checks (names, timer, full room, private rooms unchanged). `two.ps1 -game ctf` starts TWO live headless Edges (`--remote-debugging-port` 9333 / 9334, own profiles) that really go online with `?mode=net`; each page writes its state into `document.title`, read back from `http://localhost:PORT/json`. (Screenshots with `--virtual-time-budget` are useless for anything that waits on the network.)
   - `t-looks.js`: points sums, `myLook`, `?mode=picker|ctf|race|nudge` for screenshots. It fakes a login with `account.user = { id, email }`.
   - Number tests set `requestAnimationFrame = () => 0`; screenshot tests leave it alone and freeze with `update = () => {}; serverUpdate = () => {}`.
 - Scripted edits: Git Bash heredocs break on quotes and garble Hebrew/emoji. Write a perl script with the Write tool (no apostrophes inside its single-quoted strings; read and write with `:raw`), then run it with Git Bash's perl.

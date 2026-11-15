@@ -936,3 +936,7 @@ button, select, input { touch-action: manipulation; }
 .look-card.chosen { border-color: #16a34a; background: #f0fdf4; }
 .look-card.chosen .look-status { color: #16a34a; font-size: 16px; }
 .look-card.locked { opacity: 0.55; }
+
+/* ---------- Public games ---------- */
+.public-wait { font-size: 18px; font-weight: 800; color: #166534; }
+#private-button { margin-top: 10px; }

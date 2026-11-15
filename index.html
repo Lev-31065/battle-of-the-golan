@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-15b">
+  <link rel="stylesheet" href="style.css?v=2026-11-15c">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -119,6 +119,8 @@
         </div>
       </div>
       <button id="play-game-button" class="big-button play-game-button" type="button"><span class="he" lang="he" dir="rtl">לְשַׂחֵק</span><span class="en">▶ Play Game</span></button>
+      <!-- Under "Play Game" (a public game): a private room for friends or a class, with a room code. -->
+      <button id="private-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">חֶדֶר פְּרָטִי לַחֲבֵרִים</span><span class="en">🔒 Private room: create one, or join with a code</span></button>
       <!-- Logging in is optional (account.js). It saves your progress to your account. -->
       <button id="login-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span><span class="en">🔑 Log in or sign up</span></button>
       <div id="account-box" class="account-box" hidden>
@@ -249,6 +251,7 @@
     <div class="panel home-panel modes-panel">
       <button id="modes-back" class="back-button" type="button"><span class="he" lang="he" dir="rtl">חֲזָרָה</span><span class="en">← Back</span></button>
       <h2><span class="he" lang="he" dir="rtl">אֵיזֶה מִשְׂחָק?</span><span class="en">Pick a game</span></h2>
+      <p id="modes-message" class="home-message"></p>
       <!-- data-mode = the name the referee uses for this game (server.js). -->
       <button class="mode-button" data-mode="ctf" type="button">
         <span class="mode-icon">🚩</span>
@@ -271,7 +274,8 @@
     <div class="panel lobby-panel">
       <!-- Leave the room and go back to the first screen. (If the host leaves, the room closes for everyone.) -->
       <button id="lobby-home" class="back-button" type="button"><span class="he" lang="he" dir="rtl">לַמָּסָךְ הָרִאשִׁי</span><span class="en">🏠 Home</span></button>
-      <p class="panel-sub"><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span><span class="en">Room code — friends type this on their phones</span></p>
+      <p id="public-label" class="panel-sub" hidden><span class="he" lang="he" dir="rtl">מִשְׂחָק צִבּוּרִי — כָּל אֶחָד יָכוֹל לְהִצְטָרֵף</span><span class="en">Public game: anyone can land here</span></p>
+      <p id="lobby-code-label" class="panel-sub"><span class="he" lang="he" dir="rtl">קוֹד הַחֶדֶר — הַחֲבֵרִים מַקְלִידִים אוֹתוֹ בַּטֶּלֶפוֹן</span><span class="en">Room code — friends type this on their phones</span></p>
       <p id="lobby-code" class="room-code">----</p>
       <!-- Which words to play with. In a class game only the host (teacher) picks, for everyone.
            In a normal game everyone picks their own level. (game.js swaps the label.)
@@ -298,6 +302,7 @@
       </div>
       <button id="switch-team" class="secondary-button" type="button" data-modes="ctf"><span class="he" lang="he" dir="rtl">הַחְלָפַת קְבוּצָה</span><span class="en">⇄ Switch team</span></button>
       <button id="start-button" class="big-button" type="button" hidden><span class="he" lang="he" dir="rtl">מַתְחִילִים אֶת הַקְּרָב!</span><span class="en">Start the battle!</span></button>
+      <p id="public-wait" class="panel-sub lobby-wait public-wait" hidden></p>
       <p id="lobby-wait" class="panel-sub lobby-wait" hidden><span class="he" lang="he" dir="rtl">מְחַכִּים שֶׁהַמְּאָרֵחַ יַתְחִיל…</span><span class="en">Waiting for the host to start…</span></p>
       <details class="how-to" data-modes="race" hidden>
         <summary><span class="he" lang="he" dir="rtl">אֵיךְ מְשַׂחֲקִים</span><span class="en">How to play</span></summary>
@@ -425,28 +430,28 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-15b"></script>
-  <script src="rules.js?v=2026-11-15b"></script>
-  <script src="sound.js?v=2026-11-15b"></script>
-  <script src="speech.js?v=2026-11-15b"></script>
-  <script src="levels-b.js?v=2026-11-15b"></script>
-  <script src="words.js?v=2026-11-15b"></script>
-  <script src="progress.js?v=2026-11-15b"></script>
-  <script src="account.js?v=2026-11-15b"></script>
-  <script src="decks.js?v=2026-11-15b"></script>
-  <script src="looks.js?v=2026-11-15b"></script>
-  <script src="quiz.js?v=2026-11-15b"></script>
-  <script src="ctf-draw.js?v=2026-11-15b"></script>
-  <script src="race-track.js?v=2026-11-15b"></script>
-  <script src="race-draw.js?v=2026-11-15b"></script>
-  <script src="three.min.js?v=2026-11-15b"></script>
-  <script src="race-3d.js?v=2026-11-15b"></script>
-  <script src="network.js?v=2026-11-15b"></script>
-  <script src="server.js?v=2026-11-15b"></script>
-  <script src="ctf-server.js?v=2026-11-15b"></script>
-  <script src="race-server.js?v=2026-11-15b"></script>
-  <script src="game.js?v=2026-11-15b"></script>
-  <script src="ctf-game.js?v=2026-11-15b"></script>
-  <script src="race-game.js?v=2026-11-15b"></script>
+  <script src="map.js?v=2026-11-15c"></script>
+  <script src="rules.js?v=2026-11-15c"></script>
+  <script src="sound.js?v=2026-11-15c"></script>
+  <script src="speech.js?v=2026-11-15c"></script>
+  <script src="levels-b.js?v=2026-11-15c"></script>
+  <script src="words.js?v=2026-11-15c"></script>
+  <script src="progress.js?v=2026-11-15c"></script>
+  <script src="account.js?v=2026-11-15c"></script>
+  <script src="decks.js?v=2026-11-15c"></script>
+  <script src="looks.js?v=2026-11-15c"></script>
+  <script src="quiz.js?v=2026-11-15c"></script>
+  <script src="ctf-draw.js?v=2026-11-15c"></script>
+  <script src="race-track.js?v=2026-11-15c"></script>
+  <script src="race-draw.js?v=2026-11-15c"></script>
+  <script src="three.min.js?v=2026-11-15c"></script>
+  <script src="race-3d.js?v=2026-11-15c"></script>
+  <script src="network.js?v=2026-11-15c"></script>
+  <script src="server.js?v=2026-11-15c"></script>
+  <script src="ctf-server.js?v=2026-11-15c"></script>
+  <script src="race-server.js?v=2026-11-15c"></script>
+  <script src="game.js?v=2026-11-15c"></script>
+  <script src="ctf-game.js?v=2026-11-15c"></script>
+  <script src="race-game.js?v=2026-11-15c"></script>
 </body>
 </html>
