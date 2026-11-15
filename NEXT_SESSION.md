@@ -21,6 +21,8 @@
 3. Still open from before: "the next thing" (podium? two-phone polish? the 3rd game?), and a two-phone race test.
 
 ## Questions for Daniel
+- The Hebrew on the privacy page (public games, mastery points, the new counting section) was written by Claude and not checked by a Hebrew speaker. Has anyone read it?
+- The README does not mention public games, looks or usage counting. Update it?
 - "Returning to where you left the path": Claude kept riding back onto the path by yourself (zigzag gaps, trails) as allowed. Is that what you meant?
 - Should the log-in card show after every game, or only once per visit?
 - Older: zigzag gaps marked or secret? Bots using gaps and trails? Capture the Flag lag? Levels 18–20 with לְ/אֶל + pronoun?
