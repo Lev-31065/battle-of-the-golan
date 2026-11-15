@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-15c">
+  <link rel="stylesheet" href="style.css?v=2026-11-15d">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -129,6 +129,8 @@
              For teachers AND anyone who wants more decks. Free for now; later this is the
              door that needs a paid account. -->
         <button id="teacher-button" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">אֵזוֹר הַחֲפִיסוֹת</span><span class="en">🗂️ Deck dashboard</span></button>
+        <!-- Only the game's owner ever sees this one (stats.js). -->
+        <button id="stats-button" class="secondary-button" type="button" hidden><span class="he" lang="he" dir="rtl">כַּמָּה מְשַׂחֲקִים</span><span class="en">📊 Usage</span></button>
         <button id="logout-button" class="link-button" type="button"><span class="he" lang="he" dir="rtl">הִתְנַתְּקוּת</span><span class="en">Log out</span></button>
         <button id="delete-account-button" class="link-button danger-link" type="button"><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span><span class="en">Delete my account</span></button>
       </div>
@@ -361,6 +363,15 @@
     </div>
   </div>
 
+  <!-- How much the game is used: only the game's owner can open this (stats.js controls it) -->
+  <div id="stats" class="overlay" hidden>
+    <div class="panel stats-panel">
+      <h2><span class="he" lang="he" dir="rtl">כַּמָּה מְשַׂחֲקִים</span><span class="en">📊 Usage</span></h2>
+      <div id="stats-body" class="stats-body"></div>
+      <button id="stats-close" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">סְגִירָה</span><span class="en">Close</span></button>
+    </div>
+  </div>
+
   <!-- After a game, for players who are not logged in (looks.js controls it) -->
   <div id="login-nudge" class="overlay" hidden>
     <div class="panel leave-panel">
@@ -430,28 +441,29 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-15c"></script>
-  <script src="rules.js?v=2026-11-15c"></script>
-  <script src="sound.js?v=2026-11-15c"></script>
-  <script src="speech.js?v=2026-11-15c"></script>
-  <script src="levels-b.js?v=2026-11-15c"></script>
-  <script src="words.js?v=2026-11-15c"></script>
-  <script src="progress.js?v=2026-11-15c"></script>
-  <script src="account.js?v=2026-11-15c"></script>
-  <script src="decks.js?v=2026-11-15c"></script>
-  <script src="looks.js?v=2026-11-15c"></script>
-  <script src="quiz.js?v=2026-11-15c"></script>
-  <script src="ctf-draw.js?v=2026-11-15c"></script>
-  <script src="race-track.js?v=2026-11-15c"></script>
-  <script src="race-draw.js?v=2026-11-15c"></script>
-  <script src="three.min.js?v=2026-11-15c"></script>
-  <script src="race-3d.js?v=2026-11-15c"></script>
-  <script src="network.js?v=2026-11-15c"></script>
-  <script src="server.js?v=2026-11-15c"></script>
-  <script src="ctf-server.js?v=2026-11-15c"></script>
-  <script src="race-server.js?v=2026-11-15c"></script>
-  <script src="game.js?v=2026-11-15c"></script>
-  <script src="ctf-game.js?v=2026-11-15c"></script>
-  <script src="race-game.js?v=2026-11-15c"></script>
+  <script src="map.js?v=2026-11-15d"></script>
+  <script src="rules.js?v=2026-11-15d"></script>
+  <script src="sound.js?v=2026-11-15d"></script>
+  <script src="speech.js?v=2026-11-15d"></script>
+  <script src="levels-b.js?v=2026-11-15d"></script>
+  <script src="words.js?v=2026-11-15d"></script>
+  <script src="progress.js?v=2026-11-15d"></script>
+  <script src="account.js?v=2026-11-15d"></script>
+  <script src="stats.js?v=2026-11-15d"></script>
+  <script src="decks.js?v=2026-11-15d"></script>
+  <script src="looks.js?v=2026-11-15d"></script>
+  <script src="quiz.js?v=2026-11-15d"></script>
+  <script src="ctf-draw.js?v=2026-11-15d"></script>
+  <script src="race-track.js?v=2026-11-15d"></script>
+  <script src="race-draw.js?v=2026-11-15d"></script>
+  <script src="three.min.js?v=2026-11-15d"></script>
+  <script src="race-3d.js?v=2026-11-15d"></script>
+  <script src="network.js?v=2026-11-15d"></script>
+  <script src="server.js?v=2026-11-15d"></script>
+  <script src="ctf-server.js?v=2026-11-15d"></script>
+  <script src="race-server.js?v=2026-11-15d"></script>
+  <script src="game.js?v=2026-11-15d"></script>
+  <script src="ctf-game.js?v=2026-11-15d"></script>
+  <script src="race-game.js?v=2026-11-15d"></script>
 </body>
 </html>

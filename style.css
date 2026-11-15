@@ -368,7 +368,14 @@ button, select, input { touch-action: manipulation; }
 }
 /* "Are you sure?" popups can open on top of the home and lobby screens (z-index 30),
    so they need to be higher still, or they'd be hidden underneath. */
-#leave-confirm, #delete-confirm, #looks, #login-nudge { z-index: 40; }
+#leave-confirm, #delete-confirm, #looks, #login-nudge, #stats { z-index: 40; }
+/* The owner's "Usage" screen (stats.js) */
+.stats-panel { width: min(560px, 100%); text-align: center; }
+.stats-body { margin: 8px 0 14px; font-size: 14px; text-align: left; }
+.stats-title { margin: 14px 0 4px; font-weight: 800; }
+.stats-table { width: 100%; border-collapse: collapse; }
+.stats-table th, .stats-table td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: right; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
 .panel {
   position: relative;
   width: min(440px, 100%);

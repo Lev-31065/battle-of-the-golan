@@ -1104,6 +1104,7 @@ function changePhase(phase) {
   } else if (phase === "playing") {
     showScreen(null);
     pointsAtStart = masteryPoints();
+    countGame("game_start"); // usage counting (stats.js): no names, just "a game started"
     document.getElementById("login-nudge").hidden = true;
     lockSideways(); // Android in full screen: the game turns sideways by itself
     // Still upright after a moment (iPhones can't be turned by the game)? Show the big card.
@@ -1111,6 +1112,7 @@ function changePhase(phase) {
   } else if (phase === "over") {
     closeQuiz();
     playSound("win");
+    countGame("game_end");
   }
   phoneGame().onPhase(phase); // the game gets ready, or shows who won
   // Back in the room after a game: the points I earned, or (not logged in) a card asking to log in.

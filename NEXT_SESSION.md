@@ -1,7 +1,8 @@
 # Next session
 
 ## Where we stopped (2026-11-15)
-- Live version: **v 2026-11-15b** (shown under Privacy on the home screen). Everything is uploaded; the project folder matches the live site.
+- **v 15d = usage statistics** (stats.js, supabase/usage.sql; top of STATE.md). FIRST THING: ask Daniel whether he ran supabase/usage.sql in Supabase and whether "📊 Usage" shows on the home screen when he is logged in. If Supabase showed an error, ask him to paste it.
+- Live version: **v 2026-11-15d** (shown under Privacy on the home screen). Everything is uploaded; the project folder matches the live site.
 - **v 15a = Daniel's fifth race list** (details at the top of the race section in STATE.md): one-tap start, countdown from 10, steering arrows twice as long, tight-bend "vacuum" fix, gentler skid, slow crashes nudge / fast crashes spin out, momentum, boulders with a question, "back to the path" returns to where you left it, 14 gates, anona speed-boost gift, camera follows the sled.
 - **v 15b = the "overarching" things:** mastery points, 6 looks (hats) for both games, and a log-in card after a game for guests (top of STATE.md).
 - Daniel on v 15a + 15b: "It's very good."
@@ -33,6 +34,7 @@
   - `t-race.js`: map check (`close` must be `[]`) + a whole autopilot race (it replaces `steerInput` and `skidInput`). `?hold=1` (holds the skid all the way round hairpins), `?noskid=1`, `?wrong=1`, `?crash=SPEED&stop=75` (puts a rock in front of the sled), `?stop=N&shot=1`, `?maponly=1`.
   - `t-roam.js`: leaves the path at `?seg=N`, hits a fake boulder (wraps `landTreesNear`), answers (`quiz.onCorrect`), presses "back to the path". `?shot=real` parks the sled in front of a real boulder.
   - `t-public.js`: public-room referee checks (names, timer, full room, private rooms unchanged). `two.ps1 -game ctf` starts TWO live headless Edges (`--remote-debugging-port` 9333 / 9334, own profiles) that really go online with `?mode=net`; each page writes its state into `document.title`, read back from `http://localhost:PORT/json`. (Screenshots with `--virtual-time-budget` are useless for anything that waits on the network.)
+  - `t-stats.js`: usage counting with a pretend `supa` (it waits on promises, so run Edge with `--dump-dom` AND `--virtual-time-budget=3000`; `?shot=1` leaves the Usage screen open). `players` in game.js is a const: fill it with `Object.assign`.
   - `t-looks.js`: points sums, `myLook`, `?mode=picker|ctf|race|nudge` for screenshots. It fakes a login with `account.user = { id, email }`.
   - Number tests set `requestAnimationFrame = () => 0`; screenshot tests leave it alone and freeze with `update = () => {}; serverUpdate = () => {}`.
 - Scripted edits: Git Bash heredocs break on quotes and garble Hebrew/emoji. Write a perl script with the Write tool (no apostrophes inside its single-quoted strings; read and write with `:raw`), then run it with Git Bash's perl.

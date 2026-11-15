@@ -69,6 +69,13 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## Usage statistics (v 2026-11-15d)
+- The game counts: times it is opened, games started and finished (which game, what kind of room, how many players), and how many different phones (a random number saved on each phone). No names. Details in AGENTS.md.
+- **Daniel must run supabase/usage.sql once** in the Supabase SQL Editor (changing the email on the last line to his game login). Until then nothing is counted and there is no Usage button. Not known yet whether he has done it, and the SQL has NOT been run by anyone yet (Claude could not test it: there is no database on this computer).
+- After that: log in to the game → "📊 Usage" appears on the home screen (only for him) → totals for 24 hours / 7 days / 30 days and a day-by-day table.
+- The privacy page has a new section about the counting ("No tracking" was reworded).
+- Tested headless with a pretend database only (t-stats.js): rows sent, button hidden for guests and other logins, screen draws.
+
 ## Public games (v 2026-11-15c; NOT yet tried by Daniel)
 - **Play Game** now means a public game: pick Capture the Flag or the race, and the phone lands in the open public room for that game (or opens one if nobody has). Under it: **🔒 Private room** = the old screen (nickname, Create a room, Join with a code). Invite links and class games are unchanged.
 - **Daniel chose (2026-11-15):** pick a game then auto-join; the game starts by an automatic timer; made-up safe names in public games.

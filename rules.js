@@ -526,7 +526,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15c";
+const GAME_VERSION = "2026-11-15d";
 
 // ---------- Helpers ----------
 

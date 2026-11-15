@@ -121,6 +121,7 @@ function updateAccountUI() {
     setBilingual(accountEmail, "✅ Logged in: " + account.user.email, "חֶשְׁבּוֹן מְחֻבָּר: " + account.user.email);
   }
   if (typeof updateProgressSummary === "function") updateProgressSummary();
+  if (typeof checkStatsOwner === "function") checkStatsOwner(); // the owner's "Usage" button (stats.js)
 }
 
 loginButton.addEventListener("click", () => openAccountScreen("login"));
