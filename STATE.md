@@ -71,7 +71,8 @@
 
 ## Usage statistics (v 2026-11-15d)
 - The game counts: times it is opened, games started and finished (which game, what kind of room, how many players), and how many different phones (a random number saved on each phone). No names. Details in AGENTS.md.
-- **Daniel must run supabase/usage.sql once** in the Supabase SQL Editor (changing the email on the last line to his game login). Until then nothing is counted and there is no Usage button. Not known yet whether he has done it, and the SQL has NOT been run by anyone yet (Claude could not test it: there is no database on this computer).
+- **Daniel must run supabase/usage.sql once** in the Supabase SQL Editor (changing the email on the last line to his game login). Until then nothing is counted and there is no Usage button. Daniel ran it once on 2026-11-15 and it failed on the last line only, because the quote marks around his email were missing (error 42703, "column does not exist"). Everything above that line got past the database's checks. Claude told him to put the quotes back and run it again; it is NOT known yet whether the second run worked. (Claude cannot test the SQL: there is no database on this computer.)
+- Only Daniel sees the numbers (he asked, 2026-11-15). To add another person: run the last three lines of usage.sql again with their game login email.
 - After that: log in to the game → "📊 Usage" appears on the home screen (only for him) → totals for 24 hours / 7 days / 30 days and a day-by-day table.
 - The privacy page has a new section about the counting ("No tracking" was reworded).
 - Tested headless with a pretend database only (t-stats.js): rows sent, button hidden for guests and other logins, screen draws.

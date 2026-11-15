@@ -1,7 +1,7 @@
 # Next session
 
 ## Where we stopped (2026-11-15)
-- **v 15d = usage statistics** (stats.js, supabase/usage.sql; top of STATE.md). FIRST THING: ask Daniel whether he ran supabase/usage.sql in Supabase and whether "📊 Usage" shows on the home screen when he is logged in. If Supabase showed an error, ask him to paste it.
+- **v 15d = usage statistics** (stats.js, supabase/usage.sql; top of STATE.md). Daniel's first run of supabase/usage.sql failed only because the quote marks around his email were missing on the last line; he was told to add them and run it again. FIRST THING: ask whether the second run said "Success" and whether "📊 Usage" shows on the home screen when he is logged in. No button after a successful run = the email on the last line is not his game login. If Supabase showed another error, ask for a screenshot.
 - Live version: **v 2026-11-15d** (shown under Privacy on the home screen). Everything is uploaded; the project folder matches the live site.
 - **v 15a = Daniel's fifth race list** (details at the top of the race section in STATE.md): one-tap start, countdown from 10, steering arrows twice as long, tight-bend "vacuum" fix, gentler skid, slow crashes nudge / fast crashes spin out, momentum, boulders with a question, "back to the path" returns to where you left it, 14 gates, anona speed-boost gift, camera follows the sled.
 - **v 15b = the "overarching" things:** mastery points, 6 looks (hats) for both games, and a log-in card after a game for guests (top of STATE.md).
