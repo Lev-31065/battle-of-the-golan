@@ -88,7 +88,7 @@
 - The privacy page has a new section about the counting ("No tracking" was reworded).
 - Tested headless with a pretend database only (t-stats.js): rows sent, button hidden for guests and other logins, screen draws.
 
-## Public games (v 2026-11-15c; NOT yet tried by Daniel)
+## Public games (v 2026-11-15c; Daniel tried one on 2026-11-15 and reported no problems, but gave no details)
 - **Play Game** now means a public game: pick Capture the Flag or the race, and the phone lands in the open public room for that game (or opens one if nobody has). Under it: **🔒 Private room** = the old screen (nickname, Create a room, Join with a code). Invite links and class games are unchanged.
 - **Daniel chose (2026-11-15):** pick a game then auto-join; the game starts by an automatic timer; made-up safe names in public games.
 - Timer: 20 s after the first player is in the room, for both games (v 2026-11-15e: Daniel asked for Capture the Flag to start with just 1 player too; `PUBLIC.minPlayers`). Later players join the game in progress. Names look like "🦊 שׁוּעָל 27"; nobody types a name in a public game. Up to 8 players a room, 5 rooms a game.
