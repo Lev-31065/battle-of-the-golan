@@ -90,7 +90,7 @@ function cleanName(name) {
   return String(name || "").trim().slice(0, 12) || "Player";
 }
 
-function serverAddPlayer(id, name) {
+function serverAddPlayer(id, name, look) {
   if (server.players[id]) return;
   // Closed the game and came straight back? The old "you" may still be standing there
   // (we wait 8 seconds before removing a silent phone). If someone with the same
@@ -112,6 +112,7 @@ function serverAddPlayer(id, name) {
   const p = {
     id,
     name: cleanName(name),
+    look: findLook(look) ? look : "none", // the hat (or other look) this player wears: LOOKS in rules.js
     team,
     alive: true,
     spawnCount: 0,      // goes up each time the referee teleports you (start, respawn)
@@ -142,7 +143,7 @@ function serverRemovePlayer(id) {
 function serverHandle(id, msg) {
   if (!msg || typeof msg !== "object") return;
   if (msg.type === "join") {
-    serverAddPlayer(id, msg.name);
+    serverAddPlayer(id, msg.name, msg.look);
     return;
   }
   const p = server.players[id];

@@ -69,8 +69,30 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-14g)
-- **Daniel played v 14e (2026-11-14): "It's great", then a fourth list. Built in v 14f + 14g (headless-tested: autopilot races incl. going off the path through gaps and along trails, map check, screenshots; NOT yet tried by him). This is the current state; older notes below may differ:**
+## Mastery points, looks, log-in card (v 2026-11-15b; headless-tested, NOT yet tried by Daniel)
+- **Mastery points:** 1 point each time a word reaches a flashcard level it never reached before. They never go down. Shown on the home screen. Guests collect them on the phone and keep them when they log in.
+- **Looks:** 🎭 "My look" on the home screen. Kova tembel 15, sunglasses 40, ninja headband 80, cowboy hat 150, wizard hat 250, crown 400 points (unlocked, not spent). Logged-in players only. Shown on the player in Capture the Flag and on the sled rider in 3D (not in the old flat race drawing).
+- **After a game:** guests get a "Want to keep your progress?" card (Log in / Not now); logging in from it comes back to the room. Logged-in players get "+N mastery points" and a message when a new look opens.
+- Claude's choices: how points are earned, the 6 looks and their prices, unlock instead of spend, the card after EVERY game for guests. A look picked after joining a room only shows from the next room.
+- Not done: privacy page doesn't mention the saved look choice (it is stored with the progress).
+
+## Mt Hermon Racing (game 2, built 2026-11-12, live v 2026-11-15a)
+- **Daniel played v 14g (2026-11-15): "really fun … getting way better", then a fifth list. Built in v 15a (headless-tested: whole autopilot races, crash tests, off-road test, map check, screenshots). This is the current state; older notes below may differ:**
+  - **Start:** one tap starts the race (the phone turned sideways mid-tap and swallowed it). Countdown from 10. The steering arrows stay 10 s after Go.
+  - **Tight bends:** no more being sucked off the inside. The inside of a bend now pushes back, and a skid moves the sled sideways less.
+  - **Skid:** 90% speed (was 72%), swings round less (1.4, was 1.9).
+  - **Crashes:** slow = a small nudge; fast (75%+ of top speed) = spin out.
+  - **Speed:** momentum (speed gained downhill fades slowly); the slope matters less (80%–115%, was 70%–130%).
+  - **Boulders:** big pale rocks off the path (about 1 per 200×200 square of mountain). Hit one = a question; right answer = hop over it.
+  - **Back to the path** (button, or strayed too far) = back to where you LEFT the path. Riding back on by yourself still works (zigzag gaps, trails).
+  - **14 gates** (was 9): one more in the woods, one after the second loop, three in a row before the lake.
+  - **Anona gift** 🍈: 145% speed for 3.5 s.
+  - **Camera** follows the way the sled points (90% of the way, smoothly).
+  - Autopilot: clean race about 4 min 50 s. Holding the skid button all the way round a hairpin: 0.8 s off the path (was about 3 s).
+  - Claude's choices: 14 gates; "automatic returning" read as the game putting you back, not riding back yourself; boulders are sandy-colored; bots get the anona too.
+  - **Things to watch:** is spinning out on every fast tree hit too much (`spinHitFrom`)? Does the camera turn too much now (`cameraTurn`, `cameraFollow`)? Do hairpins feel right (`skidSlide`, `skidTurn`)? Enough boulders (`boulders`)? Three gates in a row too many?
+- **Daniel's verdict on v 14g (2026-11-15): "It's very good."** Still unknown: what he meant by "the next thing", and whether it has been tried on two phones.
+- **Daniel played v 14e (2026-11-14): "It's great", then a fourth list. Built in v 14f + 14g (headless-tested: autopilot races incl. going off the path through gaps and along trails, map check, screenshots). This is the current state; older notes below may differ:**
   - **Speed:** slower again (`maxSpeed` 3700). It no longer speeds up by surprise: the boosts after a bend, after a jump and in tilted bends are gone. Speed follows the slope (steeper = faster). The gate boost stays but is smaller (125% for 2 s). Off the path is only 30% slower (was 70%).
   - **Skid bends** are simply very tight now (sharp 22–24); nothing extra throws you out.
   - **Off-roading:** you can leave the path anywhere and go any direction (3D only). A "Back to the path" button shows while you are off it (it hops you to the nearest stretch, or one further down if that is nearly as close; you restart from a standstill). Trees and rocks out there are solid. You can't skip a gate: pass one without answering and it bounces you back.

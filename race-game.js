@@ -826,7 +826,7 @@ function raceRender() {
     .map((p) => {
       const seen = otherSleds.get(p.id) || { air: 0, spinAt: -Infinity };
       return {
-        id: p.id, y: p.y, x: p.x, color: p.color, name: p.name, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed,
+        id: p.id, y: p.y, x: p.x, color: p.color, name: p.name, look: p.look, turn: (p.steer || 0) * RACE.maxTurn, speed: Math.max(0, p.speed || 0) / RACE.maxSpeed,
         air: seen.air, spin: spinAngle(gameTime - seen.spinAt), float: p.y >= TRACK.waterZ && seen.air < 20,
         gas: (p.gasUntil || -Infinity) > gameTime,
       };
@@ -883,7 +883,7 @@ function raceRender() {
   if (race3dAvailable()) {
     sledOnScreen = drawRace3d({
       along: myY, side: myX, turn: mySteer * RACE.maxTurn, viewTurn, racing, time: gameTime, gate, free: roaming,
-      color: (me && me.color) || RACE.colors[0],
+      color: (me && me.color) || RACE.colors[0], look: me && me.look,
       sleds, things,
       air: racing ? myAir + hop : 0, spin: spinAngle(gameTime - spinAt), float: racing && inWater, // flying, spinning out, floating in the lake
       charge: 0,

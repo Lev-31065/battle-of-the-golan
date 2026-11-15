@@ -1440,7 +1440,67 @@ function makeFlagPicture() {
   return new THREE.CanvasTexture(c);
 }
 
-function makeSled(color) {
+// What the rider wears on the head. look = one of LOOKS in rules.js ("none" = the knitted
+// kippah, in the sled's color). The head is a ball about 12 across at (0, 69.5, 46); the face
+// looks toward plus z; the top of the hair is at about y = 84.
+function riderLook(B, look, main, white) {
+  const kippah = () => {
+    B.ball(0, 82.6, 41, 9.6, 3.8, 9.6, main, 6, 14);
+    B.pipe([0, 80.9, 41], 10.1, [0, 82.2, 41], 9.7, white, false, 14);
+  };
+  const gold = rgb3("#f5c518"), black = rgb3("#14161a"), red = rgb3("#dc2626");
+  if (look === "tembel") {
+    // A kova tembel: the floppy cloth hat with a sloping brim.
+    const cloth = rgb3("#d8c79c"), band = rgb3("#b9a676");
+    B.pipe([0, 77.5, 43], 18.5, [0, 81, 43], 12.4, cloth, false, 14);
+    B.pipe([0, 81, 43], 12.4, [0, 88, 42.5], 9.8, cloth, false, 14);
+    B.ball(0, 88, 42.5, 9.8, 3, 9.8, cloth, 5, 14);
+    B.pipe([0, 80.8, 43], 12.7, [0, 82.6, 43], 12.1, band, false, 14);
+  } else if (look === "shades") {
+    kippah();
+    // Sunglasses: two dark lenses, a bridge over the nose, and arms back to the ears.
+    for (const s of [-1, 1]) {
+      B.ball(s * 5.2, 71.2, 56.6, 4.4, 3.3, 1.8, black, 5, 10);
+      B.pipe([s * 9, 71.4, 55.5], 0.8, [s * 12.6, 70.6, 46], 0.8, black, false, 5);
+    }
+    B.pipe([-2, 71.6, 57.8], 0.8, [2, 71.6, 57.8], 0.8, black, false, 5);
+  } else if (look === "headband") {
+    // A ninja headband: a red band round the forehead, with two tails flying out behind.
+    B.pipe([0, 74.2, 44.6], 13.4, [0, 77.6, 44], 13.3, red, false, 14);
+    B.ball(0, 76, 30.5, 2.4, 2.4, 2.4, red, 5, 8);
+    B.quad([-1.5, 77, 30], [1.5, 77, 30], [-3, 71, 14], [-7, 72, 15], red);
+    B.quad([-1.5, 75, 30], [1.5, 75, 30], [8, 66, 17], [4, 65, 18], rgb3("#b91c1c"));
+  } else if (look === "cowboy") {
+    // A cowboy hat: a wide brim, a tall crown with a dark band.
+    const felt = rgb3("#8a5a2b"), feltDark = rgb3("#5e3b1c");
+    B.ball(0, 80.2, 43, 22, 1.7, 20, felt, 5, 16);
+    B.pipe([0, 80.5, 43], 11, [0, 91, 42.5], 9.4, felt, false, 14);
+    B.ball(0, 91, 42.5, 9.4, 2.2, 9.4, felt, 5, 14);
+    B.pipe([0, 81.2, 43], 11.3, [0, 83.6, 43], 10.9, feltDark, false, 14);
+  } else if (look === "wizard") {
+    // A wizard hat: a round brim and a tall point that leans back, with a gold band and a star.
+    const cloth = rgb3("#6d28d9"), clothDark = rgb3("#4c1d95");
+    B.ball(0, 80.2, 43, 19, 1.7, 19, clothDark, 5, 16);
+    B.pipe([0, 80.5, 43], 11.2, [0, 98, 39], 5.4, cloth, false, 14);
+    B.pipe([0, 98, 39], 5.4, [0, 114, 33], 0.5, cloth, true, 12);
+    B.pipe([0, 81, 43], 11.5, [0, 83.4, 42.6], 10.9, gold, false, 14);
+    B.ball(0, 91, 49.4, 2.4, 2.4, 1.2, gold, 5, 8);
+  } else if (look === "crown") {
+    kippah();
+    // A crown: a gold band with points all the way round, and jewels on the front.
+    B.pipe([0, 80, 43], 11.4, [0, 86.5, 43], 12, gold, false, 16);
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2, x = Math.sin(a) * 11.9, z = 43 + Math.cos(a) * 11.9;
+      B.pipe([x, 86, z], 2.3, [x * 1.04, 92.5, 43 + (z - 43) * 1.04], 0.4, gold, true, 6);
+    }
+    B.ball(0, 83.2, 55, 1.9, 1.9, 1, red, 5, 8);
+    for (const s of [-1, 1]) B.ball(s * 6.2, 83.2, 53.2, 1.5, 1.5, 0.9, rgb3("#2563eb"), 5, 8);
+  } else {
+    kippah();
+  }
+}
+
+function makeSled(color, look) {
   const w3 = world3d;
   const B = new MeshBuilder();
   B.smooth = true;         // round shapes with smooth light (balls and pipes), not carved blocks
@@ -1514,9 +1574,8 @@ function makeSled(color) {
   B.ball(0, 71.5, 41.5, 12.8, 12.6, 12.4, hair, 8, 14);
   for (const s of [-1, 1]) B.ball(s * 12.2, 68.5, 45, 2.4, 3.8, 2.8, skin, 5, 8);
   B.ball(0, 67.5, 57.5, 2.2, 2.4, 2.4, skin, 5, 8);
-  // The knitted kippah, in this sled's color, with a white band around its edge.
-  B.ball(0, 82.6, 41, 9.6, 3.8, 9.6, main, 6, 14);
-  B.pipe([0, 80.9, 41], 10.1, [0, 82.2, 41], 9.7, white, false, 14);
+  // On the head: the knitted kippah, or the look this player picked (a hat, sunglasses…).
+  riderLook(B, look, main, white);
   // The flag's stick, at the back corner.
   B.pipe([-38, 19, 2], 1.2, [-38, 68, 2], 1.2, woodDark, true, 6);
   const sled = new THREE.Group();
@@ -1535,7 +1594,7 @@ function makeSled(color) {
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set(0, 0.1, -4.4);
   sled.add(shadow);
-  sled.userData = { flagHolder, shadow, color };
+  sled.userData = { flagHolder, shadow, color, look };
   w3.scene.add(sled);
   return sled;
 }
@@ -2108,8 +2167,9 @@ function drawRace3d(view, w, h) {
   const seen = new Set();
   const place = (id, color, o, name, carve, deep, amount, charge) => {
     let sled = w3.sleds.get(id);
-    if (sled && sled.userData.color !== color) { disposeGroup(sled); sled = null; }
-    if (!sled) { sled = makeSled(color); w3.sleds.set(id, sled); }
+    const look = o.look || "none";
+    if (sled && (sled.userData.color !== color || sled.userData.look !== look)) { disposeGroup(sled); sled = null; }
+    if (!sled) { sled = makeSled(color, look); w3.sleds.set(id, sled); }
     poseSled(sled, o, view.time, dt);
     // Its tracks in the snow, and the snow it sprays up (not while it is flying, or floating in the lake).
     const off = o.air > 30 || Boolean(o.float);
@@ -2128,7 +2188,7 @@ function drawRace3d(view, w, h) {
   if (view.racing) {
     place("me", view.color, {
       along: view.along, side: view.side, turn: view.turn, wobble: view.wobble, bounce: view.bounce,
-      air: view.air || 0, spin: view.spin || 0, float: view.float, speed: view.speed || 0, gas: view.gas,
+      air: view.air || 0, spin: view.spin || 0, float: view.float, speed: view.speed || 0, gas: view.gas, look: view.look,
     }, null, view.carve || 0, view.deep, 1, view.charge || 0);
     for (const other of view.sleds) {
       // (Nobody tells us how hard another sled is steering, so we work it out from how fast it's turning.)
@@ -2138,7 +2198,7 @@ function drawRace3d(view, w, h) {
       const deep = offThePath(findSegment(other.y), other.x);
       place(other.id, other.color, {
         along: other.y, side: other.x, turn: other.turn, wobble: 0, bounce: 0,
-        air: other.air || 0, spin: other.spin || 0, float: other.float, speed: other.speed || 0, gas: other.gas,
+        air: other.air || 0, spin: other.spin || 0, float: other.float, speed: other.speed || 0, gas: other.gas, look: other.look,
       }, other.name, carve, deep, 0.6, 0);
       const now = w3.sleds.get(other.id).userData;
       now.lastTurn = other.turn; now.carve = carve;

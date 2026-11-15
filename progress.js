@@ -68,8 +68,12 @@ function mergeProgress(a, b) {
     const newer = !other
       || (record.seen || 0) > (other.seen || 0)
       || ((record.seen || 0) === (other.seen || 0) && record.level > other.level);
+    // (best = the highest level this word ever reached: keep the higher one, whichever record wins.)
+    const best = Math.max(bestLevel(record), other ? bestLevel(other) : 0);
     if (newer) merged.words[key] = record;
+    merged.words[key].best = best;
   }
+  merged.look = a.look || b.look; // the look I picked (looks.js)
   return merged;
 }
 
@@ -162,11 +166,28 @@ function deckProgress(deck) {
   return { known, total: deck.words.length };
 }
 
+// ---------- Mastery points ----------
+// The highest flashcard level a word has ever reached. (Older saved words have no `best` yet:
+// for them it is the level they are at now.)
+function bestLevel(record) {
+  return Math.max(record.best || 0, record.level || 0);
+}
+
+// My mastery points: 1 for every level every word has ever climbed. A wrong answer sends
+// a word back to level 0, but its best level stays, so points never go down; and a word
+// only gives a new point when it gets further than it ever has before.
+function masteryPoints() {
+  let points = 0;
+  for (const record of Object.values(progress.words)) points += bestLevel(record);
+  return points;
+}
+
 // Update a word after you answer it.
 function recordAnswer(entry, correct) {
   progress.questionCount++;
   const key = wordKey(entry);
   const record = progress.words[key] || { level: 0 };
+  const bestBefore = bestLevel(record);
 
   // Right → one level up (it waits longer). Wrong → back to the start.
   record.level = correct ? Math.min(record.level + 1, REVIEW_STEPS.length - 1) : 0;
@@ -180,6 +201,7 @@ function recordAnswer(entry, correct) {
                  : never;
   record.dueSession = step.sessions != null ? progress.session + step.sessions : never;
   record.seen = Date.now(); // when you last answered it (used when combining phones)
+  record.best = Math.max(bestBefore, record.level); // (for mastery points)
 
   progress.words[key] = record;
   saveProgress();

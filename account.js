@@ -196,7 +196,11 @@ function openAccountScreen(mode) {
 }
 
 modeSwitch.addEventListener("click", () => openAccountScreen(account.mode === "signup" ? "login" : "signup"));
-document.getElementById("account-back").addEventListener("click", () => showScreen("home"));
+// (Logging in from the card after a game? Back goes to the room, not the home screen.)
+function screenAfterAccount() {
+  return client.phase === "lobby" && client.roomCode ? "lobby" : "home";
+}
+document.getElementById("account-back").addEventListener("click", () => showScreen(screenAfterAccount()));
 
 function setAccountMessage(english, hebrew, isInfo) {
   setBilingual(accountMessage, english || "", hebrew);
@@ -294,7 +298,7 @@ window.addEventListener("DOMContentLoaded", () => {
 function finishLogin() {
   passwordInput.value = "";
   setAccountMessage("");
-  showScreen("home");
+  showScreen(screenAfterAccount());
   showToast("✅ You're logged in!", "הִתְחַבַּרְתֶּם!");
 }
 

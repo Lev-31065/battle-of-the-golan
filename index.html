@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
   <!-- ?v=… = the version: a new number makes phones download the new file instead of using an old saved copy. -->
-  <link rel="stylesheet" href="style.css?v=2026-11-15a">
+  <link rel="stylesheet" href="style.css?v=2026-11-15b">
 </head>
 <body>
   <!-- The canvas is a blank drawing area. All of the map and players are painted onto it by draw.js. -->
@@ -131,6 +131,9 @@
         <button id="delete-account-button" class="link-button danger-link" type="button"><span class="he" lang="he" dir="rtl">מְחִיקַת הַחֶשְׁבּוֹן שֶׁלִּי</span><span class="en">Delete my account</span></button>
       </div>
       <p id="progress-summary" class="progress-summary"></p>
+      <!-- Mastery points, and the looks they unlock (looks.js). -->
+      <p id="mastery-points" class="mastery-points"></p>
+      <button id="look-button" class="secondary-button look-button" type="button"><span class="he" lang="he" dir="rtl">הַמַּרְאֶה שֶׁלִּי</span><span class="en">🎭 My look</span></button>
       <a class="privacy-link" href="privacy.html"><span class="he" lang="he" dir="rtl">פְּרָטִיּוּת</span><span class="en">Privacy</span></a>
       <!-- Which copy of the game this is (GAME_VERSION in rules.js fills it in). -->
       <p id="version-tag" class="version-tag"></p>
@@ -342,6 +345,27 @@
     </div>
   </div>
 
+  <!-- "My look" picker: hats and things you unlock with mastery points (looks.js controls it) -->
+  <div id="looks" class="overlay" hidden>
+    <div class="panel looks-panel">
+      <h2><span class="he" lang="he" dir="rtl">הַמַּרְאֶה שֶׁלִּי</span><span class="en">🎭 My look</span></h2>
+      <p id="looks-points" class="looks-points"></p>
+      <p id="looks-note" class="panel-sub"></p>
+      <div id="looks-grid" class="looks-grid"></div>
+      <button id="looks-close" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">סְגִירָה</span><span class="en">Close</span></button>
+    </div>
+  </div>
+
+  <!-- After a game, for players who are not logged in (looks.js controls it) -->
+  <div id="login-nudge" class="overlay" hidden>
+    <div class="panel leave-panel">
+      <h2><span class="he" lang="he" dir="rtl">רוֹצִים לִשְׁמֹר אֶת הַהִתְקַדְּמוּת?</span><span class="en">🔑 Want to keep your progress?</span></h2>
+      <p id="nudge-note" class="panel-sub"></p>
+      <button id="nudge-login" class="big-button" type="button"><span class="he" lang="he" dir="rtl">הִתְחַבְּרוּת אוֹ הַרְשָׁמָה</span><span class="en">Log in or sign up</span></button>
+      <button id="nudge-later" class="secondary-button" type="button"><span class="he" lang="he" dir="rtl">לֹא עַכְשָׁו</span><span class="en">Not now</span></button>
+    </div>
+  </div>
+
   <!-- "Delete your account?" popup (account.js controls it) -->
   <div id="delete-confirm" class="overlay" hidden>
     <div class="panel leave-panel">
@@ -401,27 +425,28 @@
   <!-- PeerJS: a free library that lets browsers connect directly to each other. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- The game's code. Order matters: each file can use things from the files above it. -->
-  <script src="map.js?v=2026-11-15a"></script>
-  <script src="rules.js?v=2026-11-15a"></script>
-  <script src="sound.js?v=2026-11-15a"></script>
-  <script src="speech.js?v=2026-11-15a"></script>
-  <script src="levels-b.js?v=2026-11-15a"></script>
-  <script src="words.js?v=2026-11-15a"></script>
-  <script src="progress.js?v=2026-11-15a"></script>
-  <script src="account.js?v=2026-11-15a"></script>
-  <script src="decks.js?v=2026-11-15a"></script>
-  <script src="quiz.js?v=2026-11-15a"></script>
-  <script src="ctf-draw.js?v=2026-11-15a"></script>
-  <script src="race-track.js?v=2026-11-15a"></script>
-  <script src="race-draw.js?v=2026-11-15a"></script>
-  <script src="three.min.js?v=2026-11-15a"></script>
-  <script src="race-3d.js?v=2026-11-15a"></script>
-  <script src="network.js?v=2026-11-15a"></script>
-  <script src="server.js?v=2026-11-15a"></script>
-  <script src="ctf-server.js?v=2026-11-15a"></script>
-  <script src="race-server.js?v=2026-11-15a"></script>
-  <script src="game.js?v=2026-11-15a"></script>
-  <script src="ctf-game.js?v=2026-11-15a"></script>
-  <script src="race-game.js?v=2026-11-15a"></script>
+  <script src="map.js?v=2026-11-15b"></script>
+  <script src="rules.js?v=2026-11-15b"></script>
+  <script src="sound.js?v=2026-11-15b"></script>
+  <script src="speech.js?v=2026-11-15b"></script>
+  <script src="levels-b.js?v=2026-11-15b"></script>
+  <script src="words.js?v=2026-11-15b"></script>
+  <script src="progress.js?v=2026-11-15b"></script>
+  <script src="account.js?v=2026-11-15b"></script>
+  <script src="decks.js?v=2026-11-15b"></script>
+  <script src="looks.js?v=2026-11-15b"></script>
+  <script src="quiz.js?v=2026-11-15b"></script>
+  <script src="ctf-draw.js?v=2026-11-15b"></script>
+  <script src="race-track.js?v=2026-11-15b"></script>
+  <script src="race-draw.js?v=2026-11-15b"></script>
+  <script src="three.min.js?v=2026-11-15b"></script>
+  <script src="race-3d.js?v=2026-11-15b"></script>
+  <script src="network.js?v=2026-11-15b"></script>
+  <script src="server.js?v=2026-11-15b"></script>
+  <script src="ctf-server.js?v=2026-11-15b"></script>
+  <script src="race-server.js?v=2026-11-15b"></script>
+  <script src="game.js?v=2026-11-15b"></script>
+  <script src="ctf-game.js?v=2026-11-15b"></script>
+  <script src="race-game.js?v=2026-11-15b"></script>
 </body>
 </html>

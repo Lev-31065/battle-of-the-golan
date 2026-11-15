@@ -1,38 +1,38 @@
 # Next session
 
-## Where we stopped (2026-11-14)
-- Live version: **v 2026-11-14g** (shown under Privacy on the home screen). Everything is uploaded.
-- Daniel played v 14e ("It's great") and sent a fourth list. **Built and live, not yet tried by him** (details at the top of the race section in STATE.md):
-  - v 14f: slower, steady speed that follows the slope (no surprise boosts), off-path only 30% slower, tighter skid bends, gas gift, homing mangoes, open bridges you ride under, and the fix for path pieces that were not drawn.
-  - v 14g: free off-roading with a "Back to the path" button, a track full of zigzags with a secret gap in each row of rocks, 4 winding secret trails (one over the hills after gate 1), solid scenery trees, gates that can't be skipped.
+## Where we stopped (2026-11-15)
+- Live version: **v 2026-11-15b** (shown under Privacy on the home screen). Everything is uploaded; the project folder matches the live site.
+- **v 15a = Daniel's fifth race list** (details at the top of the race section in STATE.md): one-tap start, countdown from 10, steering arrows twice as long, tight-bend "vacuum" fix, gentler skid, slow crashes nudge / fast crashes spin out, momentum, boulders with a question, "back to the path" returns to where you left it, 14 gates, anona speed-boost gift, camera follows the sled.
+- **v 15b = the "overarching" things:** mastery points, 6 looks (hats) for both games, and a log-in card after a game for guests (top of STATE.md).
+- Daniel has NOT played either yet.
 
 ## Next steps
-1. Ask Daniel how v 14g feels. Likely tuning, in `RACE` (rules.js) or "THE RIDE" / the `addTrail` lines (race-track.js):
-   - roaming: `roamTurn`, `roamSkidTurn`, `roamSlope`, `offTrackSpeed`; how easily you rejoin the path (`roamJoin`)
-   - zigzag gaps too strong or too hard to hit: `zigGap` (17), where the gap is on the leg (the `0.45 + random() * 0.35` line), rocks (`rockHitSpeed`)
-   - trails: `speed`, `wiggle`, `wave`, `half` in each `addTrail(…)`; the hill trail's `via` points and `hills`
-   - race length (about 4½ min on the path): fewer legs in a `zigzag(…)`, or `maxSpeed`
-   - phones too slow? `nearView` (300), `viewDistance`
-2. **"You can add the next thing"** (Daniel, 2026-11-14): not built. Ask what he meant. Claude's guess: the podium (race step 6) and two-phone polish (step 5).
-3. Two phones: do roaming sleds, gas and drops between zigzag legs look right on the other phone?
+1. Ask Daniel how v 15a feels. Tuning is all in `RACE` (rules.js):
+   - hairpins: `skidSlide`, `skidTurn`, `skidTurnRate`, `skidSpeed`
+   - crashes: `spinHitFrom` (spin out from this speed), `hardHitTurn`, `crashShove`
+   - momentum and slope: `coast`, `roamCoast`, `slopeSpeed`, `slopeLimits`
+   - camera: `cameraTurn`, `cameraFollow`
+   - boulders: `boulders`, `boulderSize`, `boulderHop`; anona: `anonaSpeed`, `anonaTime`, the gift chances
+   - gates: the `gate(…)` lines in "THE RIDE" (race-track.js), `gateZoneShort`
+2. Ask about points and looks: are the prices right (`LOOKS` in rules.js)? More looks, or whole characters instead of hats? Should points be spent rather than just reached?
+3. Still open from before: "the next thing" (podium? two-phone polish? the 3rd game?), and a two-phone race test.
 
 ## Questions for Daniel
-- What is "the next thing": the podium, the two-phone polish, or the 3rd game?
-- Should the zigzag gaps be marked a little (two poles?), or stay fully secret?
-- Should bots use the gaps and trails sometimes?
-- Capture the Flag lag: when does it happen (school Wi-Fi? many players?).
-- Older: levels 18–20 use לְ/אֶל + pronoun: keep, or its own level? More Key concepts decks? Decks for the other verb patterns?
+- "Returning to where you left the path": Claude kept riding back onto the path by yourself (zigzag gaps, trails) as allowed. Is that what you meant?
+- Should the log-in card show after every game, or only once per visit?
+- Should the privacy page mention that the chosen look is saved with the progress?
+- Older: zigzag gaps marked or secret? Bots using gaps and trails? Capture the Flag lag? Levels 18–20 with לְ/אֶל + pronoun?
 
 ## Reminders for Claude
 - End every reply with a short "Next steps". Upload every tested change without asking.
 - Before editing, compare the project folder with the repo clone (`diff -rq --strip-trailing-cr`): VS Code once saved an old open copy over a new file.
-- The repo clone and the race test files live in the session scratchpad; re-clone `Lev-31065/battle-of-the-golan` and rebuild the test files if they're gone (see the Gotchas in STATE.md).
-- Test rig that worked on 2026-11-14 (rebuild if gone):
-  - `mk.pl` copies index.html with a `<base href>` + an error catcher + one test script pasted in at the end.
-  - `go.ps1` runs headless Edge on it (`--dump-dom` for numbers, `--screenshot` for pictures). The test writes its result into a `<pre>`; build the marker text in pieces ("RES" + "ULT"), or the search finds the script's own text.
-  - `t-map.js` prints the track's numbers and with `?map=1` draws the map (trails in pink, zigzag gaps as green dots). It must show `close: []` (no two stretches closer than their widths), every crossing with a gap near 0 and a drop of about 23, and each trail's `nearest` (how close it comes to the path away from its ends) above about 10.
-  - `t-race.js` drives a whole race with an autopilot (it replaces `steerInput` and `skidInput`): `?fork=special`, `?noskid=1`, `?wrong=1`, `?seg=N` (stop for a screenshot), `?flat=1`, `?roam=GAPSEG&side=-1&time=8` (leave the path through a zigzag gap, go straight for 8 s, press the button), `?trail=N` (ride secret trail N), `?stoproam=T` (screenshot T seconds after leaving the path). It lists where it crashed and into what.
-- Perl only exists inside Git Bash (from PowerShell: `C:\Program Files\Git\usr\bin\perl.exe`). For screenshots do NOT block `requestAnimationFrame`.
+- The repo clone and the test files live in the session scratchpad; re-clone `Lev-31065/battle-of-the-golan` and rebuild the test files if they're gone.
+- Test rig that worked on 2026-11-15 (rebuild if gone):
+  - `go.ps1 -script X -query "…" [-shot file.png]`: copies index.html into the scratchpad with a `<base href>` to the project, an error catcher, and one test script at the end; runs headless Edge (`--dump-dom`, or `--screenshot` with `--virtual-time-budget=4000`); prints what is between "RES"+"ULT" and "END"+"RES" in a `<pre>`. Edge needs `--user-data-dir`, `--enable-unsafe-swiftshader` (3D), `--allow-file-access-from-files`.
+  - `t-race.js`: map check (`close` must be `[]`) + a whole autopilot race (it replaces `steerInput` and `skidInput`). `?hold=1` (holds the skid all the way round hairpins), `?noskid=1`, `?wrong=1`, `?crash=SPEED&stop=75` (puts a rock in front of the sled), `?stop=N&shot=1`, `?maponly=1`.
+  - `t-roam.js`: leaves the path at `?seg=N`, hits a fake boulder (wraps `landTreesNear`), answers (`quiz.onCorrect`), presses "back to the path". `?shot=real` parks the sled in front of a real boulder.
+  - `t-looks.js`: points sums, `myLook`, `?mode=picker|ctf|race|nudge` for screenshots. It fakes a login with `account.user = { id, email }`.
+  - Number tests set `requestAnimationFrame = () => 0`; screenshot tests leave it alone and freeze with `update = () => {}; serverUpdate = () => {}`.
+- Scripted edits: Git Bash heredocs break on quotes and garble Hebrew/emoji. Write a perl script with the Write tool (no apostrophes inside its single-quoted strings; read and write with `:raw`), then run it with Git Bash's perl.
 - In PowerShell, don't name a helper `R` or `rd`. Scripts need `-ExecutionPolicy Bypass`.
-- Scripted edits: Git Bash heredocs break on quotes and garble Hebrew/emoji. Write the perl script with the Write tool, then run it. Perl: `@` inside a double-quoted string gets eaten.
-- A test autopilot that never leaves "hug the edge" mode misses gates and loops forever on the bounce: that is the test's fault, not the game's.
+- Popups that open over a screen need z-index 40 (add their id to the rule in style.css).

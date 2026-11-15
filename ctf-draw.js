@@ -574,6 +574,91 @@ function drawFlag(ctx, x, y, team, time) {
 // ---------- Players ----------
 
 // isMe = true for the player holding this phone (they get a yellow ring so they can find themselves).
+// The LOOK a player picked (LOOKS in rules.js), seen from above like the player itself: a hat
+// sits on top of the ball, a little behind the eyes. overEyes = the part drawn after the
+// eyes (only the sunglasses). Inside, "forward" (the way the player faces) is plus x.
+function drawLook(ctx, p, y, time, overEyes) {
+  const look = p.look;
+  if (!look || look === "none" || overEyes !== (look === "shades")) return;
+  const R = p.radius, line = COLORS.outline;
+  const disc = (x, yy, rx, ry, fill, edge) => {
+    ctx.beginPath();
+    ctx.ellipse(x, yy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (edge) { ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke(); }
+  };
+  ctx.save();
+  ctx.translate(p.x, y);
+  ctx.rotate(p.facing);
+  if (look === "tembel") {
+    disc(-5, 0, R * 0.8, R * 0.8, "#d8c79c", true);
+    disc(-6, 0, R * 0.5, R * 0.5, "#c5b283", true);
+  } else if (look === "cowboy") {
+    disc(-4, 0, R * 0.92, R * 1.08, "#8a5a2b", true);
+    disc(-5, 0, R * 0.52, R * 0.44, "#6b4423", true);
+    ctx.strokeStyle = "#4a2f14";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-5 - R * 0.3, 0);
+    ctx.lineTo(-5 + R * 0.3, 0);
+    ctx.stroke();
+  } else if (look === "wizard") {
+    disc(-5, 0, R * 0.84, R * 0.84, "#4c1d95", true);
+    disc(-7, 0, R * 0.56, R * 0.56, "#6d28d9", false);
+    disc(-11, 0, R * 0.38, R * 0.38, "#7c3aed", false);
+    disc(-15, 0, R * 0.2, R * 0.2, "#a78bfa", false);
+    // a gold star on the front
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * Math.PI * 2, r = k % 2 ? 2.2 : 5;
+      ctx.lineTo(1 + Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else if (look === "crown") {
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.arc(-4, 0, R * 0.56, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#f5c518";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2;
+      disc(-4 + Math.cos(a) * R * 0.56, Math.sin(a) * R * 0.56, 3.4, 3.4, k % 2 ? "#dc2626" : "#fde047", true);
+    }
+  } else if (look === "headband") {
+    // (From above, a band round the forehead is a ring near the edge; its tails flap behind.)
+    ctx.strokeStyle = "#dc2626";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, R - 4, 0, Math.PI * 2);
+    ctx.stroke();
+    const flap = Math.sin(time * 9 + p.x * 0.01) * 4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-R + 2, 0);
+    ctx.lineTo(-R - 13, -5 + flap);
+    ctx.moveTo(-R + 2, 0);
+    ctx.lineTo(-R - 11, 6 - flap);
+    ctx.stroke();
+  } else if (look === "shades") {
+    for (const side of [-1, 1]) disc(8, 7 * side, 5, 6.6, "#111827", false);
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(8, -3);
+    ctx.lineTo(8, 3);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(9.5, 7 * side - 2, 1.4, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
 function drawPlayer(ctx, p, time, isMe) {
   const color = COLORS[p.team];
   const light = COLORS[p.team + "Light"];
@@ -698,6 +783,8 @@ function drawPlayer(ctx, p, time, isMe) {
   ctx.ellipse(p.x - p.radius * 0.38, y - p.radius * 0.42, p.radius * 0.22, p.radius * 0.14, -0.6, 0, Math.PI * 2);
   ctx.fill();
 
+  drawLook(ctx, p, y, time, false); // the hat this player picked (looks.js), under the eyes
+
   // Eyes, looking in the direction the player faces
   const lookX = Math.cos(p.facing) * 7;
   const lookY = Math.sin(p.facing) * 7;
@@ -714,6 +801,8 @@ function drawPlayer(ctx, p, time, isMe) {
     ctx.arc(ex + Math.cos(p.facing) * 2, ey + Math.sin(p.facing) * 2, 2.8, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  drawLook(ctx, p, y, time, true); // (sunglasses go over the eyes)
 
   // Berry boosts: one little red berry circling the player for each boost that's working,
   // so everyone can see who's sped up.

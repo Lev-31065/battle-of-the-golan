@@ -435,7 +435,7 @@ const RACE = {
   crashShoveTime: 0.45,   // …for this many seconds, so you slide round it
   sledLength: 900,        // how long a sled is (its nose is this far ahead of its back)
   // Boulders: huge pale rocks out on the mountainside, off the path. Run into one and you have to answer a question to get going again (then you hop over it).
-  boulders: 3,            // about how many in each big square of mountainside (0 = none)
+  boulders: 3,            // how many are tried in each big square of mountainside; about 1 in 3 finds a good spot (0 = none)
   boulderSize: [2.2, 3.8], // how big they are, compared with a normal rock
   boulderHop: 19,         // how hard a right answer throws you up and over it
   // Mountain goats wander about on the path. Bump one and it is knocked flying (it comes back later), and you are slowed down.
@@ -482,11 +482,31 @@ const RACE = {
   colors: ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#f97316"], // one per sled
 };
 
+// ---------- Mastery points and looks (looks.js) ----------
+// MASTERY POINTS: every time one of your words climbs to a flashcard level it has never
+// reached before, you get 1 point (progress.js: masteryPoints). So points come from really
+// learning words, not from playing the same easy ones over and over, and they never go down.
+// LOOKS: hats and things for your player, in Capture the Flag AND on your sled. Each one
+// opens up when you have `cost` points (you don't spend the points). Only for logged-in players.
+// To add a look: a line here + how it is drawn (ctf-draw.js: drawLook, race-3d.js: riderLook).
+const LOOKS = [
+  { id: "none",     cost: 0,   icon: "🙂", en: "Just me",        he: "רַק אֲנִי" },
+  { id: "tembel",   cost: 15,  icon: "👒", en: "Kova tembel",    he: "כּוֹבַע טֶמְבֶּל" },
+  { id: "shades",   cost: 40,  icon: "🕶️", en: "Sunglasses",     he: "מִשְׁקְפֵי שֶׁמֶשׁ" },
+  { id: "headband", cost: 80,  icon: "🥷", en: "Ninja headband", he: "סֶרֶט נִינְגָ'ה" },
+  { id: "cowboy",   cost: 150, icon: "🤠", en: "Cowboy hat",     he: "כּוֹבַע בּוֹקְרִים" },
+  { id: "wizard",   cost: 250, icon: "🧙", en: "Wizard hat",     he: "כּוֹבַע קוֹסֵם" },
+  { id: "crown",    cost: 400, icon: "👑", en: "Crown",          he: "כֶּתֶר" },
+];
+function findLook(id) {
+  return LOOKS.find((look) => look.id === id) || null;
+}
+
 // ---------- Version ----------
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15a";
+const GAME_VERSION = "2026-11-15b";
 
 // ---------- Helpers ----------
 

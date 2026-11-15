@@ -338,6 +338,7 @@ showGenderChoice();
 
 // Show how many words you've practiced on the home screen.
 function updateProgressSummary() {
+  updateMasteryLine(); // (looks.js: the mastery points line under it)
   const { practiced, known } = progressSummary();
   const el = document.getElementById("progress-summary");
   if (practiced === 0 && account.user) {
@@ -441,7 +442,7 @@ function createRoom(mode) {
       // A class game starts on the teacher's last pick. A normal room is always
       // Auto on the referee's side: each phone then plays the level its player picks.
       serverReset(myId, classGame ? teacherPickId() : AUTO, { classGame, mode });
-      serverAddPlayer(myId, name);
+      serverAddPlayer(myId, name, myLook());
       applySnapshot(serverSnapshot());
     },
     onMessage: (id, msg) => serverHandle(id, msg),
@@ -474,7 +475,7 @@ joinButton.addEventListener("click", () => {
       client.lastSnapshotAt = performance.now();
       client.name = name;
       client.joinSentAt = performance.now();
-      sendToHost({ type: "join", name });
+      sendToHost({ type: "join", name, look: myLook() });
     },
     onMessage: (msg) => {
       if (msg && msg.type === "state") applySnapshot(msg);
@@ -934,7 +935,7 @@ function applySnapshot(snap) {
   if (!client.isHost && client.myId && !stillHere.has(client.myId) && performance.now() - client.joinSentAt > 2000) {
     client.joinSentAt = performance.now();
     resetTimers();
-    sendToHost({ type: "join", name: client.name });
+    sendToHost({ type: "join", name: client.name, look: myLook() });
   }
 
   // Is this a class game (the teacher picks the words) or a normal room (everyone picks their own)?
@@ -972,7 +973,9 @@ function isNearMe(event) {
   return !me || Math.hypot(event.x - me.x, event.y - me.y) < 900;
 }
 
+let pointsAtStart = 0; // my mastery points when this game started (looks.js says how many I earned)
 function changePhase(phase) {
+  const before = client.phase;
   client.phase = phase;
   resetStick();
   closeDeckDropdown(); // (in case the word list was open when the battle started)
@@ -980,6 +983,8 @@ function changePhase(phase) {
     showScreen("lobby");
   } else if (phase === "playing") {
     showScreen(null);
+    pointsAtStart = masteryPoints();
+    document.getElementById("login-nudge").hidden = true;
     lockSideways(); // Android in full screen: the game turns sideways by itself
     // Still upright after a moment (iPhones can't be turned by the game)? Show the big card.
     setTimeout(showRotateTip, 1200);
@@ -988,6 +993,8 @@ function changePhase(phase) {
     playSound("win");
   }
   phoneGame().onPhase(phase); // the game gets ready, or shows who won
+  // Back in the room after a game: the points I earned, or (not logged in) a card asking to log in.
+  if (phase === "lobby" && before === "over") afterGame(pointsAtStart);
 }
 
 // ---------- Every frame ----------
