@@ -19,7 +19,7 @@ The game is in beta. The Hebrew in the menus has not been checked by a Hebrew te
 
 ## Mt Hermon Racing
 
-One long ride, about 5 minutes, for one player or more. Computer sleds fill the race up to 4.
+One long ride, about 5 minutes, for one player or more. Computer sleds fill the race up to 10.
 
 | On a phone | On a computer | Does |
 |---|---|---|
@@ -30,13 +30,14 @@ One long ride, about 5 minutes, for one player or more. Computer sleds fill the 
 | Back to the path | R | Go back to where you left the path |
 
 - **Gates:** each gate shows an English word, with a Hebrew answer over each of its 3 lanes. Drive under the right one for a speed boost and a gift. A wrong answer bounces you back up the path to try again.
+- **Other sleds:** sleds pass through each other side by side. You only bump a sled by running into the back of it, and not while you are boosting or while it is spinning out.
 - **Gifts:** banana peel, mango, rimon (a pomegranate grenade), gas cloud, anona (a speed boost), and orange (a very fast, very short burst).
 - **Off the path:** you can leave the path and ride anywhere on the mountain. There are secret trails, gaps in the rocks on the zigzags, and a rocky shortcut down the mountain face.
 - **🐣 Easy mode** (for little kids; on by itself if you are not logged in): the sled follows the path by itself and the two arrows change lanes. The lanes pick your answer at a gate, get you round other sleds, and choose a way where the path splits. When an arrow glows gold, go to that edge of the path and tap it once more to take a secret shortcut.
 
 ## Capture the Flag
 
-Two teams. To score, both flags have to be inside your base. The first team to 3 wins.
+Two teams. To score, both flags have to be inside your base. The first team to 3 wins. With fewer than 4 players, computer players join so it is 3 against 3.
 
 | On a phone | On a computer | Does |
 |---|---|---|
@@ -103,7 +104,7 @@ Plain HTML, CSS and JavaScript. There is no build step.
 | `account.js`, `decks.js`, `looks.js`, `stats.js` | Logins, the Deck dashboard, looks, usage counting |
 | `network.js` | Connects phones with room codes (PeerJS) |
 | `server.js`, `game.js` | The shared referee and the shared phone code (rooms, lobby, snapshots) |
-| `ctf-server.js`, `ctf-game.js`, `ctf-draw.js`, `map.js` | Capture the Flag: its rules, its phone side, its drawing, its map |
+| `ctf-server.js`, `ctf-bots.js`, `ctf-game.js`, `ctf-draw.js`, `map.js` | Capture the Flag: its rules, its computer players, its phone side, its drawing, its map |
 | `race-server.js`, `race-game.js`, `race-track.js`, `race-3d.js`, `race-draw.js` | Mt Hermon Racing: its rules and bots, its phone side, the track, the 3D drawing, the flat fallback and the race info |
 | `three.min.js` | three.js, the 3D library (MIT licence) |
 | `privacy.html` | The privacy page |
@@ -115,7 +116,7 @@ Plain HTML, CSS and JavaScript. There is no build step.
   - Walk faster in Capture the Flag: `PLAYER_SPEED = 172`.
   - Shorter or longer games: `WIN_SCORE = 3`.
   - Faster sleds: `maxSpeed` in `RACE`.
-  - Stronger or weaker bots: `botSkill` and `botRight` in `RACE`.
+  - Stronger or weaker bots: `botSkill` and `botRight` in `RACE` (the race), `CTF_BOTS` (Capture the Flag).
   - What a look costs: `LOOKS`.
 - **Add a Hebrew word:** in `words.js`, copy a line like `{ english: "horse", hebrew: "סוּס" },` and change it.
 - **If something breaks:** press `F12` and look at the **Console** tab. Red text there says which file and line has the problem.

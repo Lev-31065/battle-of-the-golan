@@ -63,8 +63,8 @@ function raceStartGame() {
   raceAddBots(); // computer sleds, so there's always someone to race
   const everyone = Object.values(server.players);
   everyone.forEach((p, i) => {
-    const row = Math.floor(i / 4), inRow = Math.min(4, everyone.length - row * 4);
-    p.x = (i % 4 - (inRow - 1) / 2) * 0.8;
+    const row = Math.floor(i / 5), inRow = Math.min(5, everyone.length - row * 5); // (5 sleds in a row)
+    p.x = (i % 5 - (inRow - 1) / 2) * 0.72;
     p.y = TRACK.startZ - RACE.segmentLength * 8 - row * RACE.segmentLength * 7; // behind the start line (far enough to see the banner)
     p.speed = 0;
     p.steer = 0;
@@ -309,6 +309,12 @@ function raceGoatHit(id, dir) {
   server.race.goats[id] = { at: server.time, dir };
 }
 
+// Is this sled spinning out, or nearly standing still (it just hit something)? Then other sleds go straight through it.
+function raceSledDown(q) {
+  return server.time < (q.spinUntil || LONG_AGO) || server.time - (q.selfSpinAt || LONG_AGO) < RACE.spinTime + 0.5
+    || server.time < (q.safeUntil || LONG_AGO) - RACE.itemSafeTime + RACE.spinTime + 0.5 || (q.speed || 0) < RACE.maxSpeed * RACE.bumpSlow;
+}
+
 // ---------- Bots: computer sleds ----------
 // Bots are players the referee drives itself (bot: true). They only exist during a race:
 // they join when the host taps Start (until there are RACE.bots sleds) and leave when
@@ -519,14 +525,18 @@ function raceMoveBot(p, dt) {
     p.speed *= RACE.goatHitSpeed;
   }
 
-  // Sleds are solid: a bot that touches another sled gets pushed aside, just like a player.
+  // Other sleds, the same rules as for a player: only running into the BACK of a sled is a
+  // bump. Not while this bot is boosting or spinning, and not into a sled that is spinning out
+  // or has just hit something.
+  const through = boosting || orange || spinning || server.time < (p.anonaUntil || LONG_AGO);
   for (const other of Object.values(server.players)) {
-    if (other === p) continue;
+    if (other === p || through || raceSledDown(other)) continue;
     const touch = sledsTouch(p, other);
     if (!touch) continue;
-    p.x += touch.side * RACE.bumpShove * dt;
-    if (touch.lined && touch.behind) p.speed = Math.min(p.speed, Math.max(0, other.speed) * 0.92);
-    else if (touch.lined && server.time - p.bumpAt > 0.5) { p.bumpAt = server.time; p.speed += RACE.bumpBoost; }
+    if (touch.behind) {
+      p.x += touch.side * RACE.bumpShove * dt;
+      p.speed = Math.min(p.speed, Math.max(0, other.speed) * 0.92);
+    } else if (server.time - p.bumpAt > 0.5) { p.bumpAt = server.time; p.speed += RACE.bumpBoost; }
   }
 
   p.y += p.speed * dt;

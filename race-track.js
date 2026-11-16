@@ -1095,17 +1095,19 @@ function sledFlight(s, oldY, oldX, dt) {
   return "";
 }
 
-// Sleds are solid: two sleds can't be in the same spot. Is sled `a` touching sled `b`?
-// No: null. Yes: { side: which way `a` should slide to get clear (-1 left, 1 right),
-// lined: true if they're one behind the other (nose to tail) rather than side by side,
-// behind: true if `a` is the one at the back }.
-// (Every phone checks this for its own sled, and the referee for the bots, so both sleds move apart.)
+// Sleds only bump when one runs into the BACK of another, nearly straight from behind. Side by
+// side they overlap and cross over each other freely. Is sled `a` bumping sled `b`?
+// No: null. Yes: { side: which way the sled at the back should slide to get clear (-1 left,
+// 1 right), behind: true if `a` is the one at the back }.
+// (Every phone checks this for its own sled, and the referee for the bots. The callers also
+// let a sled straight through when it is boosting, or when the other one is spinning out or
+// has just hit something.)
 function sledsTouch(a, b) {
   const dx = (a.x - b.x) * RACE.roadWidth, dy = a.y - b.y;
-  if (Math.abs(dx) >= SLED_WIDTH || Math.abs(dy) >= RACE.sledLength) return null;
+  if (Math.abs(dx) >= SLED_WIDTH * RACE.bumpLine || Math.abs(dy) >= RACE.sledLength) return null;
   if (Math.abs((a.air || 0) - (b.air || 0)) > 250) return null; // (one of them is flying over the other)
   const side = dx > 0 ? 1 : dx < 0 ? -1 : (String(a.id) < String(b.id) ? -1 : 1);
-  return { side, lined: Math.abs(dx) < SLED_WIDTH * 0.6, behind: dy < 0 };
+  return { side, behind: dy < 0 };
 }
 
 // ---------- The shortcut down the mountain face ----------

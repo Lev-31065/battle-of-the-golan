@@ -469,14 +469,16 @@ const RACE = {
   goatTall: 700,          // a sled flying higher than this goes right over it
   goatHitSpeed: 0.5,      // bumping a goat: you keep this much of your speed
   goatAway: 12,           // a goat that was bumped stays away this many seconds, then wanders back
-  bumpShove: 2.5,         // sleds are solid: two that touch get pushed apart sideways this fast (road widths per second)
+  bumpShove: 2.5,         // a sled that runs into the BACK of another slides out to the side this fast (road widths per second)
+  bumpLine: 0.5,          // …and that only counts when it is nearly straight behind: their middles less than this much of a sled's width apart (0.5 = half a sled). Further to the side, sleds overlap and cross over freely
+  bumpSlow: 0.4,          // a sled going slower than this much of top speed (it is spinning out, or it just hit something) can not be bumped: you go straight through it
   bumpBoost: 250,         // bumped from behind, the sled in front gets this little push forward
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Bots: computer sleds, so even one player has someone to race (the referee drives them: race-server.js)
-  bots: 4,                // bots join until there are this many sleds (4 = one player gets 3 bots; 0 = no bots)
-  botNames: ["🤖 גַּל", "🤖 נֹעָה", "🤖 טַל", "🤖 שַׁי", "🤖 לִיאוֹר"],
-  botSkill: [1, 0.95, 0.9, 0.97, 0.93], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner. Was 0.96, 0.9, 0.84…
-  botRight: [0.9, 0.78, 0.65, 0.84, 0.72], // how often each bot picks the right answer at a gate (0.9 = 90%). A wrong answer bounces it back, like a player. Was 60% for all of them
+  bots: 10,               // bots join until there are this many sleds (10 = one player gets 9 bots; 0 = no bots). Was 4
+  botNames: ["🤖 גַּל", "🤖 נֹעָה", "🤖 טַל", "🤖 שַׁי", "🤖 לִיאוֹר", "🤖 עֹמֶר", "🤖 יוּבַל", "🤖 אוֹר", "🤖 דָּנִי"],
+  botSkill: [1, 0.95, 0.9, 0.97, 0.93, 0.88, 0.98, 0.91, 0.86], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner. Was 0.96, 0.9, 0.84…
+  botRight: [0.9, 0.78, 0.65, 0.84, 0.72, 0.6, 0.87, 0.7, 0.55], // how often each bot picks the right answer at a gate (0.9 = 90%). A wrong answer bounces it back, like a player. Was 60% for all of them
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   botEase: [0.9, 0.82],   // …it eases off to 90% when it is that far ahead, and to 82% when it is three times that far ahead (so a bot in front never runs away with the race)
   botPush: 1.06,          // …and pushes to 106% when it is that far behind
@@ -508,7 +510,26 @@ const RACE = {
   horizon: 0.3,           // where the horizon is on the screen (0 = top, 0.5 = middle)
   drawDistance: 320,      // how many segments ahead get drawn (fewer = faster on old phones)
   sendEvery: 100,         // milliseconds between "here's where my sled is" messages
-  colors: ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#f97316"], // one per sled
+  colors: ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#f97316", "#84cc16", "#0ea5e9"], // one per sled
+};
+
+// ---------- Bots in Capture the Flag (ctf-bots.js) ----------
+// Computer players, so a game with only a few people is still a real game. They join when
+// the game starts and leave when it ends. The referee (the host's phone) drives them.
+// A bot can't answer questions, so wherever a player would answer one (to buy something, to
+// grab a flag, to thaw out after a rock) the bot WAITS about as long as an answer takes.
+const CTF_BOTS = {
+  fewerThan: 4,          // bots join when a game starts with fewer than this many players…
+  players: 6,            // …until there are this many in all, half on each team (6 = 3 against 3). If one team already has more people than that, the other team is filled up to match (up to 8 in all). 0 = no bots
+  names: ["🤖 אוּרִי", "🤖 מַיָּה", "🤖 אִיתַי", "🤖 שִׁירָה", "🤖 נָדָב", "🤖 תָּמָר", "🤖 רוֹנִי", "🤖 עִדּוֹ"],
+  speed: [0.9, 0.84, 0.88, 0.94, 0.82, 0.86, 0.9, 0.8], // each bot's walking speed (1 = as fast as a player)
+  answerTime: [1.5, 3],  // a bot "answers a question" in this many seconds (between the two numbers)
+  shopChance: 0.5,       // how often a bot goes to the shop first when it comes (back) to life. Otherwise it sets off with empty hands
+  shopItems: { stick: 0.5, rock: 0.3, hammer: 0.2 }, // what it buys there, and how often (it waits the item's cost in answers)
+  see: 230,              // an attacking bot with a weapon turns aside for an enemy carrying a flag who comes this close…
+  guard: 380,            // …and a bot guarding its base goes after any enemy this close to the base
+  swingWait: [0.2, 0.7], // after a swing or a throw it waits its weapon's own pause plus this much (so it is beatable)
+  throwError: 0.15,      // how badly it aims a rock (radians: 0.15 is about 9 degrees to either side)
 };
 
 // ---------- Mastery points and looks (looks.js) ----------
@@ -559,7 +580,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-16a";
+const GAME_VERSION = "2026-11-16b";
 
 // ---------- Helpers ----------
 

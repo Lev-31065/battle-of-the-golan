@@ -212,6 +212,8 @@ const stick = { x: 0, y: 0 };
 let stickPointerId = null;
 let stickStartX = 0;
 let stickStartY = 0;
+let stickFingerX = 0; // where the joystick finger is on the screen right now
+let stickFingerY = 0;
 
 // Start the joystick under this finger. (centerX, centerY) = the middle of the joystick on
 // the screen: normally right where the finger came down, but a game can put it somewhere
@@ -233,8 +235,13 @@ function startStick(event, centerX, centerY) {
 
 // The joystick finger moved: the knob follows it, and the player walks that way.
 function moveStick(event) {
-  let dx = event.clientX - stickStartX;
-  let dy = event.clientY - stickStartY;
+  stickFingerX = event.clientX;
+  stickFingerY = event.clientY;
+  placeKnob();
+}
+function placeKnob() {
+  let dx = stickFingerX - stickStartX;
+  let dy = stickFingerY - stickStartY;
   const length = Math.hypot(dx, dy);
   if (length > STICK_RADIUS) {
     dx *= STICK_RADIUS / length;
@@ -248,6 +255,17 @@ function moveStick(event) {
 joystickZone.addEventListener("pointerdown", (event) => {
   startStick(event, event.clientX, event.clientY);
 });
+
+// Move the middle of the joystick while a finger is on it. (Capture the Flag: a joystick that
+// was started on my player stays centered on my player, wherever the player is on the screen.)
+function moveStickCenter(centerX, centerY) {
+  if (stickPointerId === null) return;
+  stickStartX = centerX;
+  stickStartY = centerY;
+  joystickBase.style.left = stickStartX + "px";
+  joystickBase.style.top = stickStartY + "px";
+  placeKnob();
+}
 
 // (On `window`, so it also follows a joystick that a game started somewhere else on the screen.)
 window.addEventListener("pointermove", (event) => {

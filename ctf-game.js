@@ -338,6 +338,7 @@ function throwNow(angle) {
 //   - Put a finger ON your own player and drag: a joystick centered on the player.
 // A "tap" is a quick touch that hardly moves. (A drag on the left half is still the joystick.)
 
+let stickOnMe = null; // the finger (pointer id) of a joystick that was started ON my player, or null
 const mapTaps = new Map(); // finger (pointer id) → { x, y (where it came down), at (when), onMe (it came down on my player) }
 
 // Where the camera is right now (the top-left corner of the screen, in map units).
@@ -362,7 +363,7 @@ window.addEventListener("pointerdown", (event) => {
   const enemy = enemyAt(p, spot);
   const onEnemy = enemy && Math.hypot(enemy.x - spot.x, enemy.y - spot.y) < Math.hypot(p.x - spot.x, p.y - spot.y);
   const onMe = !onEnemy && Math.hypot(event.clientX - myX, event.clientY - myY) < TOUCH.grab;
-  if (onMe && !isBusy()) startStick(event, myX, myY);
+  if (onMe && !isBusy() && startStick(event, myX, myY)) stickOnMe = event.pointerId; // (from now on the joystick stays on my player: see ctfUpdate)
   mapTaps.set(event.pointerId, { x: event.clientX, y: event.clientY, at: performance.now(), onMe });
 });
 window.addEventListener("pointerup", (event) => {
@@ -888,6 +889,16 @@ function ctfUpdate(dt) {
   }
 
   p.inLog = myLogNumber();
+
+  // A joystick that was started on my player stays centered on my player. (Near the edge of
+  // the map the camera stops and the player moves across the screen: the joystick goes along.)
+  if (stickOnMe !== null) {
+    if (stickPointerId !== stickOnMe) stickOnMe = null; // (that finger let go)
+    else {
+      const camera = ctfCamera(p);
+      moveStickCenter((p.x - camera.x) * view.scale, (p.y - camera.y) * view.scale);
+    }
+  }
 
   // Tell the referee where I am (and whether I'm hiding), 20 times a second.
   if (now - lastMoveSent > 50) sendMyPosition(p);

@@ -69,7 +69,16 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## v 2026-11-16b (headless-tested, NOT yet tried by Daniel)
+- **Capture the Flag bots:** a game that starts with fewer than 4 people gets computer players, 3 against 3 (the second bot on each team guards the base, the rest attack). They walk round rocks, logs and bushes, cross by the bridges or wade, buy a stick, rock or hammer (waiting as long as the answers would take), grab and carry flags, chase flag thieves, and pick up their own dropped flag. Test games (the person standing still) ended 3 to something in about 3.5 to 6.5 minutes.
+- **Joystick on the player:** a joystick started by dragging from your player now stays centered on the player, also near the map edge where the player moves across the screen.
+- **Race, 10 sleds:** one player gets 9 bots. Start grid 5 per row.
+- **Race, bumps:** sleds pass through each other side by side. Only running into the back of a sled, nearly in line, is a bump. No bump while boosting, or into a sled that is spinning out or nearly stopped.
+- Claude's choices: 6 players (3 against 3), not 8; which bot guards; bots buy only stick / rock / hammer; how long a bot "answers" (1.5 to 3 s); the 9 race bots' speeds.
+- Things to watch: are the Capture the Flag bots too strong or too weak (`CTF_BOTS`)? Is being frozen by a bot's rock annoying? With 9 race bots there are many more gifts flying at you: too much? (`RACE.bots`, `giftsInFront` / `giftsBehind`)
+
 ## v 2026-11-16a (headless-tested, NOT yet tried by Daniel)
+
 - **Daniel on 15f + 15g (2026-11-16):** easy mode is "really good", the sledding game is "really good". No word yet on the regular-mode camera or the Capture the Flag taps.
 - **Two games:** the race is listed first, Capture the Flag second, the "Coming soon" slot is gone.
 - **Easy mode:**

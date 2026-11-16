@@ -615,6 +615,7 @@ function raceUpdate(dt) {
     const segment = findSegment(me.y);
     const fraction = Math.max(0, mySpeed) / RACE.maxSpeed; // 0 = stopped, 1 = top speed
     const oldY = me.y, oldX = me.x;
+    const boosting = gameTime < boostUntil, anonaNow = gameTime < anonaUntil, orangeNow = gameTime < orangeUntil; // (speed boosts that are working right now)
 
     // A sled keeps going STRAIGHT, so in a bend the path turns away under it and you have
     // to steer round, like in a kart. (RACE.curveSteer = how much of that is real.)
@@ -650,22 +651,30 @@ function raceUpdate(dt) {
     // (For the snow spray: steering, sliding or going round a bend all throw snow out sideways.)
     myCarve = flying ? 0 : skidding ? steer : Math.max(-1, Math.min(1, steer * 0.7 + (wanted - mySlide) * 0.6 + Math.sign(segment.curve) * Math.min(1, Math.abs(segment.curve) / 6) * fraction * 0.6));
 
-    // Other sleds are solid: if mine touches one, we get pushed apart sideways. (Every phone
-    // does this for its own sled, so both move.) The sled at the back can't drive through the
-    // one in front: it is held to that sled's speed until it has slid out from behind it.
+    // Other sleds. Side by side, sleds pass through each other. Only running into the BACK of
+    // one, nearly straight from behind, is a bump: my sled is held to its speed and slides out
+    // to the side, and the sled in front gets a little push.
+    // No bump at all while I am boosting (a gate boost, an anona, an orange: I go straight
+    // through), while I am spinning out, or when the other sled is spinning out or has just hit
+    // something (it is nearly standing still).
     me.air = myAir; // (a sled that is flying goes right over the others)
+    const through = boosting || anonaNow || orangeNow || spinning;
     for (const other of Object.values(players)) {
-      if (other.id === client.myId) continue;
+      if (other.id === client.myId || through) continue;
+      const seen = otherSleds.get(other.id);
+      if ((seen && gameTime - seen.spinAt < RACE.spinTime + 0.5) || (other.speed || 0) < RACE.maxSpeed * RACE.bumpSlow) continue;
       const touch = sledsTouch(me, other);
       if (!touch) continue;
-      me.x += touch.side * RACE.bumpShove * dt;
-      if (touch.lined && touch.behind) mySpeed = Math.min(mySpeed, Math.max(0, other.speed || 0) * 0.92);
+      if (touch.behind) {
+        me.x += touch.side * RACE.bumpShove * dt;
+        mySpeed = Math.min(mySpeed, Math.max(0, other.speed || 0) * 0.92);
+      }
       if (gameTime - bumpAt > 0.5) {
-        // The first touch: a thump, a little knock off course, and a push for the sled in front.
+        // The first touch: a thump. The sled in front gets a push; the one behind is knocked a little off course.
         bumpAt = gameTime;
         bumpDir = touch.side;
-        mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer + touch.side * 0.15));
-        if (touch.lined && !touch.behind) mySpeed += RACE.bumpBoost;
+        if (touch.behind) mySteer = Math.max(-steerLimit, Math.min(steerLimit, mySteer + touch.side * 0.15));
+        else mySpeed += RACE.bumpBoost;
         playSound("thump");
       }
     }
@@ -682,7 +691,6 @@ function raceUpdate(dt) {
     // in the middle of a split counts as off the path too.
     // A right answer at a gate = a boost (faster for a moment).
     inDeepSnow = !flying && !inWater && offThePath(segment, me.x);
-    const boosting = gameTime < boostUntil;
     // The shortcut down the mountain face is steeper, so it is faster; so is a tilted bend.
     const onShortcut = !inDeepSnow && segment.fork && segment.fork.fastSide && segment.island > 0.3 && (me.x - segment.islandAt) * segment.fork.fastSide > segment.island;
     // (Found a SECRET shortcut? Say so, once for each one.)

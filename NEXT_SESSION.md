@@ -1,17 +1,21 @@
 # Next session
 
 ## Where we stopped (2026-11-16)
-- Live version: **v 2026-11-16a** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
+- Live version: **v 2026-11-16b** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
 - **v 16a (top of STATE.md), headless-tested, NOT yet tried by Daniel:**
   - Race, easy mode: lanes across the whole path; both ways round the splits (also the mountain-face shortcut); secret shortcuts by tapping a glowing gold arrow.
   - Race: orange gift (short, very fast burst); stronger bots.
   - Looks are whole outfits now (bandit is new), prices up, drawings in the picker.
   - Modes screen: race first, Capture the Flag second, no third slot.
   - README rewritten.
+- **v 16b, also headless-tested only:** Capture the Flag bots (3 against 3 when fewer than 4 people), the joystick stays on the player, 10 sleds in a race, sleds only bump from straight behind.
 - Daniel said (2026-11-16): easy mode is really good; the sledding game is really good; 2 games is plenty; assume the Hebrew is fine during beta.
 
 ## Next steps
-1. FIRST THING: ask how v 16a feels on a real phone:
+1. FIRST THING: ask how v 16a + 16b feel on a real phone:
+   - Capture the Flag bots: fun to play against alone? Too strong, too weak (`CTF_BOTS`)? Should it be 8 players instead of 6?
+   - The joystick dragged from the player: does it stay on the player now?
+   - Race: are 10 sleds too crowded, and are the bumps right now (`RACE.bumpLine`, `bumpSlow`)?
    - Easy mode: can a little kid find and take a secret shortcut (gold arrow, then one more tap at the edge)? Window: `RACE.easySecretAt`. Enough lanes to pass? `RACE.easyLane`.
    - Bots: too strong, too weak? `botSkill`, `botRight`, `botEase`, `botPush`, `botShortcut`.
    - Orange: `orangeSpeed`, `orangeTime`, `orangeFade`; how often: `giftsInFront` / `giftsBehind`.
@@ -35,6 +39,7 @@
   - `run.sh script.js "query" [shot.png] [w,h] [budget-ms]` (Git Bash): copies index.html into the scratchpad with a `<base href>` to the project, an error catcher (`window.__errs`), and one test script at the end; runs headless Edge (`--dump-dom`, or `--screenshot` with `--virtual-time-budget`); prints what is between "RES"+"ULT" and "END"+"RES" in a `<pre>`. Edge needs `--user-data-dir`, `--enable-unsafe-swiftshader` (3D), `--allow-file-access-from-files`.
   - `t-race.js`: a whole race. `?easy=1` (pretend finger: answers gates right; `&wander=1` random lanes, `&secret=1` takes every secret shortcut, `&fork=fast|slow`, `&wrong=1` first answer wrong, `&orange=1` every gift is an orange) or `?easy=0` (a rough autopilot). `&shot=1&stop=SECONDS` freezes there for a screenshot. Reports time, place, bot times, real tree hits (`hits`), shortcut rides, forks taken. `crashes` also counts rimon bangs, so read `hits`.
   - `t-looks.js`: `?mode=sheet` (every outfit in Capture the Flag, big), `picker` (fakes a login: `account.user`, `masteryPoints = () => N`), `race&order=look,look,…` (sleds on the start grid; crop the right-hand sled).
+  - `t-ctfbots.js`: Capture the Flag with bots. `?humans=N&secs=S` (the people stand still); reports the score every 30 s, grabs, knockouts, stuck seconds; `&shot=1` for a screenshot.
   - `t-smoke.js`: a short Capture the Flag game with outfits; reports errors.
   - Number tests set `requestAnimationFrame = () => 0`; screenshot tests leave it alone and freeze with `update = () => {}; serverUpdate = () => {}`.
 - Scripted edits: write a perl script with the Write tool (read and write with `:raw`; the files use plain LF line endings), then run it with Git Bash's perl. Heredocs in Git Bash break on apostrophes and can garble Hebrew: use the Edit tool for anything with Hebrew in it.

@@ -22,6 +22,7 @@ function makeSpeedBox() {
 }
 
 function resetRound() {
+  ctfRemoveBots(); // (bots only exist during a game: ctf-bots.js)
   server.flags = { blue: makeFlag("blue"), red: makeFlag("red") };
   server.score = { blue: 0, red: 0 };
   server.speedBox = makeSpeedBox();
@@ -532,6 +533,7 @@ function ctfNewPlayer(p) {
 
 // The host tapped Start: everyone back to their base with nothing.
 function ctfStartGame() {
+  ctfAddBots(); // computer players, when there are only a few people (ctf-bots.js)
   for (const p of Object.values(server.players)) {
     Object.assign(p, spawnPoint(p.team), {
       hp: MAX_HP, alive: true, items: [], ammo: {}, held: null, frozen: false, carrying: null, boostUntil: 0, berryBoosts: [], inLog: 0, lastSwing: -10,
@@ -604,6 +606,7 @@ function ctfHandle(p, msg) {
 
 // One frame of Capture the Flag (only while playing).
 function ctfUpdate(dt) {
+  ctfMoveBots(dt); // the bots walk, grab and fight (ctf-bots.js)
   for (const p of Object.values(server.players)) {
     // Respawn knocked-out players at their base, with nothing.
     if (!p.alive && server.time >= p.respawnAt) {
