@@ -573,14 +573,16 @@ function drawFlag(ctx, x, y, team, time) {
 
 // ---------- Players ----------
 
-// isMe = true for the player holding this phone (they get a yellow ring so they can find themselves).
-// The LOOK a player picked (LOOKS in rules.js), seen from above like the player itself: a hat
-// sits on top of the ball, a little behind the eyes. overEyes = the part drawn after the
-// eyes (only the sunglasses). Inside, "forward" (the way the player faces) is plus x.
+// The LOOK a player picked (LOOKS in rules.js) is a whole OUTFIT, seen from above like the
+// player itself: clothes cover the body (a thin rim of the team color stays round the edge,
+// and the hands stay team-colored, so you can always tell blue from red), plus what goes on
+// the head. It is drawn in two goes: first everything UNDER the eyes, then (overEyes = true)
+// the few things that go over them (sunglasses, a mask). Inside, "forward" (the way the
+// player faces) is plus x.
 function drawLook(ctx, p, y, time, overEyes) {
-  const look = p.look;
-  if (!look || look === "none" || overEyes !== (look === "shades")) return;
-  const R = p.radius, line = COLORS.outline;
+  const look = findLook(p.look);
+  if (!look || !look.cloth) return;
+  const id = look.id, R = p.radius, line = COLORS.outline;
   const disc = (x, yy, rx, ry, fill, edge) => {
     ctx.beginPath();
     ctx.ellipse(x, yy, rx, ry, 0, 0, Math.PI * 2);
@@ -591,75 +593,164 @@ function drawLook(ctx, p, y, time, overEyes) {
   ctx.save();
   ctx.translate(p.x, y);
   ctx.rotate(p.facing);
-  if (look === "tembel") {
-    disc(-5, 0, R * 0.8, R * 0.8, "#d8c79c", true);
-    disc(-6, 0, R * 0.5, R * 0.5, "#c5b283", true);
-  } else if (look === "cowboy") {
-    disc(-4, 0, R * 0.92, R * 1.08, "#8a5a2b", true);
-    disc(-5, 0, R * 0.52, R * 0.44, "#6b4423", true);
+  if (overEyes) {
+    if (id === "shades") {
+      // Sunglasses.
+      for (const side of [-1, 1]) disc(8, 7 * side, 5, 6.6, "#0b0d10", false);
+      ctx.strokeStyle = "#0b0d10";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(8, -3);
+      ctx.lineTo(8, 3);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(9.5, 7 * side - 2, 1.4, 0, Math.PI * 2); ctx.fill(); }
+    } else if (id === "bandit") {
+      // The bandit's scarf, pulled up over the nose: a strip of cloth across the very front.
+      ctx.beginPath();
+      ctx.arc(0, 0, R - 5, -0.62, 0.62);
+      ctx.arc(-4, 0, R - 5, 0.5, -0.5, true);
+      ctx.closePath();
+      ctx.fillStyle = "#8f3b1e";
+      ctx.fill();
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  // The clothes: they cover the body, all but a rim of the team color.
+  const cloth = ctx.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
+  cloth.addColorStop(0, look.cloth);
+  cloth.addColorStop(1, look.dark);
+  disc(0, 0, R - 4, R - 4, cloth, false);
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  if (id === "tembel") {
+    // A kibbutznik: a khaki work shirt (a collar at the front) and a kova tembel.
+    ctx.strokeStyle = look.dark;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(R - 6, -7); ctx.lineTo(R - 11, 0); ctx.lineTo(R - 6, 7);
+    ctx.stroke();
+    disc(-5, 0, R * 0.74, R * 0.74, "#e6dab4", true);
+    disc(-6, 0, R * 0.46, R * 0.46, "#d2c394", true);
+  } else if (id === "shades") {
+    // A cool kid: a dark jacket with a zip, and spiky hair.
+    ctx.strokeStyle = "#9ca3af";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(R - 5, 0); ctx.lineTo(R - 13, 0);
+    ctx.stroke();
+    ctx.fillStyle = "#3b2414";
+    ctx.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14 * Math.PI * 2, r = R * (k % 2 ? 0.66 : 0.48);
+      ctx.lineTo(-6 + Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = line; ctx.lineWidth = 1.5; ctx.stroke();
+  } else if (id === "cowboy") {
+    // A cowboy: a leather vest, a neckerchief at the front, and the hat.
+    ctx.fillStyle = "#e0b04a";
+    ctx.beginPath();
+    ctx.moveTo(R - 5, -9); ctx.lineTo(R - 13, 0); ctx.lineTo(R - 5, 9);
+    ctx.arc(0, 0, R - 5, 0.45, -0.45, true);
+    ctx.closePath();
+    ctx.fill();
+    disc(-4, 0, R * 0.9, R * 1.02, "#9a6a35", true);
+    disc(-5, 0, R * 0.5, R * 0.42, "#6b4423", true);
     ctx.strokeStyle = "#4a2f14";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-5 - R * 0.3, 0);
     ctx.lineTo(-5 + R * 0.3, 0);
     ctx.stroke();
-  } else if (look === "wizard") {
-    disc(-5, 0, R * 0.84, R * 0.84, "#4c1d95", true);
-    disc(-7, 0, R * 0.56, R * 0.56, "#6d28d9", false);
-    disc(-11, 0, R * 0.38, R * 0.38, "#7c3aed", false);
+  } else if (id === "headband") {
+    // A ninja: black from head to toe. Only a strip of face shows, round the eyes; a white
+    // band round the forehead, with two tails that flap behind.
+    ctx.beginPath();
+    ctx.moveTo(3, -13); ctx.lineTo(13, -12); ctx.quadraticCurveTo(16, 0, 13, 12); ctx.lineTo(3, 13); ctx.quadraticCurveTo(0, 0, 3, -13);
+    ctx.fillStyle = "#e8b48f";
+    ctx.fill();
+    ctx.strokeStyle = "#f8fafc";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, R - 8, 1.35, Math.PI * 2 - 1.35);
+    ctx.stroke();
+    const flap = Math.sin(time * 9 + p.x * 0.01) * 4;
+    ctx.beginPath();
+    ctx.moveTo(-R + 8, 0);
+    ctx.lineTo(-R - 6, -4 + flap);
+    ctx.moveTo(-R + 8, 0);
+    ctx.lineTo(-R - 5, 5 - flap);
+    ctx.stroke();
+  } else if (id === "wizard") {
+    // A wizard: a purple robe, a long white beard at the front, and the pointed hat with a star.
+    for (const [bx, by, br] of [[R - 7, 0, 5.5], [R - 9, -7, 4.5], [R - 9, 7, 4.5]]) disc(bx, by, br, br, "#f1f5f9", false);
+    disc(-5, 0, R * 0.8, R * 0.8, "#4c1d95", true);
+    disc(-7, 0, R * 0.54, R * 0.54, "#6d28d9", false);
+    disc(-11, 0, R * 0.36, R * 0.36, "#7c3aed", false);
     disc(-15, 0, R * 0.2, R * 0.2, "#a78bfa", false);
-    // a gold star on the front
     ctx.fillStyle = "#facc15";
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = k / 10 * Math.PI * 2, r = k % 2 ? 2.2 : 5;
-      ctx.lineTo(1 + Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(-1 + Math.cos(a) * r, Math.sin(a) * r);
     }
     ctx.closePath();
     ctx.fill();
-  } else if (look === "crown") {
+  } else if (id === "bandit") {
+    // A bandit: a rough tunic with a cloth hood pulled over the head. The hood's point hangs
+    // down behind; the face is a dark opening at the front (the eyes show in it), and a
+    // scarf covers the nose and mouth (drawn over the eyes, above).
+    ctx.fillStyle = look.dark;
+    ctx.beginPath();
+    ctx.moveTo(-R + 5, -8); ctx.lineTo(-R - 9, 0); ctx.lineTo(-R + 5, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke();
+    disc(-2, 0, R * 0.84, R * 0.84, look.dark, true);
+    // (Folds in the cloth.)
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 2;
+    for (const r of [0.38, 0.6]) { ctx.beginPath(); ctx.arc(-4, 0, R * r, 1.9, Math.PI * 2 - 1.9); ctx.stroke(); }
+    // The opening of the hood: deep shadow.
+    disc(8, 0, 9.5, 14, "#17120c", false);
+  } else if (id === "crown") {
+    // A king: a robe of white fur with black flecks, a gold collar, and the crown.
+    ctx.fillStyle = "#1f2937";
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * Math.PI * 2 + 0.2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * (R - 7.5), Math.sin(a) * (R - 7.5), 2.6, 1.3, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.strokeStyle = line;
     ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.arc(-4, 0, R * 0.56, 0, Math.PI * 2);
+    ctx.arc(-4, 0, R * 0.54, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = "#f5c518";
     ctx.lineWidth = 6;
     ctx.stroke();
     for (let k = 0; k < 8; k++) {
       const a = k / 8 * Math.PI * 2;
-      disc(-4 + Math.cos(a) * R * 0.56, Math.sin(a) * R * 0.56, 3.4, 3.4, k % 2 ? "#dc2626" : "#fde047", true);
+      disc(-4 + Math.cos(a) * R * 0.54, Math.sin(a) * R * 0.54, 3.4, 3.4, k % 2 ? "#7c3aed" : "#fde047", true);
     }
-  } else if (look === "headband") {
-    // (From above, a band round the forehead is a ring near the edge; its tails flap behind.)
-    ctx.strokeStyle = "#dc2626";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(0, 0, R - 4, 0, Math.PI * 2);
-    ctx.stroke();
-    const flap = Math.sin(time * 9 + p.x * 0.01) * 4;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-R + 2, 0);
-    ctx.lineTo(-R - 13, -5 + flap);
-    ctx.moveTo(-R + 2, 0);
-    ctx.lineTo(-R - 11, 6 - flap);
-    ctx.stroke();
-  } else if (look === "shades") {
-    for (const side of [-1, 1]) disc(8, 7 * side, 5, 6.6, "#111827", false);
-    ctx.strokeStyle = "#111827";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(8, -3);
-    ctx.lineTo(8, 3);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(9.5, 7 * side - 2, 1.4, 0, Math.PI * 2); ctx.fill(); }
   }
   ctx.restore();
 }
 
-function drawPlayer(ctx, p, time, isMe) {
+// isMe = true for the player holding this phone (they get a yellow ring so they can find themselves).
+// plain = true: just the player, with no name tag or health bar (the pictures in the "My look" picker).
+function drawPlayer(ctx, p, time, isMe, plain) {
   const color = COLORS[p.team];
   const light = COLORS[p.team + "Light"];
 
@@ -783,7 +874,7 @@ function drawPlayer(ctx, p, time, isMe) {
   ctx.ellipse(p.x - p.radius * 0.38, y - p.radius * 0.42, p.radius * 0.22, p.radius * 0.14, -0.6, 0, Math.PI * 2);
   ctx.fill();
 
-  drawLook(ctx, p, y, time, false); // the hat this player picked (looks.js), under the eyes
+  drawLook(ctx, p, y, time, false); // the outfit this player picked (looks.js): the clothes, and what is on the head
 
   // Eyes, looking in the direction the player faces
   const lookX = Math.cos(p.facing) * 7;
@@ -802,7 +893,7 @@ function drawPlayer(ctx, p, time, isMe) {
     ctx.fill();
   }
 
-  drawLook(ctx, p, y, time, true); // (sunglasses go over the eyes)
+  drawLook(ctx, p, y, time, true); // (…and the few things that go over the eyes: sunglasses, a mask)
 
   // Berry boosts: one little red berry circling the player for each boost that's working,
   // so everyone can see who's sped up.
@@ -827,6 +918,7 @@ function drawPlayer(ctx, p, time, isMe) {
   // Frozen by a rock: a see-through block of ice around the whole player.
   if (p.frozen) drawIce(ctx, p.x, y, p.radius + 9, time);
 
+  if (plain) return;
   // Name tag and health bar above the head
   drawLabel(ctx, p.name, p.x, y - p.radius - 22, isMe ? "#fde047" : "#fff");
   drawHealthBar(ctx, p.x, y - p.radius - 15, p.hp, p.maxHp);

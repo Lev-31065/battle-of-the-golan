@@ -52,6 +52,7 @@ function raceResetSled(p) {
   p.spinKind = "";          // what hit it last
   p.safeUntil = LONG_AGO;   // nothing can hit it until then
   p.gasUntil = LONG_AGO;    // gas pours out behind it until then (every phone sees this)
+  p.orangeUntil = LONG_AGO; // (bots) an orange: a huge burst of speed until then
   p.anonaUntil = LONG_AGO;  // (bots) an anona speeds it up until then
 }
 
@@ -105,14 +106,14 @@ function raceHandle(p, msg) {
   const from = trackToWorld(p.y, p.x, RACE_FROM), to = trackToWorld(y, side, RACE_TO);
   const moved = Math.hypot(to.x - from.x, to.z - from.z) * 100; // (in track units)
   const bounced = y <= p.y && y >= p.y - RACE.gateBounce - 3000;
-  if (bounced || moved <= RACE.maxSpeed * 2.2 * seconds + 600 || (p.oddMoves || 0) >= 8) {
+  if (bounced || moved <= RACE.maxSpeed * 3.2 * seconds + 600 || (p.oddMoves || 0) >= 8) {
     p.y = Math.max(0, Math.min(TRACK.length, y));
     p.x = side;
     p.oddMoves = 0;
   } else {
     p.oddMoves = (p.oddMoves || 0) + 1;
   }
-  p.speed = Math.max(0, Math.min(RACE.maxSpeed * 2, speed));
+  p.speed = Math.max(0, Math.min(RACE.maxSpeed * 4, speed)); // (an orange on top of a boost is well over double speed)
   p.steer = Math.max(-8, Math.min(8, steer)); // (in a skid a sled swings round further than 1; off the path it can point any way at all)
   p.air = Math.max(0, Math.min(5000, Number(msg.air) || 0)); // (how high it is flying, so everyone can see the jump)
   raceCheckFinish(p);
@@ -189,6 +190,9 @@ function raceUseItem(p, how) {
   if (kind === "anona") {
     // An anona (a cherimoya) is a burst of speed. A player's phone speeds its own sled up; the referee does it for a bot.
     if (p.bot) p.anonaUntil = server.time + RACE.anonaTime;
+  } else if (kind === "orange") {
+    // An orange: a much bigger burst, over in a moment. (The same: the phone does it for a player, the referee for a bot.)
+    if (p.bot) p.orangeUntil = server.time + RACE.orangeTime;
   } else if (kind === "gas") {
     // A thick cloud pours out behind the sled for a few seconds. (The phones of the sleds behind it do the rest.)
     p.gasUntil = server.time + RACE.gasTime;
@@ -311,7 +315,7 @@ function raceGoatHit(id, dir) {
 // everyone goes back to the lobby. Phones draw them like any other sled.
 // Each bot: glides down a lane, wanders to a new lane now and then, steers around trees
 // and rocks it sees ahead, and at each gate gets it right (boost + gift) or wrong (bounced back to try again).
-// Settings: RACE.bots, botNames, botSkill, botRight, botCatchUp (rules.js).
+// Settings: RACE.bots, botNames, botSkill, botRight, botCatchUp, botEase, botPush, botShortcut (rules.js).
 
 const LONG_AGO = -1e9; // "never happened" (a plain number, so it travels safely to the phones)
 
@@ -333,6 +337,7 @@ function raceAddBots() {
       lastSeen: server.time,
       bot: true,
       skill: RACE.botSkill[i % RACE.botSkill.length],
+      right: RACE.botRight[i % RACE.botRight.length], // how often it gets a gate right
       lane: 0,            // where it wants to be, sideways (-1 = left edge of the path … 1 = right edge)
       laneUntil: 0,       // when it picks a new lane
       gatesDone: 0,       // how many gates it has passed
@@ -399,6 +404,8 @@ function raceMoveBot(p, dt) {
   if (islandAhead === 0) p.forkSide = 0;
   else {
     if (forkAhead && forkAhead.secretSide) p.forkSide = -forkAhead.secretSide;
+    // (The fast, rocky shortcut down the mountain face: the better the bot, the more often it dares.)
+    else if (!p.forkSide && forkAhead && forkAhead.fastSide) p.forkSide = Math.random() < RACE.botShortcut * Math.max(0.2, Math.min(1, (p.skill - 0.86) / 0.14)) ? forkAhead.fastSide : -forkAhead.fastSide;
     if (!p.forkSide) p.forkSide = Math.abs(p.x - islandAt) > 0.3 ? Math.sign(p.x - islandAt) : Math.random() < 0.5 ? -1 : 1; // (the side it is on already)
     // Each way round is 1.25 wide, so its middle is about 0.6 out from the island's edge.
     // (Coming up to the island the path is still narrow: then it just keeps to that side.)
@@ -407,8 +414,11 @@ function raceMoveBot(p, dt) {
 
   // Look ahead for trees and rocks standing in the way, and aim past them.
   // (Better bots look further ahead, so they crash less.)
-  const lookAhead = Math.round(12 + 34 * Math.max(0, Math.min(1, (p.skill - 0.8) / 0.18)));
-  for (let i = segment.index + 1; i <= Math.min(TRACK.segments.length - 1, segment.index + lookAhead); i++) {
+  // (In the shortcut down the mountain face it weaves between the rocks instead: race-track.js, shortcutLine.)
+  const weave = p.forkSide && segment.fork && p.forkSide === segment.fork.fastSide && (p.x - segment.islandAt) * p.forkSide > segment.island ? shortcutLine(segment) : null;
+  if (weave !== null) target = weave;
+  const lookAhead = weave !== null ? 0 : Math.round(12 + 34 * Math.max(0, Math.min(1, (p.skill - 0.8) / 0.18)));
+  for (let i = segment.index; i <= Math.min(TRACK.segments.length - 1, segment.index + lookAhead); i++) {
     for (const sprite of TRACK.segments[i].sprites) {
       const size = SPRITE_SIZES[sprite.type];
       if (!size.solid) continue;
@@ -436,7 +446,7 @@ function raceMoveBot(p, dt) {
   // (like a player: the second time it knows one wrong answer, so it does better).
   const gate = TRACK.gates[p.gatesDone];
   if (gate && p.y >= gate.z) {
-    if (Math.random() < RACE.botRight + p.gateTries * 0.25) {
+    if (Math.random() < p.right + p.gateTries * 0.25) {
       p.gatesDone += 1;
       p.gateTries = 0;
       p.boostUntil = server.time + RACE.boostTime;
@@ -455,7 +465,7 @@ function raceMoveBot(p, dt) {
   const humans = Object.values(server.players).filter((other) => !other.bot);
   const best = Math.max(...humans.map((other) => other.y));
   const gap = p.y - best;
-  const catchUp = !humans.length ? 1 : gap > RACE.botCatchUp ? 0.9 : gap < -RACE.botCatchUp ? 1.08 : 1;
+  const catchUp = !humans.length ? 1 : gap > RACE.botCatchUp * 3 ? RACE.botEase[1] : gap > RACE.botCatchUp ? RACE.botEase[0] : gap < -RACE.botCatchUp ? RACE.botPush : 1;
   const boosting = server.time < p.boostUntil;
   // (A very sharp bend: it has to skid round, like a player, so it is slower there. The
   // shortcut down the mountain face and the tilted bends are faster, like for a player.)
@@ -463,13 +473,16 @@ function raceMoveBot(p, dt) {
   // (In somebody's gas cloud a bot can't see either, so it slows down.)
   const gassed = Object.values(server.players).some((other) => other !== p && other.gasUntil > server.time && other.y > p.y && other.y - p.y < RACE.gasReach);
   const onShortcut = segment.fork && segment.fork.fastSide && segment.island > 0.3 && (p.x - segment.islandAt) * segment.fork.fastSide > segment.island;
+  const offPath = offThePath(segment, p.x);
+  const sinceOrange = server.time - (p.orangeUntil || LONG_AGO), orange = sinceOrange < 0;
   const top = RACE.maxSpeed * p.skill * catchUp
-    * (offThePath(segment, p.x) ? RACE.offTrackSpeed : 1)
-    * (boosting ? RACE.boostSpeed : 1) * (server.time < (p.anonaUntil || LONG_AGO) ? RACE.anonaSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
+    * (offPath ? RACE.offTrackSpeed : 1)
+    * (boosting ? RACE.boostSpeed : 1) * (server.time < (p.anonaUntil || LONG_AGO) ? RACE.anonaSpeed : 1) * (orange ? RACE.orangeSpeed : 1) * (spinning ? RACE.spinSpeed : 1)
     * (skidding ? RACE.skidSpeed : 1) * (onShortcut ? segment.fork.fastSpeed : 1) * (gassed ? RACE.gasBotSpeed : 1)
     * slopeSpeed((segment.p2.world.y - segment.p1.world.y) / RACE.segmentLength); // (faster where the path is steep, like a player)
-  if (p.speed > top) p.speed = Math.max(top, p.speed - RACE.offTrackSlowdown * dt);
-  else p.speed = Math.min(top, p.speed + RACE.accel * (boosting ? 3 : 1) * dt);
+  // (Momentum, like a player: speed it has from a steep bit or a boost is lost gently. Deep snow and spinning out brake hard.)
+  if (p.speed > top) p.speed = Math.max(top, p.speed - (offPath || spinning ? RACE.offTrackSlowdown : sinceOrange >= 0 && sinceOrange < 2 ? RACE.orangeFade : skidding ? RACE.skidBrake : RACE.coast) * dt);
+  else p.speed = Math.min(top, p.speed + RACE.accel * (orange ? RACE.orangeKick : boosting ? 3 : 1) * dt);
 
   // Running into things, exactly like a player's sled: a bush or a snowman only slows it down;
   // a tree or a rock takes most of its speed and knocks it aside.
@@ -535,7 +548,7 @@ function raceMoveBot(p, dt) {
         other.y > p.y + RACE.sledLength && other.y < p.y + RACE.mangoRange * 0.7 && Math.abs(other.x - p.x) < 0.4);
       // (Gas: when somebody is close behind, to blind them.)
       const chased = p.item === "gas" && others.some((other) => other.y < p.y && p.y - other.y < RACE.gasReach);
-      if (p.item === "banana" || p.item === "anona" || target || chased || server.time > p.useAt + 5) raceUseItem(p);
+      if (p.item === "banana" || p.item === "anona" || p.item === "orange" || target || chased || server.time > p.useAt + 5) raceUseItem(p);
     }
   }
   raceCheckFinish(p);

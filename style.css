@@ -576,6 +576,9 @@ button, select, input { touch-action: manipulation; }
 .steer-left { left: 16px; }
 .steer-right { right: 16px; }
 .steer-pad.held { background: rgba(250, 204, 21, 0.85); color: #1f2937; opacity: 1; }
+/* Easy mode: a secret shortcut is coming up on this side. The arrow glows gold and throbs. */
+.steer-pad.secret { opacity: 1; border-color: #facc15; box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.9), 0 0 26px 8px rgba(250, 204, 21, 0.75); animation: secret-throb 0.5s ease-in-out infinite alternate; }
+@keyframes secret-throb { from { transform: scale(1); } to { transform: scale(1.12); } }
 .steer-arrow { display: block; font-size: 30px; font-weight: 800; line-height: 32px; }
 .steer-pad .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
 .steer-pad .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.8; }
@@ -985,6 +988,7 @@ button, select, input { touch-action: manipulation; }
   font-family: inherit; color: #111827; cursor: pointer;
 }
 .look-card .look-icon { font-size: 34px; line-height: 1.1; }
+.look-card .look-picture { width: 72px; height: 72px; } /* (a drawing of the player in that outfit) */
 .look-card .look-name { display: flex; flex-direction: column; align-items: center; }
 .look-card .look-name .he { font-size: 15px; font-weight: 700; }
 .look-card .look-name .en { font-size: 12px; color: #4b5563; }

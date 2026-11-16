@@ -1,7 +1,7 @@
 // looks.js — mastery points, the "My look" picker, and the "log in?" card after a game.
 //
 // MASTERY POINTS come from learning words (progress.js counts them: masteryPoints()).
-// LOOKS are hats and things for your player (the list, with what each one costs, is LOOKS
+// LOOKS are whole outfits for your player (the list, with what each one costs, is LOOKS
 // in rules.js). They show in Capture the Flag and on your sled in Mt Hermon Racing.
 // Both are only for logged-in players: a guest still collects points on this phone, and
 // gets to keep them by logging in.
@@ -58,9 +58,7 @@ function drawLooks() {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "look-card" + (look.id === wearing ? " chosen" : "") + (open ? "" : " locked");
-    const icon = document.createElement("span");
-    icon.className = "look-icon";
-    icon.textContent = look.icon;
+    const icon = lookPicture(look);
     const name = document.createElement("span");
     name.className = "look-name";
     setBilingual(name, look.en, look.he);
@@ -73,7 +71,31 @@ function drawLooks() {
   }
 }
 
+// A little picture of the Capture the Flag player wearing this outfit (drawn by the game's
+// own drawPlayer, so it is exactly what the others will see). If that fails: the emoji.
+function lookPicture(look) {
+  try {
+    const canvas = document.createElement("canvas"), scale = 2;
+    canvas.className = "look-icon look-picture";
+    canvas.width = 72 * scale;
+    canvas.height = 72 * scale;
+    const c = canvas.getContext("2d");
+    c.scale(scale, scale);
+    drawPlayer(c, {
+      x: 36, y: 33, radius: PLAYER_RADIUS, facing: Math.PI / 2, team: "blue", look: look.id, moving: false, inWater: false,
+      items: [], held: null, lastSwing: -Infinity, boostUntil: -Infinity, berryBoosts: [], carrying: null, frozen: false,
+    }, 0, false, true);
+    return canvas;
+  } catch (error) {
+    const icon = document.createElement("span");
+    icon.className = "look-icon";
+    icon.textContent = look.icon;
+    return icon;
+  }
+}
+
 function pickLook(look) {
+
   const points = masteryPoints();
   if (!isLoggedIn()) {
     showToast("🔑 Log in first to wear a look", "🔑 קֹדֶם מִתְחַבְּרִים");

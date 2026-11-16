@@ -1440,61 +1440,122 @@ function makeFlagPicture() {
   return new THREE.CanvasTexture(c);
 }
 
-// What the rider wears on the head. look = one of LOOKS in rules.js ("none" = the knitted
-// kippah, in the sled's color). The head is a ball about 12 across at (0, 69.5, 46); the face
-// looks toward plus z; the top of the hair is at about y = 84.
+// The rider's CLOTHES. look = one of LOOKS in rules.js. "none" = the usual wool coat in the
+// sled's color, with the tallit-striped scarf and tzitzit. Any other look is a whole outfit:
+// its two cloth colors come from LOOKS (cloth, dark), and the belt keeps the sled's color, so
+// you can still tell the sleds apart. Returns the colors for each part of the rider, and
+// whether the scarf and the tzitzit are worn.
+function riderOutfit(look, main) {
+  const outfit = {
+    coat: mix3(main, rgb3("#5b4636"), 0.3), sleeve: mix3(main, rgb3("#2b2118"), 0.5), belt: mix3(main, rgb3("#2b2118"), 0.5),
+    hem: mix3(main, rgb3("#2b2118"), 0.5), trousers: rgb3("#374151"), boot: rgb3("#3b2a1c"), mitten: rgb3("#6b4a2e"),
+    skin: rgb3("#e8b48f"), hair: rgb3("#3b2414"), scarf: true, tzitzit: true,
+  };
+  const picked = findLook(look);
+  if (!picked || !picked.cloth) return outfit;
+  const cloth = rgb3(picked.cloth), dark = rgb3(picked.dark);
+  Object.assign(outfit, { coat: cloth, sleeve: dark, hem: dark, belt: main, scarf: false, tzitzit: false });
+  if (look === "tembel") Object.assign(outfit, { sleeve: cloth, trousers: rgb3("#46618a"), mitten: outfit.skin });               // a khaki work shirt, jeans, bare hands
+  else if (look === "shades") Object.assign(outfit, { trousers: rgb3("#1f2937"), boot: rgb3("#e5e7eb"), mitten: rgb3("#111827") }); // a dark jacket, white trainers
+  else if (look === "cowboy") Object.assign(outfit, { sleeve: rgb3("#d9b77e"), trousers: rgb3("#46618a"), boot: rgb3("#5e3b1c") }); // a leather vest over a tan shirt
+  else if (look === "headband") Object.assign(outfit, { trousers: dark, boot: dark, mitten: dark, hair: dark });                   // black from head to toe
+  else if (look === "wizard") Object.assign(outfit, { trousers: cloth, boot: rgb3("#3b2a1c"), mitten: outfit.skin });              // a long robe
+  else if (look === "bandit") Object.assign(outfit, { trousers: rgb3("#2e2a22"), boot: rgb3("#4a3626"), mitten: dark });           // a rough tunic, wrapped hands
+  else if (look === "crown") Object.assign(outfit, { sleeve: cloth, trousers: rgb3("#5b21b6"), boot: rgb3("#14161a"), mitten: rgb3("#f8fafc") }); // a fur robe
+  return outfit;
+}
+
+// What goes on the rider's head and shoulders. look = one of LOOKS in rules.js ("none" = the
+// knitted kippah, in the sled's color). The head is a ball about 12 across at (0, 69.5, 46);
+// the face looks toward plus z; the top of the hair is at about y = 84; the shoulders are at
+// about y = 52.
 function riderLook(B, look, main, white) {
   const kippah = () => {
     B.ball(0, 82.6, 41, 9.6, 3.8, 9.6, main, 6, 14);
     B.pipe([0, 80.9, 41], 10.1, [0, 82.2, 41], 9.7, white, false, 14);
   };
   const gold = rgb3("#f5c518"), black = rgb3("#14161a"), red = rgb3("#dc2626");
+  const picked = findLook(look), cloth = picked && picked.cloth ? rgb3(picked.cloth) : main, dark = picked && picked.dark ? rgb3(picked.dark) : main;
   if (look === "tembel") {
-    // A kova tembel: the floppy cloth hat with a sloping brim.
-    const cloth = rgb3("#d8c79c"), band = rgb3("#b9a676");
-    B.pipe([0, 77.5, 43], 18.5, [0, 81, 43], 12.4, cloth, false, 14);
-    B.pipe([0, 81, 43], 12.4, [0, 88, 42.5], 9.8, cloth, false, 14);
-    B.ball(0, 88, 42.5, 9.8, 3, 9.8, cloth, 5, 14);
+    // A kibbutznik. A kova tembel: the floppy cloth hat with a sloping brim. And an open collar.
+    const hat = rgb3("#e6dab4"), band = rgb3("#c9b98a");
+    B.pipe([0, 77.5, 43], 18.5, [0, 81, 43], 12.4, hat, false, 14);
+    B.pipe([0, 81, 43], 12.4, [0, 88, 42.5], 9.8, hat, false, 14);
+    B.ball(0, 88, 42.5, 9.8, 3, 9.8, hat, 5, 14);
     B.pipe([0, 80.8, 43], 12.7, [0, 82.6, 43], 12.1, band, false, 14);
+    B.pipe([0, 53, 43], 14.6, [0, 57.5, 43.3], 12.6, dark, false, 14);
   } else if (look === "shades") {
-    kippah();
-    // Sunglasses: two dark lenses, a bridge over the nose, and arms back to the ears.
+    // A cool kid. Spiky hair, sunglasses, and the collar of the jacket turned up.
+    const hair = rgb3("#3b2414");
+    for (let k = 0; k < 7; k++) {
+      const a = (k - 3) * 0.42;
+      B.pipe([Math.sin(a) * 7, 81, 43 - Math.abs(k - 3) * 1.2], 3.4, [Math.sin(a) * 11.5, 90.5 - Math.abs(k - 3) * 1.3, 40], 0.4, hair, true, 6);
+    }
     for (const s of [-1, 1]) {
       B.ball(s * 5.2, 71.2, 56.6, 4.4, 3.3, 1.8, black, 5, 10);
       B.pipe([s * 9, 71.4, 55.5], 0.8, [s * 12.6, 70.6, 46], 0.8, black, false, 5);
     }
     B.pipe([-2, 71.6, 57.8], 0.8, [2, 71.6, 57.8], 0.8, black, false, 5);
+    B.pipe([0, 53, 42.5], 15, [0, 61.5, 42], 14.2, dark, false, 14);
   } else if (look === "headband") {
-    // A ninja headband: a red band round the forehead, with two tails flying out behind.
-    B.pipe([0, 74.2, 44.6], 13.4, [0, 77.6, 44], 13.3, red, false, 14);
-    B.ball(0, 76, 30.5, 2.4, 2.4, 2.4, red, 5, 8);
-    B.quad([-1.5, 77, 30], [1.5, 77, 30], [-3, 71, 14], [-7, 72, 15], red);
-    B.quad([-1.5, 75, 30], [1.5, 75, 30], [8, 66, 17], [4, 65, 18], rgb3("#b91c1c"));
+    // A ninja. A black hood over the whole head and a mask over the nose and mouth: only a
+    // strip round the eyes shows. A white band round the forehead, with two tails flying behind.
+    B.ball(0, 74.6, 43.4, 13.2, 10.2, 13.4, dark, 8, 14);
+    B.ball(0, 62.6, 46.6, 12.5, 6.6, 13.7, dark, 6, 14);
+    B.pipe([0, 52.5, 43], 14.5, [0, 60, 43.5], 12.8, dark, false, 14);
+    B.pipe([0, 74.6, 44.4], 13.9, [0, 77.8, 44], 13.7, white, false, 14);
+    B.ball(0, 76, 30.3, 2.4, 2.4, 2.4, white, 5, 8);
+    B.quad([-1.5, 77, 30], [1.5, 77, 30], [-3, 71, 14], [-7, 72, 15], white);
+    B.quad([-1.5, 75, 30], [1.5, 75, 30], [8, 66, 17], [4, 65, 18], rgb3("#cbd5e1"));
   } else if (look === "cowboy") {
-    // A cowboy hat: a wide brim, a tall crown with a dark band.
-    const felt = rgb3("#8a5a2b"), feltDark = rgb3("#5e3b1c");
+    // A cowboy. The hat: a wide brim, a tall crown with a dark band. And a neckerchief.
+    const felt = rgb3("#9a6a35"), feltDark = rgb3("#5e3b1c"), kerchief = rgb3("#e0b04a");
     B.ball(0, 80.2, 43, 22, 1.7, 20, felt, 5, 16);
     B.pipe([0, 80.5, 43], 11, [0, 91, 42.5], 9.4, felt, false, 14);
     B.ball(0, 91, 42.5, 9.4, 2.2, 9.4, felt, 5, 14);
     B.pipe([0, 81.2, 43], 11.3, [0, 83.6, 43], 10.9, feltDark, false, 14);
+    B.pipe([0, 53.5, 43], 13.9, [0, 59, 43.4], 12.6, kerchief, false, 14);
+    B.pipe([0, 57, 55], 5.6, [0, 45.5, 58.5], 0.5, kerchief, true, 8);
   } else if (look === "wizard") {
-    // A wizard hat: a round brim and a tall point that leans back, with a gold band and a star.
-    const cloth = rgb3("#6d28d9"), clothDark = rgb3("#4c1d95");
-    B.ball(0, 80.2, 43, 19, 1.7, 19, clothDark, 5, 16);
+    // A wizard. The hat: a round brim and a tall point that leans back, with a gold band and
+    // a star. A long white beard, and a wide collar on the robe.
+    B.ball(0, 80.2, 43, 19, 1.7, 19, dark, 5, 16);
     B.pipe([0, 80.5, 43], 11.2, [0, 98, 39], 5.4, cloth, false, 14);
     B.pipe([0, 98, 39], 5.4, [0, 114, 33], 0.5, cloth, true, 12);
     B.pipe([0, 81, 43], 11.5, [0, 83.4, 42.6], 10.9, gold, false, 14);
     B.ball(0, 91, 49.4, 2.4, 2.4, 1.2, gold, 5, 8);
+    B.ball(0, 62.5, 54.5, 8.6, 6, 5, white, 6, 10);
+    B.pipe([0, 60, 56.5], 6.4, [0, 44, 59], 0.6, white, true, 8);
+    B.pipe([0, 51.5, 42.5], 19, [0, 57, 43], 13.4, dark, false, 14);
+  } else if (look === "bandit") {
+    // A bandit. A cloth hood over the head (its point hangs down behind), the face deep
+    // inside it, a scarf pulled up over the nose, and the cape of the hood over the shoulders.
+    const scarf = rgb3("#8f3b1e");
+    B.ball(0, 72.4, 40.2, 14.6, 14.4, 14, dark, 8, 14);
+    B.pipe([0, 80, 49], 13.2, [0, 78.5, 53.5], 11.6, dark, false, 14);   // the rim of the hood, jutting out over the forehead
+    B.pipe([0, 83.5, 33], 6.4, [0, 76, 21], 0.6, dark, true, 8);         // its point, hanging down behind
+    B.ball(0, 63.4, 47, 12.4, 6.4, 13.6, scarf, 6, 14);
+    B.pipe([0, 50, 42.5], 20.5, [0, 57, 43], 15.4, dark, false, 14);     // the cape over the shoulders
+    B.pipe([0, 57, 43], 15.4, [0, 61.5, 43.4], 13.2, dark, false, 14);
+    B.quad([-12, 55, 30], [12, 55, 30], [9, 40, 22], [-9, 40, 22], dark); // …and down the back
   } else if (look === "crown") {
-    kippah();
-    // A crown: a gold band with points all the way round, and jewels on the front.
+    // A king. The crown: a gold band with points all the way round, and jewels on the front.
+    // A collar of white fur with black flecks, and a purple cape behind.
+    const purple = rgb3("#5b21b6");
     B.pipe([0, 80, 43], 11.4, [0, 86.5, 43], 12, gold, false, 16);
     for (let k = 0; k < 8; k++) {
       const a = k / 8 * Math.PI * 2, x = Math.sin(a) * 11.9, z = 43 + Math.cos(a) * 11.9;
       B.pipe([x, 86, z], 2.3, [x * 1.04, 92.5, 43 + (z - 43) * 1.04], 0.4, gold, true, 6);
     }
     B.ball(0, 83.2, 55, 1.9, 1.9, 1, red, 5, 8);
-    for (const s of [-1, 1]) B.ball(s * 6.2, 83.2, 53.2, 1.5, 1.5, 0.9, rgb3("#2563eb"), 5, 8);
+    for (const s of [-1, 1]) B.ball(s * 6.2, 83.2, 53.2, 1.5, 1.5, 0.9, purple, 5, 8);
+    B.pipe([0, 50.5, 42.5], 21, [0, 56, 43], 17, white, false, 14);
+    B.ball(0, 56, 43, 17, 3.4, 17, white, 5, 14);
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * Math.PI * 2 + 0.35;
+      B.ball(Math.sin(a) * 19.3, 53.4, 42.8 + Math.cos(a) * 19.3, 1.5, 1.9, 1.5, black, 4, 6);
+    }
+    B.quad([-15, 53, 30], [15, 53, 30], [19, 22, 9], [-19, 22, 9], purple);
   } else {
     kippah();
   }
@@ -1507,10 +1568,10 @@ function makeSled(color, look) {
   B.flip = true;           // (the old sizes count "forward" as plus; in the 3D world forward is minus z)
   B.place(0, 0, 0, 0, 0.06);
   const main = rgb3(color);
-  const coat = mix3(main, rgb3("#5b4636"), 0.3), coatDark = mix3(main, rgb3("#2b2118"), 0.5);
+  const wear = riderOutfit(look, main); // (the colors of the clothes: the usual coat, or the outfit this player picked)
   const iron = rgb3("#3a3f44"), wood = rgb3("#8a5a2b"), woodDark = rgb3("#6b4423"), rope = rgb3("#d6c08a");
-  const white = rgb3("#f8fafc"), blue = rgb3("#1d4ed8"), skin = rgb3("#e8b48f"), hair = rgb3("#3b2414");
-  const trousers = rgb3("#374151"), boot = rgb3("#3b2a1c"), mitten = rgb3("#6b4a2e");
+  const white = rgb3("#f8fafc"), blue = rgb3("#1d4ed8"), skin = wear.skin, hair = wear.hair;
+  const coat = wear.coat, coatDark = wear.sleeve, trousers = wear.trousers, boot = wear.boot, mitten = wear.mitten;
   // Runners: round wooden rails with an iron strip underneath, curling up and back at the front.
   for (const s of [-1, 1]) {
     const x = s * 40;
@@ -1553,28 +1614,32 @@ function makeSled(color, look) {
     B.ball(elbow[0], elbow[1], elbow[2], 5.1, 5.1, 5.1, coatDark, 6, 12);
     B.pipe(elbow, 5, hand, 4.4, coatDark);
     B.ball(hand[0], hand[1] - 0.5, hand[2] + 1.5, 5.4, 5, 5.6, mitten, 6, 12);
-    // Tzitzit: white strings hanging at both sides.
-    for (let k = 0; k < 3; k++) B.pipe([s * (21 + k * 2), 27, 36 - k * 3], 0.8, [s * (26 + k * 2.5), 9, 30 - k * 4], 0.6, white, false, 5);
+    // Tzitzit: white strings hanging at both sides. (Not with an outfit.)
+    for (let k = 0; k < (wear.tzitzit ? 3 : 0); k++) B.pipe([s * (21 + k * 2), 27, 36 - k * 3], 0.8, [s * (26 + k * 2.5), 9, 30 - k * 4], 0.6, white, false, 5);
   }
   // The body: a soft wool coat, rounded at the bottom and at the shoulders, with a belt.
-  B.ball(0, 23, 40, 21.5, 7, 19, coatDark, 6, 14);
+  B.ball(0, 23, 40, 21.5, 7, 19, wear.hem, 6, 14);
   B.pipe([0, 21, 40], 21.5, [0, 34, 41], 22.5, coat, false, 14);
   B.pipe([0, 34, 41], 22.5, [0, 50, 42.5], 17, coat, false, 14);
   B.ball(0, 49.5, 42.5, 17.2, 8.5, 15, coat, 6, 14);
-  B.pipe([0, 29.8, 40.7], 23.2, [0, 33.6, 41], 23.2, coatDark, false, 14);
-  // The scarf: white with blue stripes, like a tallit.
+  B.pipe([0, 29.8, 40.7], 23.2, [0, 33.6, 41], 23.2, wear.belt, false, 14);
+  // (A long robe or tunic also covers the lap.)
+  if (look === "wizard" || look === "bandit" || look === "crown") B.ball(0, 27, 52, 21, 8.5, 22, coat, 6, 14);
+  // The scarf: white with blue stripes, like a tallit. (An outfit has its own collar instead.)
+  if (wear.scarf) {
   B.pipe([0, 53.5, 43], 13.6, [0, 60, 43.5], 12.4, white, false, 14);
   B.ball(0, 60, 43.5, 12.4, 2.4, 12.4, white, 5, 14);
   B.pipe([0, 55.2, 43], 13.8, [0, 56.5, 43], 13.6, blue, false, 14);
   B.pipe([0, 57.9, 43.3], 13.3, [0, 59.1, 43.4], 13.1, blue, false, 14);
   B.quad([4, 58, 31], [13, 58, 31], [20, 50, 10], [11, 49, 12], white);  // its end, flying out behind
   B.quad([10.2, 50.6, 14], [19.2, 51.4, 12.4], [18.4, 52.6, 15], [9.6, 51.6, 16.6], blue);
+  }
   // Head: a round face, dark hair over the top and the back, ears, a little nose.
   B.ball(0, 69.5, 46, 11.6, 12.2, 11.6, skin, 8, 14);
   B.ball(0, 71.5, 41.5, 12.8, 12.6, 12.4, hair, 8, 14);
   for (const s of [-1, 1]) B.ball(s * 12.2, 68.5, 45, 2.4, 3.8, 2.8, skin, 5, 8);
   B.ball(0, 67.5, 57.5, 2.2, 2.4, 2.4, skin, 5, 8);
-  // On the head: the knitted kippah, or the look this player picked (a hat, sunglasses…).
+  // On the head and shoulders: the knitted kippah, or what goes with the outfit this player picked (a hood, a hat, a beard…).
   riderLook(B, look, main, white);
   // The flag's stick, at the back corner.
   B.pipe([-38, 19, 2], 1.2, [-38, 68, 2], 1.2, woodDark, true, 6);

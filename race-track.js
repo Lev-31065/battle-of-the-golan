@@ -1107,3 +1107,27 @@ function sledsTouch(a, b) {
   const side = dx > 0 ? 1 : dx < 0 ? -1 : (String(a.id) < String(b.id) ? -1 : 1);
   return { side, lined: Math.abs(dx) < SLED_WIDTH * 0.6, behind: dy < 0 };
 }
+
+// ---------- The shortcut down the mountain face ----------
+// It is a narrow, winding way with rocks and trees standing in it, first on one side and then
+// on the other. A sled that drives itself (a bot, or a player in easy mode) asks here where to
+// aim: the far side from the next rock or tree, or the middle if the way ahead is clear.
+// segment = where the sled is; returns a sideways spot (road widths), or null if this is not
+// a shortcut like that.
+function shortcutLine(segment) {
+  const fork = segment.fork;
+  if (!fork || !fork.fastSide || fork.secretSide || segment.island < 0.3) return null;
+  const side = fork.fastSide, segments = TRACK.segments;
+  const middleOf = (seg) => (seg.islandAt + side * seg.island + side * seg.width) / 2;
+  let lean = 0; // which side of the middle the next thing stands on (-1 / 1), 0 = nothing near
+  for (let i = segment.index; i <= Math.min(segments.length - 1, segment.index + 14) && !lean; i++) {
+    for (const sprite of segments[i].sprites) {
+      if (!SPRITE_SIZES[sprite.type].solid || (sprite.offset - segments[i].islandAt) * side <= segments[i].island || Math.abs(sprite.offset) > segments[i].width) continue;
+      lean = sprite.offset >= middleOf(segments[i]) ? 1 : -1;
+    }
+  }
+  const ahead = segments[Math.min(segments.length - 1, segment.index + 4)];
+  if (ahead.island < 0.3) return null; // (the shortcut is ending)
+  const half = Math.abs(side * ahead.width - (ahead.islandAt + side * ahead.island)) / 2;
+  return middleOf(ahead) - lean * half * 0.6;
+}

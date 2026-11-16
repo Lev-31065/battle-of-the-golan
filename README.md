@@ -1,87 +1,134 @@
 # Battle of the Golan
 
-A capture-the-flag phone game for learning Hebrew. Two teams, Blue and Red, try to grab each other's flag. To buy a weapon, pick up a flag, or get past a rock, you have to answer a Hebrew vocabulary question.
+Phone games for learning Hebrew, played together in a browser. Nothing to install: open the link and play.
 
-## Progress
+**Play it:** https://lev-31065.github.io/battle-of-the-golan/
 
-- [x] **Step 1:** map, rivers, bridges, bases, and walking around
-- [x] **Step 2:** Hebrew questions, the shop and the hammer, bushes
-- [x] **Step 3:** flags and scoring (first team to 3 captures), speed boost box
-- [x] **Step 4:** multiplayer with room codes and nicknames
-- [x] **Step 5:** solid rocks, sounds, minimap, hit effects, confetti, invite links, publishing
+There are two games. In both, the Hebrew questions are part of the game, not a quiz between rounds.
 
-## How to play
+- **🛷 Mt Hermon Racing:** a sled race in 3D from the snowy top of Mt Hermon down to the Kinneret. You answer by driving through a gate.
+- **🚩 Capture the Flag:** two teams, Blue and Red, on a map of rivers, bushes and hollow logs. You answer to buy weapons, grab a flag, or get past a rock.
 
-1. One person opens the game and taps **Create a room**. A 4-letter room code appears.
-2. Everyone else opens the game, types a nickname and the code, and taps **Join**. Or the host taps **📋 Share invite link** and sends it, and the code fills itself in.
-3. The host taps **Start the battle!**
+The game is in beta. The Hebrew in the menus has not been checked by a Hebrew teacher yet.
+
+## How to start a game
+
+- **Play Game** drops you into a public room for the game you pick. You get a made-up animal name, and the game starts by itself 20 seconds after the first player arrives. Up to 8 players share a room.
+- **🔒 Private room** is for playing with people you know. One person taps **Create a room** and gets a 4-letter code. Everyone else types the code, or opens the invite link the host shares.
+- **Log in** is optional. It saves your words and your level to an account, so they follow you to another phone.
+
+## Mt Hermon Racing
+
+One long ride, about 5 minutes, for one player or more. Computer sleds fill the race up to 4.
 
 | On a phone | On a computer | Does |
 |---|---|---|
-| Drag on the left half of the screen | Arrows / W A S D | Move |
-| 🛒 Shop (near your shopkeeper) | E | Buy the hammer with a Hebrew question |
-| 🔨 Hit | Space | Swing the hammer |
-| 🚩 Grab / Drop | F | Pick up a flag (question), or drop it |
+| Hold the left or right half of the screen | Arrow keys | Steer |
+| Hold a skid button (bottom corners) | Shift + arrow | Skid round a very sharp bend |
+| Big round button | Space | Use your gift |
+| Small button under it | B | Drop a rimon behind you |
+| Back to the path | R | Go back to where you left the path |
+
+- **Gates:** each gate shows an English word, with a Hebrew answer over each of its 3 lanes. Drive under the right one for a speed boost and a gift. A wrong answer bounces you back up the path to try again.
+- **Gifts:** banana peel, mango, rimon (a pomegranate grenade), gas cloud, anona (a speed boost), and orange (a very fast, very short burst).
+- **Off the path:** you can leave the path and ride anywhere on the mountain. There are secret trails, gaps in the rocks on the zigzags, and a rocky shortcut down the mountain face.
+- **🐣 Easy mode** (for little kids; on by itself if you are not logged in): the sled follows the path by itself and the two arrows change lanes. The lanes pick your answer at a gate, get you round other sleds, and choose a way where the path splits. When an arrow glows gold, go to that edge of the path and tap it once more to take a secret shortcut.
+
+## Capture the Flag
+
+Two teams. To score, both flags have to be inside your base. The first team to 3 wins.
+
+| On a phone | On a computer | Does |
+|---|---|---|
+| Joystick (left side), or drag from your player | Arrows / W A S D | Move |
+| 🛒 Shop (near your shopkeeper) | E | Buy something, paid with right answers |
+| Hit / Throw, or tap an enemy | Space | Use what you are holding |
+| Tap anywhere | | Throw that way |
+| 🚩 Grab / Drop | F | Pick up a flag (a question), or drop it |
+| Toolbar | 1 to 9 | Switch what you are holding |
 | Tap an answer | 1 2 3 4 | Answer a question |
 
-**Rules:** rivers make you very slow, and bushes make you slow. Rocks are solid: bump into one and you have to answer a question to pass through. Carrying a flag makes you slower and you can't attack. Getting knocked out drops the flag, and you come back at your base with nothing. A dropped flag goes home by itself after 30 seconds. To score, carry the enemy flag into your base while your own flag is at home. The first team to 3 wins.
+- **The shop:** stick, hammer, one-use spear, forest boots, rocks that freeze, ninja stars, pomegranate grenades, and a pomegranate tree. Each costs a number of right answers. Getting knocked out loses everything.
+- **The map:** rivers are slow and push you downstream, bushes are slow, berries speed you up and heal you, and hollow logs hide you. Rocks are solid: bump one and you answer a question to pass.
+- **Flags:** carrying one makes you slower, and you can't throw. Getting knocked out drops it.
 
-**Testing on one computer:** open `index.html` in two browser windows. Create a room in one and join it from the other.
+## The Hebrew
 
-## Putting it online with GitHub Pages (free)
+- **20 levels**, each with an A list (the level's own words) and a B list (sentences that mix it with earlier levels), plus 5 review checkpoints.
+- **Auto level** (the default): each phone plays its own level, and moves up or down by how you answer.
+- **Flashcard memory:** words you miss come back sooner.
+- **Masculine / feminine:** picked on the first screen, so "I" and "we" sentences match the player.
+- **Voice:** questions are read out loud (the 🗣️ button turns it off).
+- **Hebrew first:** every label shows Hebrew on top and English underneath.
 
-You only need to do this once. Afterwards, anyone can play from a link like `https://YOUR-NAME.github.io/battle-of-the-golan/`.
+## Mastery points and looks
 
-1. **Make an account** at [github.com](https://github.com) (free).
-2. **Make a repository.** A repository is a project folder that lives on GitHub. Click the **+** at the top right, then **New repository**.
-   - Repository name: `battle-of-the-golan`
-   - Choose **Public**. Free GitHub Pages sites need public repositories, so anyone can see the code. That's normal for websites.
-   - Click **Create repository**.
-3. **Upload the files.** On the new, empty repository page, click the link **uploading an existing file**. In File Explorer, open the `battle-of-the-golan` folder, press `Ctrl+A` to select every file, and drag them all onto the GitHub page. Scroll down and click **Commit changes**. ("Commit" means "save this version.")
-4. **Turn on the website.** Click **Settings** (top of the repository), then **Pages** (left side). Under **Branch**, choose `main`, keep the folder as `/ (root)`, and click **Save**.
-5. **Wait 1–2 minutes** and refresh the Pages settings page. Your link appears at the top. Open it on your phone and share it with your friends.
+You earn a mastery point each time a word reaches a flashcard level it has never reached before. Points unlock **looks**: whole outfits (kibbutznik, cool kid, cowboy, ninja, wizard, bandit, king) that show on your player in Capture the Flag and on your sled rider. Looks are for logged-in players.
 
-**Changing the game later:** edit the files on your computer and test them. Then in your GitHub repository click **Add file → Upload files**, drag in the files you changed, and click **Commit changes**. The website updates within about a minute. If a phone still shows the old version, refresh the page.
+## For teachers: the Deck dashboard
 
-**If phones can't connect:** some school or office Wi-Fi networks block phone-to-phone connections. Try mobile data or a home network.
+Log in on a computer and open **🗂️ Deck dashboard** to:
+
+- host a **class game**, where you pick one deck for everyone;
+- see your % mastery of each deck;
+- make your own decks (type them, or paste from a spreadsheet), with auto-translate for the English;
+- copy and edit the premade decks: themes, past and future tense, and verb-root decks grouped by verb pattern.
+
+## What the game saves
+
+The privacy page (linked from the home screen) has the details. In short: with no login, your progress stays on your phone. With a login, your email, progress and decks are stored by Supabase. The game also counts how often it is opened and how many games are played, with no names.
 
 ## How multiplayer works
 
-- The phone that taps **Create a room** is the **host**. It runs the **referee** (`server.js`), which decides who got hit, who has the flag, and the score.
-- Every phone moves its *own* player, so walking feels instant. It tells the referee its position 20 times a second.
+- The phone that opens a room is the **host**. It runs the **referee**, which decides who got hit, who has the flag, where the gifts fly, and the score.
+- Every phone moves its *own* player or sled, so moving feels instant, and tells the referee where it is.
 - The referee sends every phone the whole game 20 times a second (a "snapshot"), and each phone draws it.
-- The phones find each other through PeerJS's free matchmaking server, then talk directly.
-- If the host leaves, the game ends for everyone.
+- The phones find each other through PeerJS's free matchmaking server, then talk directly. There is no game server.
+- If the host leaves, the room closes.
+
+**If phones can't connect:** some school or office Wi-Fi networks block phone-to-phone connections. Try mobile data or a home network.
 
 ## What each file does
 
-| File | Job | Think of it as… |
-|---|---|---|
-| `index.html` | What's on the page: screens, buttons, popups | The skeleton |
-| `style.css` | How it looks: colors, sizes, positions | The clothes |
-| `map.js` | Where the rivers, bridges, bushes, rocks, bases and trees are | The map designer |
-| `rules.js` | **All the settings**: speed, damage, timers, score to win | The rulebook |
-| `sound.js` | Sound effects, made from code | The band |
-| `words.js` | The Hebrew words and phrases used in questions | The dictionary |
-| `quiz.js` | The question popup: right answer, wrong answer, wait time | The teacher |
-| `draw.js` | Paints everything onto the screen, including the minimap | The artist |
-| `network.js` | Connects phones with room codes (using PeerJS) | The telephone |
-| `server.js` | Decides hits, knockouts, flags and score (host only) | The referee |
-| `game.js` | Home screen, lobby, your controls, drawing each frame | Each player's brain |
+Plain HTML, CSS and JavaScript. There is no build step.
 
-## Things you can try changing
+| File | Job |
+|---|---|
+| `index.html` | Every screen, button and popup |
+| `style.css` | How it looks |
+| `rules.js` | **All the settings**, for both games |
+| `words.js`, `levels-b.js` | The Hebrew: levels, checkpoints, premade decks |
+| `progress.js` | Flashcard memory, Auto level, mastery points |
+| `quiz.js`, `speech.js`, `sound.js` | The question popup, the voice, the sound effects |
+| `account.js`, `decks.js`, `looks.js`, `stats.js` | Logins, the Deck dashboard, looks, usage counting |
+| `network.js` | Connects phones with room codes (PeerJS) |
+| `server.js`, `game.js` | The shared referee and the shared phone code (rooms, lobby, snapshots) |
+| `ctf-server.js`, `ctf-game.js`, `ctf-draw.js`, `map.js` | Capture the Flag: its rules, its phone side, its drawing, its map |
+| `race-server.js`, `race-game.js`, `race-track.js`, `race-3d.js`, `race-draw.js` | Mt Hermon Racing: its rules and bots, its phone side, the track, the 3D drawing, the flat fallback and the race info |
+| `three.min.js` | three.js, the 3D library (MIT licence) |
+| `privacy.html` | The privacy page |
 
-Save the file after each change, then refresh the browser (`F5`) to see it.
+## Run it and change it
 
-- **Add a Hebrew word:** in `words.js`, copy a line like `{ english: "dog", hebrew: "כֶּלֶב" },` and change it.
-- **Walk faster:** in `rules.js`, change `PLAYER_SPEED = 172` to `300`.
-- **Change how slow rivers and bushes are:** in `map.js`, change `waterSlowdown: 0.15` or `bushSlowdown: 0.3`.
-- **Add a rock or a bush:** in `map.js`, add `[800, 300],` to the `rocks` list, or `[800, 300, 50],` to `bushes`. The numbers are x (left to right, 0–2000) and y (top to bottom, 0–1200). Bushes also get a size.
-- **Make the hammer stronger:** in `rules.js`, change `damage: 34` to `damage: 50` (2 hits to knock out).
-- **Shorter or longer games:** in `rules.js`, change `WIN_SCORE = 3`.
-- **Tweak the speed box:** in `rules.js`, look for `SPEED_BOOST` (multiplier, duration, respawn time).
-- **Change a sound:** in `sound.js`, change the numbers in `SOUNDS`. Bigger numbers mean higher notes.
+- **Run it:** double-click `index.html`. To test multiplayer on one computer, open it in two browser windows, create a private room in one and join it from the other.
+- **Change a setting:** almost everything is in `rules.js`, with a comment on every line. Save, then refresh the browser (`F5`).
+  - Walk faster in Capture the Flag: `PLAYER_SPEED = 172`.
+  - Shorter or longer games: `WIN_SCORE = 3`.
+  - Faster sleds: `maxSpeed` in `RACE`.
+  - Stronger or weaker bots: `botSkill` and `botRight` in `RACE`.
+  - What a look costs: `LOOKS`.
+- **Add a Hebrew word:** in `words.js`, copy a line like `{ english: "horse", hebrew: "סוּס" },` and change it.
+- **If something breaks:** press `F12` and look at the **Console** tab. Red text there says which file and line has the problem.
 
-The host's copy of the game decides the rules, so upload your changes to GitHub before playing together.
+The host's copy of the game decides the rules, so every phone needs the same version. The version is shown under Privacy on the home screen.
 
-If something breaks, press `F12` and look at the **Console** tab. Red text there tells you which file and line has the problem.
+## Putting your own copy online (free)
+
+1. Make a free account at [github.com](https://github.com) and create a **public** repository.
+2. Upload every file in this folder (**Add file → Upload files → Commit changes**).
+3. In the repository, open **Settings → Pages**, choose the `main` branch and the `/ (root)` folder, and save.
+4. After a minute or two the Pages settings show your link.
+
+Logins, saved decks and usage counting need a Supabase project of your own: its URL and publishable key go in `account.js`, and its database tables have to be created there. Without that, everything else still works.
+
+Before each upload, change `GAME_VERSION` in `rules.js` and every `?v=` in `index.html` to the same new value. Otherwise phones keep running their old saved copy.

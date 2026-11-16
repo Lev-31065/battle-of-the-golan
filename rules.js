@@ -388,9 +388,11 @@ const RACE = {
   // EASY MODE (for little kids): the sled follows the path by itself, and the two arrows change lanes
   // (left, middle, right). It is on by itself for players who are not logged in; the "Easy mode" button
   // in the race lobby turns it on or off (race-game.js: raceEasy).
-  easyLane: 1.13,         // how far apart the 3 lanes are (road widths). At a gate the lanes are the gate's own 3 lanes
+  easyLane: 0.565,        // how far apart the lanes are (road widths; a sled is 0.3 wide). The lanes go right across the path: 3 on a normal stretch, more where it is wide. At a gate there are exactly 3: one for each answer
+  easyGateAt: 110,        // this many segments before a gate, the arrows start picking one of its 3 answers
+  easySecretAt: 55,       // a secret shortcut can be taken from this many segments before it: be in the lane at that edge of the path and press the arrow again (the arrow glows gold)
   easyLaneSpeed: 2.2,     // how fast the sled slides over to the next lane (road widths per second)
-  easyRepeat: 0.45,       // hold an arrow: it changes lane again every this many seconds
+  easyRepeat: 0.3,        // hold an arrow: it changes lane again every this many seconds
   easySpeed: 0.92,        // top speed in easy mode (0.92 = 92%): a little slower, because it never has to skid or slow down for a bend
   easyLook: 45,           // how many segments ahead it looks for trees and rocks standing on the path, to go round them by itself
   cameraMotion: true,     // true = the camera looks the way the sled is really MOVING (like off the path); false = the way its nose points
@@ -421,10 +423,14 @@ const RACE = {
   // Gifts: a RIGHT answer at a gate also puts a gift in your hands: a banana peel (dropped behind you), a mango
   // (thrown ahead; it steers itself toward the sled in front), a rimon, a pomegranate grenade (thrown ahead OR
   // dropped behind), or GAS (a thick cloud pours out behind you: the sleds close behind can hardly see).
-  giftsInFront: { banana: 0.3, gas: 0.3, rimon: 0.2, mango: 0.05, anona: 0.15 }, // what you get when you are in first place (nobody ahead to throw at)…
-  giftsBehind: { banana: 0.1, gas: 0.1, rimon: 0.25, mango: 0.3, anona: 0.25 }, // …and when somebody is ahead of you
+  giftsInFront: { banana: 0.3, gas: 0.3, rimon: 0.2, mango: 0.05, anona: 0.15, orange: 0.15 }, // what you get when you are in first place (nobody ahead to throw at)…
+  giftsBehind: { banana: 0.1, gas: 0.1, rimon: 0.25, mango: 0.3, anona: 0.25, orange: 0.2 }, // …and when somebody is ahead of you
   anonaSpeed: 1.45,       // an ANONA (a cherimoya: sweet and full of energy) is a speed boost: top speed goes up to 145%…
   anonaTime: 3.5,         // …for this many seconds
+  orangeSpeed: 2,         // an ORANGE is a very fast, very short burst: top speed doubles (2 = 200%)…
+  orangeTime: 1.4,        // …for only this many seconds…
+  orangeKick: 6,          // …and the sled gets up to that speed this many times faster than normal (it kicks in at once)
+  orangeFade: 3000,       // when the orange runs out, the extra speed is lost this fast (much faster than normal momentum, so the burst stays short)
   gasTime: 6,             // the gas pours out for this many seconds…
   gasReach: 7000,         // …and blinds sleds up to this far behind you (the closer, the thicker)
   gasThick: 0.9,          // how much of the view the thickest gas hides (1 = everything)
@@ -469,9 +475,12 @@ const RACE = {
   // Bots: computer sleds, so even one player has someone to race (the referee drives them: race-server.js)
   bots: 4,                // bots join until there are this many sleds (4 = one player gets 3 bots; 0 = no bots)
   botNames: ["🤖 גַּל", "🤖 נֹעָה", "🤖 טַל", "🤖 שַׁי", "🤖 לִיאוֹר"],
-  botSkill: [0.96, 0.9, 0.84, 0.93, 0.87], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner
-  botRight: 0.6,          // how often a bot picks the right answer at a gate (0.6 = 60%)
+  botSkill: [1, 0.95, 0.9, 0.97, 0.93], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner. Was 0.96, 0.9, 0.84…
+  botRight: [0.9, 0.78, 0.65, 0.84, 0.72], // how often each bot picks the right answer at a gate (0.9 = 90%). A wrong answer bounces it back, like a player. Was 60% for all of them
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
+  botEase: [0.9, 0.82],   // …it eases off to 90% when it is that far ahead, and to 82% when it is three times that far ahead (so a bot in front never runs away with the race)
+  botPush: 1.06,          // …and pushes to 106% when it is that far behind
+  botShortcut: 0.6,       // how often the best bot takes the fast shortcut down the mountain face (the weaker bots less often)
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateZone: 70,           // the straight, wide stretch around each gate (in segments)
   gateZoneShort: 95,      // …and where two or three gates stand in a row on one long straight: how far apart they are
@@ -506,17 +515,21 @@ const RACE = {
 // MASTERY POINTS: every time one of your words climbs to a flashcard level it has never
 // reached before, you get 1 point (progress.js: masteryPoints). So points come from really
 // learning words, not from playing the same easy ones over and over, and they never go down.
-// LOOKS: hats and things for your player, in Capture the Flag AND on your sled. Each one
-// opens up when you have `cost` points (you don't spend the points). Only for logged-in players.
-// To add a look: a line here + how it is drawn (ctf-draw.js: drawLook, race-3d.js: riderLook).
+// LOOKS: whole OUTFITS for your player, in Capture the Flag AND on your sled: clothes from
+// head to toe, not just a hat. Each one opens up when you have `cost` points (you don't
+// spend the points). Only for logged-in players.
+//   cloth + dark = the two main colors of the clothes (both games use them)
+// To add a look: a line here + how it is drawn (ctf-draw.js: drawLook, race-3d.js: riderOutfit and riderLook).
+// (No outfit is mostly blue or red: in Capture the Flag those are the team colors.)
 const LOOKS = [
-  { id: "none",     cost: 0,   icon: "🙂", en: "Just me",        he: "רַק אֲנִי" },
-  { id: "tembel",   cost: 15,  icon: "👒", en: "Kova tembel",    he: "כּוֹבַע טֶמְבֶּל" },
-  { id: "shades",   cost: 40,  icon: "🕶️", en: "Sunglasses",     he: "מִשְׁקְפֵי שֶׁמֶשׁ" },
-  { id: "headband", cost: 80,  icon: "🥷", en: "Ninja headband", he: "סֶרֶט נִינְגָ'ה" },
-  { id: "cowboy",   cost: 150, icon: "🤠", en: "Cowboy hat",     he: "כּוֹבַע בּוֹקְרִים" },
-  { id: "wizard",   cost: 250, icon: "🧙", en: "Wizard hat",     he: "כּוֹבַע קוֹסֵם" },
-  { id: "crown",    cost: 400, icon: "👑", en: "Crown",          he: "כֶּתֶר" },
+  { id: "none",     cost: 0,   icon: "🙂", en: "Just me",    he: "רַק אֲנִי" },
+  { id: "tembel",   cost: 25,  icon: "👒", en: "Kibbutznik", he: "קִבּוּצְנִיק", cloth: "#c2ae7c", dark: "#8f7d51" },
+  { id: "shades",   cost: 60,  icon: "🕶️", en: "Cool kid",   he: "מַגְנִיב",     cloth: "#2f343c", dark: "#14161a" },
+  { id: "cowboy",   cost: 120, icon: "🤠", en: "Cowboy",     he: "בּוֹקֵר",      cloth: "#7a4a22", dark: "#4f2f14" },
+  { id: "headband", cost: 200, icon: "🥷", en: "Ninja",      he: "נִינְגָ'ה",    cloth: "#262a31", dark: "#0d0f13" },
+  { id: "wizard",   cost: 320, icon: "🧙", en: "Wizard",     he: "קוֹסֵם",       cloth: "#6d28d9", dark: "#4c1d95" },
+  { id: "bandit",   cost: 450, icon: "🦹", en: "Bandit",     he: "שׁוֹדֵד",      cloth: "#6b5a3e", dark: "#3d3222" },
+  { id: "crown",    cost: 600, icon: "👑", en: "King",       he: "מֶלֶךְ",       cloth: "#efe6cf", dark: "#b8a674" },
 ];
 function findLook(id) {
   return LOOKS.find((look) => look.id === id) || null;
@@ -546,7 +559,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-15g";
+const GAME_VERSION = "2026-11-16a";
 
 // ---------- Helpers ----------
 

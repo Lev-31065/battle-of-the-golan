@@ -69,7 +69,21 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## v 2026-11-15f + 15g (headless-tested, NOT yet tried by Daniel)
+## v 2026-11-16a (headless-tested, NOT yet tried by Daniel)
+- **Daniel on 15f + 15g (2026-11-16):** easy mode is "really good", the sledding game is "really good". No word yet on the regular-mode camera or the Capture the Flag taps.
+- **Two games:** the race is listed first, Capture the Flag second, the "Coming soon" slot is gone.
+- **Easy mode:**
+  - Lanes go right across the path (3 on a normal stretch, more where it is wide), so there is room to pass. Near a gate: exactly 3 = the answers.
+  - Both ways round every split can be taken (the lane picks the side), also the rocky shortcut down the mountain face (the sled weaves through it by itself).
+  - Secret shortcuts (4 trails + the zigzag gaps): the arrow on that side glows gold for about 3 seconds before one; in the edge lane, one more tap of that arrow and the sled rides the shortcut by itself. Taking all of them saves about 20 s.
+- **Orange gift** 🍊: double speed for 1.4 s, then the extra speed fades fast. About 1.5 s saved each.
+- **Bots:** faster, 65–90% right at gates (was 60%), keep momentum, sometimes take the mountain-face shortcut, and ease off more when in front. Best bot about 270–275 s (it used to be 30–40 s behind a good player). In tests a clean easy-mode run finished 2nd or 3rd of 4; with every first answer wrong, last.
+- **Looks are whole outfits:** kibbutznik 25, cool kid 60, cowboy 120, ninja 200, wizard 320, bandit 450 (new: hood, scarf, tunic), king 600. The picker shows a drawing of each. In Capture the Flag a rim of the team color stays; on the sled the belt keeps the sled's color.
+- **README** rewritten for both games.
+- Claude's choices: the outfits and their prices; the orange's numbers; the gold glow as the hint for a secret shortcut; bot numbers; a left or right lane before the mountain face takes that side (so a kid in the left lane gets the shortcut without asking).
+- Things to watch: is the shortcut tap easy enough for a little kid? Are the bots too strong for kids in easy mode (`botSkill`, `botRight`, `botEase`)? Is the orange too strong (`orangeSpeed`, `orangeTime`)? A player who had the ninja look at 80 points needs 200 now.
+
+## v 2026-11-15f + 15g (easy mode confirmed by Daniel 2026-11-16; the rest not yet)
 - **Why:** a little boy thought skidding was the only way to turn (the skid buttons were the only visible buttons).
 - **Race, both modes:** faded ◀ ▶ steering arrows always on screen next to the skid buttons (pictures only: the whole half of the screen steers). Skid buttons faded too. The start hint says the skid buttons are only for very sharp bends.
 - **Race, easy mode:** on by itself for guests, off for logged-in players; "🐣 Easy mode" switch in the race lobby (remembered on the phone). The sled follows the path by itself; arrows change lanes (3 lanes; at a gate = the 3 answers); it goes round trees and islands by itself; no skid buttons, no leaving the path; gifts and boosts as usual. 92% top speed (`RACE.easySpeed`; Claude's choice, so easy mode is not the fastest way to win). It always takes the open way round the mountain-face island, never the rocky shortcut (Claude's choice).
@@ -253,7 +267,7 @@
 - **Not yet confirmed:** the iPhone 2× zoom fix, and full screen on Android.
 
 ## Key decisions
-- **Exactly 3 games** (Daniel, 2026-11-12): Capture the Flag (`ctf`), Mt Hermon Racing (`race`, for 1–2+ players, bots planned), and 1 more (not decided). Each plugs into the shared code through `SERVER_GAMES` / `PHONE_GAMES`; no general plugin system needed. The modes screen stays hand-written: turn a "Coming soon" button into the new game's button.
+- **2 games for now** (Daniel, 2026-11-16: "2 games is plenty for now"; it was "exactly 3" on 2026-11-12): Mt Hermon Racing (`race`) first, Capture the Flag (`ctf`) second. Each plugs into the shared code through `SERVER_GAMES` / `PHONE_GAMES`; no general plugin system needed. The modes screen stays hand-written: turn a "Coming soon" button into the new game's button.
 - **Root decks: one verb pattern per deck**, grouped by pattern. Other patterns (נִפְעַל, הִפְעִיל, הִתְפַּעֵל) get their own decks + a line in `VERB_PATTERNS`.
 - **Claude uploads every tested change without asking** (Daniel: "always upload").
 - **PeerJS with the host as referee.** Free, no game server. If the host leaves, the room closes.
