@@ -30,7 +30,7 @@ One long ride, about 5 minutes, for one player or more. Computer sleds fill the 
 | Back to the path | R | Go back to where you left the path |
 
 - **Gates:** each gate shows an English word, with a Hebrew answer over each of its 3 lanes. Drive under the right one for a speed boost and a gift. A wrong answer bounces you back up the path to try again.
-- **Other sleds:** sleds pass through each other side by side. You only bump a sled by running into the back of it, and not while you are boosting or while it is spinning out.
+- **Other sleds:** sleds never bump. They pass through each other from any direction.
 - **Gifts:** banana peel, mango, rimon (a pomegranate grenade), gas cloud, anona (a speed boost), and orange (a very fast, very short burst).
 - **Off the path:** you can leave the path and ride anywhere on the mountain. There are secret trails, gaps in the rocks on the zigzags, and a rocky shortcut down the mountain face.
 - **🐣 Easy mode** (for little kids; on by itself if you are not logged in): the sled follows the path by itself and the two arrows change lanes. The lanes pick your answer at a gate, get you round other sleds, and choose a way where the path splits. When an arrow glows gold, go to that edge of the path and tap it once more to take a secret shortcut.
