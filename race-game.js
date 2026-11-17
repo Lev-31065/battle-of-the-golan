@@ -658,7 +658,8 @@ function raceUpdate(dt) {
     // through), while I am spinning out, or when the other sled is spinning out or has just hit
     // something (it is nearly standing still).
     me.air = myAir; // (a sled that is flying goes right over the others)
-    const through = boosting || anonaNow || orangeNow || spinning;
+    // (RACE.sledBumps false = no bumps at all: sleds overlap and cross from any direction.)
+    const through = !RACE.sledBumps || boosting || anonaNow || orangeNow || spinning;
     for (const other of Object.values(players)) {
       if (other.id === client.myId || through) continue;
       const seen = otherSleds.get(other.id);

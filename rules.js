@@ -469,16 +469,20 @@ const RACE = {
   goatTall: 700,          // a sled flying higher than this goes right over it
   goatHitSpeed: 0.5,      // bumping a goat: you keep this much of your speed
   goatAway: 12,           // a goat that was bumped stays away this many seconds, then wanders back
+  sledBumps: false,       // false = sleds never bump: they overlap and cross through each other from any direction (Daniel, 2026-11-17: "for now"). true = the bump rules below
   bumpShove: 2.5,         // a sled that runs into the BACK of another slides out to the side this fast (road widths per second)
   bumpLine: 0.5,          // …and that only counts when it is nearly straight behind: their middles less than this much of a sled's width apart (0.5 = half a sled). Further to the side, sleds overlap and cross over freely
   bumpSlow: 0.4,          // a sled going slower than this much of top speed (it is spinning out, or it just hit something) can not be bumped: you go straight through it
   bumpBoost: 250,         // bumped from behind, the sled in front gets this little push forward
   waitAfterFirst: 25,     // after the first sled finishes, the others get this many seconds
   // Bots: computer sleds, so even one player has someone to race (the referee drives them: race-server.js)
-  bots: 10,               // bots join until there are this many sleds (10 = one player gets 9 bots; 0 = no bots). Was 4
+  bots: 7,                // bots join until there are this many sleds (7 = one player gets 6 bots; 0 = no bots). Was 10, and 4 before that
+  gridRow: 4,             // how many sleds stand side by side in one row at the start
   botNames: ["🤖 גַּל", "🤖 נֹעָה", "🤖 טַל", "🤖 שַׁי", "🤖 לִיאוֹר", "🤖 עֹמֶר", "🤖 יוּבַל", "🤖 אוֹר", "🤖 דָּנִי"],
-  botSkill: [1, 0.95, 0.9, 0.97, 0.93, 0.88, 0.98, 0.91, 0.86], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner. Was 0.96, 0.9, 0.84…
-  botRight: [0.9, 0.78, 0.65, 0.84, 0.72, 0.6, 0.87, 0.7, 0.55], // how often each bot picks the right answer at a gate (0.9 = 90%). A wrong answer bounces it back, like a player. Was 60% for all of them
+  // (The bots go from very good to slow, in even steps, so there is one to race at every level. Before 2026-11-17 they were all between 0.86 and 1 and finished in a bunch.)
+  botSkill: [1, 0.93, 0.89, 0.86, 0.82, 0.77, 0.97, 0.85, 0.73], // each bot's top speed (1 = as fast as a player who never slows down); better bots also spot trees sooner. (Only the first 6 are used with 7 sleds)
+  botRight: [0.92, 0.82, 0.72, 0.62, 0.52, 0.42, 0.87, 0.67, 0.47], // how often each bot picks the right answer at a gate (0.92 = 92%). A wrong answer bounces it back, like a player
+  botLead: [9, 6, 3.5, 1.5, 0, 0, 7, 2.5, 0], // how many seconds ahead of the best player each bot may get before it starts easing off. Different for each bot, so they do not all wait in a bunch just in front of a slow player
   botCatchUp: 3000,       // a bot this far ahead of the best player eases off a little; this far behind, it pushes harder
   botEase: [0.9, 0.82],   // …it eases off to 90% when it is that far ahead, and to 82% when it is three times that far ahead (so a bot in front never runs away with the race)
   botPush: 1.06,          // …and pushes to 106% when it is that far behind
@@ -487,6 +491,14 @@ const RACE = {
   gateZone: 70,           // the straight, wide stretch around each gate (in segments)
   gateZoneShort: 95,      // …and where two or three gates stand in a row on one long straight: how far apart they are
   gateShowAt: 170,        // the question shows up when the gate is this many segments ahead
+  // How tall a gate is, in 3D units (a sled with its rider is about 5 tall, the camera is camHeight above the sled).
+  // Lowered on 2026-11-17: the Hebrew answers were so high up that you could not read them and watch the path at once.
+  gateClear: 8.5,         // the bottom edge of the Hebrew answers is this high above the snow (was 17.2). The sleds ride under them
+  gateAnswerTall: 6,      // how tall the row of Hebrew answers is (was 7.2)
+  gateSignTall: 4.6,      // how tall the English sign on top is (was 5.5)
+  // The question box at the top of the screen (the same question as on the gate, for when the gate is still far away)
+  panelSee: 0.5,          // how dark the box behind it is: 0 = no box at all, 1 = solid (was 0.72). Lower = you see more of the mountain through it
+  panelWide: 0.56,        // how much of the screen's width it may take (it is one thin row now: the English word, then the 3 answers)
   boostSpeed: 1.25,       // right answer: top speed goes up to 125%… (was 145%)
   boostTime: 2,           // …for this many seconds
   gateBounce: 7000,       // wrong answer (or missing the gate): the gate bounces you BACK this far up the path, to try again…
@@ -580,7 +592,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-16b";
+const GAME_VERSION = "2026-11-17a";
 
 // ---------- Helpers ----------
 

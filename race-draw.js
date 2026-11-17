@@ -1032,28 +1032,29 @@ function drawBilingualText(ctx, hebrew, english, x, y, size, color = "#ffffff", 
   ctx.textAlign = "center";
 }
 
-const PANEL_COLORS = { right: "rgba(22, 163, 74, 0.92)", wrong: "rgba(220, 38, 38, 0.92)", missed: "rgba(71, 85, 105, 0.92)" };
+const PANEL_COLORS = { right: "rgba(22, 163, 74, 0.8)", wrong: "rgba(220, 38, 38, 0.8)", missed: "rgba(71, 85, 105, 0.8)" };
 
-// The question panel at the top: the English word, then the 3 Hebrew answers in a row,
-// in the same order as the lanes (left, middle, right). The lane I'm in has a yellow frame.
+// The question panel at the top: ONE thin row. The English word on the left, then the 3 Hebrew
+// answers, in the same order as the lanes (left, middle, right). The lane I'm in has a yellow frame.
+// (It used to be two rows and twice as tall: on a phone it covered the path ahead. RACE.panelSee
+// and RACE.panelWide in rules.js.)
 // Returns where the panel ends (so other things can go under it).
 function drawGatePanel(ctx, w, size, gate) {
-  const panelW = Math.min(w * 0.5, 480);
+  const panelW = Math.min(w * RACE.panelWide, 620);
   const x = (w - panelW) / 2;
-  const y = 6;
-  const wordH = size * 1.3;
-  const tipH = 0; // (no instructions line: the gate itself shows what to do)
-  const answerH = size * 1.7;
-  const panelH = wordH + tipH + answerH + 12;
-  roundedBox(ctx, x, y, panelW, panelH, 14, "rgba(15, 23, 42, 0.72)");
-  drawTextInBox(ctx, gate.english, w / 2, y + 2 + wordH / 2, panelW - 20, wordH, size * 1.3, "#ffffff", false);
-  const boxW = (panelW - 16) / 3;
-  const boxY = y + wordH + tipH + 4;
+  const y = 4;
+  const answerH = size * 1.45;
+  const panelH = answerH + 8;
+  const wordW = panelW * 0.31; // (the English word gets this much of the row)
+  if (RACE.panelSee > 0) roundedBox(ctx, x, y, panelW, panelH, 12, `rgba(15, 23, 42, ${RACE.panelSee})`);
+  drawTextInBox(ctx, gate.english, x + wordW / 2 + 2, y + panelH / 2, wordW - 8, panelH, size * 1.05, "#ffffff", false);
+  const boxW = (panelW - wordW - 10) / 3;
+  const boxY = y + 4;
   for (let lane = 0; lane < 3; lane++) {
-    const bx = x + 6 + lane * (boxW + 2);
+    const bx = x + wordW + 2 + lane * (boxW + 2);
     const mine = lane === gate.myLane;
     const tried = gate.wrong && gate.wrong[lane]; // (an answer I already tried: grayed out, with a ✗)
-    roundedBox(ctx, bx, boxY, boxW, answerH, 10, tried ? "#64748b" : LANE_COLORS[lane], mine ? "#fde047" : null, 4);
+    roundedBox(ctx, bx, boxY, boxW, answerH, 10, tried ? "#64748b" : LANE_COLORS[lane], mine ? "#fde047" : null, 3);
     drawTextInBox(ctx, tried ? "✗ " + gate.choices[lane] : gate.choices[lane], bx + boxW / 2, boxY + answerH / 2, boxW - 6, answerH, size, tried ? "#cbd5e1" : "#ffffff", true);
   }
   return y + panelH;
@@ -1062,9 +1063,9 @@ function drawGatePanel(ctx, w, size, gate) {
 // After a gate: "Correct!" (green), "Not that one: try again!" (red) or "Go THROUGH the gate" (gray), at the top.
 // (A wrong answer does not show the right one: the gate bounces you back for another try.)
 function drawGateFeedback(ctx, w, size, feedback) {
-  const panelW = Math.min(w * 0.56, 540);
+  const panelW = Math.min(w * 0.5, 480);
   const x = (w - panelW) / 2;
-  const panelH = size * 2.6;
+  const panelH = size * 2; // (smaller than it was, 2.6: it covered the path ahead on a phone)
   roundedBox(ctx, x, 6, panelW, panelH, 14, PANEL_COLORS[feedback.kind]);
   const e = feedback.entry;
   let he, en;

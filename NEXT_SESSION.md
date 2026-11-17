@@ -1,27 +1,20 @@
 # Next session
 
-## Where we stopped (2026-11-16)
-- Live version: **v 2026-11-16b** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
-- **v 16a (top of STATE.md), headless-tested, NOT yet tried by Daniel:**
-  - Race, easy mode: lanes across the whole path; both ways round the splits (also the mountain-face shortcut); secret shortcuts by tapping a glowing gold arrow.
-  - Race: orange gift (short, very fast burst); stronger bots.
-  - Looks are whole outfits now (bandit is new), prices up, drawings in the picker.
-  - Modes screen: race first, Capture the Flag second, no third slot.
-  - README rewritten.
-- **v 16b, also headless-tested only:** Capture the Flag bots (3 against 3 when fewer than 4 people), the joystick stays on the player, 10 sleds in a race, sleds only bump from straight behind.
-- Daniel said (2026-11-16): easy mode is really good; the sledding game is really good; 2 games is plenty; assume the Hebrew is fine during beta.
+## Where we stopped (2026-11-17)
+- Live version: **v 2026-11-17a** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
+- Daniel tried 16a + 16b: "pretty good". Capture the Flag (bots, joystick on the player) NOT tested yet.
+- **v 17a, headless-tested, NOT yet tried by Daniel (details at the top of STATE.md):**
+  - Race: no bumps at all (sleds overlap and cross), 7 sleds, bot levels spread out.
+  - Race: lower gates (same width), and a thin one-row question box at the top. Both because his mom (iPhone) could not see the path or read the gates.
 
 ## Next steps
-1. FIRST THING: ask how v 16a + 16b feel on a real phone:
-   - Capture the Flag bots: fun to play against alone? Too strong, too weak (`CTF_BOTS`)? Should it be 8 players instead of 6?
-   - The joystick dragged from the player: does it stay on the player now?
-   - Race: are 10 sleds too crowded, and are the bumps right now (`RACE.bumpLine`, `bumpSlow`)?
-   - Easy mode: can a little kid find and take a secret shortcut (gold arrow, then one more tap at the edge)? Window: `RACE.easySecretAt`. Enough lanes to pass? `RACE.easyLane`.
-   - Bots: too strong, too weak? `botSkill`, `botRight`, `botEase`, `botPush`, `botShortcut`.
-   - Orange: `orangeSpeed`, `orangeTime`, `orangeFade`; how often: `giftsInFront` / `giftsBehind`.
-   - Outfits: does the bandit look right? Are the prices right (`LOOKS`)? Can teams still be told apart in Capture the Flag?
-2. Still unanswered from 15f + 15g: the regular-mode camera (`RACE.cameraMotion`), Capture the Flag taps (`TOUCH`), details of the public game.
-3. Still open: a two-phone race test; the log-in card after every game or once per visit.
+1. FIRST THING: ask how v 17a feels, especially on Mom's iPhone:
+   - Can she see where she is going? Is the question box small enough (`RACE.panelSee`, `panelWide`), or should it go away?
+   - Are the gates low enough to read while racing (`RACE.gateClear`, `gateAnswerTall`)?
+   - Bots: spread out enough? Best bot too strong (`botSkill`, `botRight`, `botLead`)?
+2. Still waiting from 16b: Capture the Flag bots (fun alone? too strong? `CTF_BOTS`), the joystick dragged from the player.
+3. Still unanswered: easy-mode secret shortcuts for a little kid, the orange gift, outfit prices, the regular-mode camera (`RACE.cameraMotion`), Capture the Flag taps (`TOUCH`).
+4. Still open: a two-phone race test; the log-in card after every game or once per visit.
 
 ## Questions for Daniel
 - Outfits Claude made up: kibbutznik, cool kid, cowboy, ninja, wizard, bandit, king. Keep, change, add?
@@ -37,7 +30,7 @@
 - The repo clone and the test files live in the session scratchpad; re-clone `Lev-31065/battle-of-the-golan` and rebuild the test files if they're gone.
 - Test rig that worked on 2026-11-16 (rebuild if gone):
   - `run.sh script.js "query" [shot.png] [w,h] [budget-ms]` (Git Bash): copies index.html into the scratchpad with a `<base href>` to the project, an error catcher (`window.__errs`), and one test script at the end; runs headless Edge (`--dump-dom`, or `--screenshot` with `--virtual-time-budget`); prints what is between "RES"+"ULT" and "END"+"RES" in a `<pre>`. Edge needs `--user-data-dir`, `--enable-unsafe-swiftshader` (3D), `--allow-file-access-from-files`.
-  - `t-race.js`: a whole race. `?easy=1` (pretend finger: answers gates right; `&wander=1` random lanes, `&secret=1` takes every secret shortcut, `&fork=fast|slow`, `&wrong=1` first answer wrong, `&orange=1` every gift is an orange) or `?easy=0` (a rough autopilot). `&shot=1&stop=SECONDS` freezes there for a screenshot. Reports time, place, bot times, real tree hits (`hits`), shortcut rides, forks taken. `crashes` also counts rimon bangs, so read `hits`.
+  - `t-race.js`: a whole EASY-mode race by a pretend finger (answers gates right; `&wrong=1` first answer wrong). `&shot=1&gate=N&near=SEGMENTS` freezes that close to gate N for a screenshot. Reports my time and place and every bot's finish time and progress. (The 2026-11-16 version with a regular-mode autopilot, `wander`, `secret`, `fork`, `orange` is gone: rebuild if needed.)
   - `t-looks.js`: `?mode=sheet` (every outfit in Capture the Flag, big), `picker` (fakes a login: `account.user`, `masteryPoints = () => N`), `race&order=look,look,…` (sleds on the start grid; crop the right-hand sled).
   - `t-ctfbots.js`: Capture the Flag with bots. `?humans=N&secs=S` (the people stand still); reports the score every 30 s, grabs, knockouts, stuck seconds; `&shot=1` for a screenshot.
   - `t-smoke.js`: a short Capture the Flag game with outfits; reports errors.

@@ -1339,17 +1339,21 @@ function standAcross(group, n) {
   world3d.scene.add(group);
 }
 
-const GATE_TALL = 26; // (big, so you can read it from far away)
+// How tall a gate is: the Hebrew answers hang RACE.gateClear above the snow, the beam runs along
+// their top edge, and the English sign stands on the beam. (Settings in rules.js.)
+const GATE_TALL = RACE.gateClear + RACE.gateAnswerTall + 1.6; // the top of the beam
 
 // The picture on a gate: the English word on a white sign on top, a Hebrew answer over each lane.
 // (A gate nobody has a question on yet shows "🎁 ?": a right answer gives a gift.
 // An answer I already tried and got wrong is grayed out, with a ✗.)
 function paintGate(g, W, H, info) {
   g.clearRect(0, 0, W, H);
-  const signH = H * 0.38, signW = W * 0.4;
+  // (The picture is split like the real board: the sign on top, the answers underneath.)
+  const split = H * RACE.gateSignTall / (RACE.gateSignTall + RACE.gateAnswerTall);
+  const signH = split - 6, signW = W * 0.44;
   roundedBox(g, (W - signW) / 2, 4, signW, signH - 8, signH * 0.2, "#ffffff", "#1e3a8a", 8);
   drawTextInBox(g, info ? info.english : "🎁 ?", W / 2, signH / 2, signW, signH - 8, 200, "#1e3a8a", false);
-  const top = H * 0.5, panelH = H * 0.5 - 4, laneW = W / 3;
+  const top = split, panelH = H - split - 4, laneW = W / 3;
   for (let lane = 0; lane < 3; lane++) {
     const tried = info && info.wrong && info.wrong[lane];
     roundedBox(g, lane * laneW + 16, top, laneW - 32, panelH, panelH * 0.12, tried ? "#64748b" : LANE_COLORS[lane], "#ffffff", 6);
@@ -1370,9 +1374,9 @@ function makeGates() {
     B.box(mid, GATE_TALL - 0.8, 0, half * 2 + 0.9, 1.6, 1.1, steel);
     group.add(new THREE.Mesh(B.geometry(), w3.paint));
     // The board: the lane answers hang under the beam, the English sign stands on top of it.
-    const boardTall = 14.4;
-    const board = pictureBoard(half * 2, boardTall, 1400, 296, (g, W, H) => paintGate(g, W, H, null));
-    board.position.set(mid, GATE_TALL - 1.6 - 7.2 + boardTall / 2, 0.7);
+    const boardTall = RACE.gateAnswerTall + RACE.gateSignTall;
+    const board = pictureBoard(half * 2, boardTall, 1400, Math.round(296 * boardTall / 14.4), (g, W, H) => paintGate(g, W, H, null));
+    board.position.set(mid, RACE.gateClear + boardTall / 2, 0.7);
     group.add(board);
     standAcross(group, gate.index);
     w3.gates.push({ number: gate.number, index: gate.index, group, board, shown: "" });

@@ -56,15 +56,16 @@ function raceResetSled(p) {
   p.anonaUntil = LONG_AGO;  // (bots) an anona speeds it up until then
 }
 
-// The host tapped Start: line everyone up behind the start line, four sleds per row
+// The host tapped Start: line everyone up behind the start line, RACE.gridRow sleds per row
 // (the start is a big open snowfield, so there is room),
 // and start the 3… 2… 1… countdown.
 function raceStartGame() {
   raceAddBots(); // computer sleds, so there's always someone to race
   const everyone = Object.values(server.players);
   everyone.forEach((p, i) => {
-    const row = Math.floor(i / 5), inRow = Math.min(5, everyone.length - row * 5); // (5 sleds in a row)
-    p.x = (i % 5 - (inRow - 1) / 2) * 0.72;
+    const perRow = RACE.gridRow;
+    const row = Math.floor(i / perRow), inRow = Math.min(perRow, everyone.length - row * perRow);
+    p.x = (i % perRow - (inRow - 1) / 2) * 0.72;
     p.y = TRACK.startZ - RACE.segmentLength * 8 - row * RACE.segmentLength * 7; // behind the start line (far enough to see the banner)
     p.speed = 0;
     p.steer = 0;
@@ -344,6 +345,7 @@ function raceAddBots() {
       bot: true,
       skill: RACE.botSkill[i % RACE.botSkill.length],
       right: RACE.botRight[i % RACE.botRight.length], // how often it gets a gate right
+      lead: (RACE.botLead[i % RACE.botLead.length] || 0) * RACE.maxSpeed, // how far ahead of the best player it may get before it eases off (track units)
       lane: 0,            // where it wants to be, sideways (-1 = left edge of the path … 1 = right edge)
       laneUntil: 0,       // when it picks a new lane
       gatesDone: 0,       // how many gates it has passed
@@ -471,7 +473,11 @@ function raceMoveBot(p, dt) {
   const humans = Object.values(server.players).filter((other) => !other.bot);
   const best = Math.max(...humans.map((other) => other.y));
   const gap = p.y - best;
-  const catchUp = !humans.length ? 1 : gap > RACE.botCatchUp * 3 ? RACE.botEase[1] : gap > RACE.botCatchUp ? RACE.botEase[0] : gap < -RACE.botCatchUp ? RACE.botPush : 1;
+  // (Each bot has its own idea of "far ahead": the best bots are allowed a longer lead (p.lead)
+  // before they ease off. Otherwise every bot that is faster than the player ends up waiting at
+  // the same spot just in front, all in a bunch.)
+  const ahead = gap - (p.lead || 0);
+  const catchUp = !humans.length ? 1 : ahead > RACE.botCatchUp * 3 ? RACE.botEase[1] : ahead > RACE.botCatchUp ? RACE.botEase[0] : gap < -RACE.botCatchUp ? RACE.botPush : 1;
   const boosting = server.time < p.boostUntil;
   // (A very sharp bend: it has to skid round, like a player, so it is slower there. The
   // shortcut down the mountain face and the tilted bends are faster, like for a player.)
@@ -528,7 +534,7 @@ function raceMoveBot(p, dt) {
   // Other sleds, the same rules as for a player: only running into the BACK of a sled is a
   // bump. Not while this bot is boosting or spinning, and not into a sled that is spinning out
   // or has just hit something.
-  const through = boosting || orange || spinning || server.time < (p.anonaUntil || LONG_AGO);
+  const through = !RACE.sledBumps || boosting || orange || spinning || server.time < (p.anonaUntil || LONG_AGO); // (RACE.sledBumps false = sleds never bump)
   for (const other of Object.values(server.players)) {
     if (other === p || through || raceSledDown(other)) continue;
     const touch = sledsTouch(p, other);

@@ -69,7 +69,18 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
-## v 2026-11-16b (headless-tested, NOT yet tried by Daniel)
+## v 2026-11-17a (headless-tested, NOT yet tried by Daniel)
+- **Daniel on 16a + 16b (2026-11-17):** "pretty good". Capture the Flag (bots, joystick) not tested yet. His mom (iPhone) could not see where she was going: the question box covered the path, and the Hebrew on the gates was too high to read while racing.
+- **Race changes he asked for:**
+  - **No bumps:** sleds overlap and cross through each other from any direction ("for now"; `RACE.sledBumps`).
+  - **7 sleds** (one player gets 6 bots), 4 per start row.
+  - **Bot levels spread out:** speeds 100% … 77%, right answers 92% … 42%, and each bot has its own allowed lead (`botLead`). Before, every bot faster than the player waited in a bunch just in front. Test races (easy mode): perfect run 302 s = 2nd, best bot 293 s, the rest 3 to 60 s behind; every first answer wrong (365–370 s) = 4th or 5th, bots finishing about 10 s apart.
+  - **Lower gates, same width:** the Hebrew answers hang 8.5 above the snow (was 17), in the middle of the screen, and the sled rides under them.
+  - **Question box at the top:** one thin row (about half as tall), more see-through; the "Correct!" box is smaller too.
+- Claude's choices: the bot numbers; how low the gates are (`gateClear`); the one-row box instead of removing it.
+- Things to watch: can Mom see the path now? Long English sentences (levels 18–20) get small in the thin box (`panelWide`). Is the best bot too strong for kids in easy mode (`botLead`, `botSkill`)?
+
+## v 2026-11-16b (race parts tried by Daniel 2026-11-17: "pretty good"; Capture the Flag bots not yet)
 - **Capture the Flag bots:** a game that starts with fewer than 4 people gets computer players, 3 against 3 (the second bot on each team guards the base, the rest attack). They walk round rocks, logs and bushes, cross by the bridges or wade, buy a stick, rock or hammer (waiting as long as the answers would take), grab and carry flags, chase flag thieves, and pick up their own dropped flag. Test games (the person standing still) ended 3 to something in about 3.5 to 6.5 minutes.
 - **Joystick on the player:** a joystick started by dragging from your player now stays centered on the player, also near the map edge where the player moves across the screen.
 - **Race, 10 sleds:** one player gets 9 bots. Start grid 5 per row.
