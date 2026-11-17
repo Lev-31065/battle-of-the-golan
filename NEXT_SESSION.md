@@ -1,7 +1,8 @@
 # Next session
 
 ## Where we stopped (2026-11-17)
-- Live version: **v 2026-11-17a** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
+- **v 2026-11-17b** (same day): race round buttons moved to the top, gift + Drop buttons up under them. Not yet tried by Daniel.
+- Live version: **v 2026-11-17b** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
 - Daniel tried 16a + 16b: "pretty good". Capture the Flag (bots, joystick on the player) NOT tested yet.
 - Daniel was about to try 17a when the session ended; he said the list of changes "sounds good".
 - **v 17a, headless-tested, NOT yet tried by Daniel (details at the top of STATE.md):**

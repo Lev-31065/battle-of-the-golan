@@ -69,6 +69,9 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## v 2026-11-17b (headless-tested, NOT yet tried by Daniel)
+- **Race buttons:** the sound / voice / leave / full-screen buttons sit at the very top in the race (Daniel: on a phone that wasn't full screen, the Drop button ended up under the skid button). The gift + Drop buttons moved up under them. `body[data-game]` (set in `updateHud`, game.js) + `body[data-game="race"]` rules in style.css. Capture the Flag unchanged. The question box may cover the round buttons before a gate (Daniel: fine).
+
 ## v 2026-11-17a (headless-tested, NOT yet tried by Daniel)
 - **Daniel on 16a + 16b (2026-11-17):** "pretty good". Capture the Flag (bots, joystick) not tested yet. His mom (iPhone) could not see where she was going: the question box covered the path, and the Hebrew on the gates was too high to read while racing.
 - **Race changes he asked for:**
