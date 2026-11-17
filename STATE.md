@@ -294,6 +294,7 @@
 - **GitHub Pages, uploaded by Claude with git (since 2026-11-10).** See Deploy in `AGENTS.md`.
 - **Supabase for logins and data.** The URL and publishable key in `account.js` are public by design. Never add the secret/service_role key.
 - **Teacher features will be paid later.** For now the dashboard is free for anyone logged in. Later, lock the dashboard door (and the `decks` table) behind a paid account; nothing else should need to change.
+- **Payments plan (talked through 2026-11-17, nothing built; beta testing only for now):** Daniel leans toward a "merchant of record" (Lemon Squeezy or Paddle: they are the seller, so they handle VAT / sales tax everywhere; about 5% + 50¢ a sale, no setup fee; check current prices). Same website link. Flow: "Upgrade" on the dashboard → their checkout page → their webhook → a Supabase Edge Function marks the account paid → the dashboard and the `decks` table rules check that mark. First secret key: it lives in Supabase, never in the game files. Undecided: monthly / yearly / one-time, a manual "mark as paid" for schools that pay by invoice, terms + refund policy, a payments section on the privacy page. Daniel should ask an accountant about registering a business and income tax before launch.
 - **Class game = room hosted from the dashboard.** That's how the game knows the host is a teacher.
 - **Normal rooms show only Auto + levels.** Premade decks and own decks are teacher tools.
 - **Teacher decks are private in Supabase**, so the host's phone sends the words to the other players. Joiners never read the database.

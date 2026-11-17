@@ -3,6 +3,7 @@
 ## Where we stopped (2026-11-17)
 - Live version: **v 2026-11-17a** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
 - Daniel tried 16a + 16b: "pretty good". Capture the Flag (bots, joystick on the player) NOT tested yet.
+- Daniel was about to try 17a when the session ended; he said the list of changes "sounds good".
 - **v 17a, headless-tested, NOT yet tried by Daniel (details at the top of STATE.md):**
   - Race: no bumps at all (sleds overlap and cross), 7 sleds, bot levels spread out.
   - Race: lower gates (same width), and a thin one-row question box at the top. Both because his mom (iPhone) could not see the path or read the gates.
@@ -15,6 +16,7 @@
 2. Still waiting from 16b: Capture the Flag bots (fun alone? too strong? `CTF_BOTS`), the joystick dragged from the player.
 3. Still unanswered: easy-mode secret shortcuts for a little kid, the orange gift, outfit prices, the regular-mode camera (`RACE.cameraMotion`), Capture the Flag taps (`TOUCH`).
 4. Still open: a two-phone race test; the log-in card after every game or once per visit.
+5. Not now: payments for the dashboard (plan under Key decisions in STATE.md). Daniel: still beta testing; paying may become a requirement later.
 
 ## Questions for Daniel
 - Outfits Claude made up: kibbutznik, cool kid, cowboy, ninja, wizard, bandit, king. Keep, change, add?
