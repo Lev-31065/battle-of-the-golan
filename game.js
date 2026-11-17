@@ -148,10 +148,26 @@ window.addEventListener("resize", () => {
 rotateTip.addEventListener("pointerdown", () => { rotateTip.hidden = true; });
 
 const fullscreenButton = document.getElementById("fullscreen-button");
+// iPhones can't go full screen, but the game saved to the home screen opens without Safari's
+// bars (apple-mobile-web-app-capable in index.html). So on an iPhone in Safari, ⛶ shows how.
+// (navigator.standalone = true when it was opened from the home screen: then there's nothing to do.)
+const iphoneTip = !canFullscreen && /iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone;
+const homeTipEl = document.getElementById("home-tip");
+document.getElementById("home-tip-ok").addEventListener("click", () => { homeTipEl.hidden = true; });
 fullscreenButton.addEventListener("click", () => {
+  if (iphoneTip) { resetStick(); homeTipEl.hidden = false; return; }
   if (isFullscreen()) exitFullscreen();
   else enterFullscreen();
 });
+// The first time an iPhone player starts a game, a message points at the ⛶ button.
+function iphoneTipOnce() {
+  if (!iphoneTip) return;
+  try {
+    if (localStorage.getItem("golan-home-tip")) return;
+    localStorage.setItem("golan-home-tip", "1");
+  } catch {}
+  setTimeout(() => showToast("📱 Tip: tap ⛶ (next to the sound button) to play full screen", "📱 טִיפּ: לוֹחֲצִים עַל ⛶ (לְיַד כַּפְתּוֹר הַצְּלִיל) לְמָסָךְ מָלֵא"), 4000);
+}
 
 // ---------- Screen size and camera ----------
 
@@ -1144,6 +1160,7 @@ function changePhase(phase) {
     lockSideways(); // Android in full screen: the game turns sideways by itself
     // Still upright after a moment (iPhones can't be turned by the game)? Show the big card.
     setTimeout(showRotateTip, 1200);
+    iphoneTipOnce(); // (iPhone: how to play full screen)
   } else if (phase === "over") {
     closeQuiz();
     playSound("win");
@@ -1218,7 +1235,7 @@ function updateHud(p) {
   muteButton.hidden = !playing;
   voiceButton.hidden = !playing;
   leaveButton.hidden = !playing;
-  fullscreenButton.hidden = !playing || !canFullscreen;
+  fullscreenButton.hidden = !playing || !(canFullscreen || iphoneTip);
   sideTags.hidden = !playing;
   joystickBase.hidden = !playing; // the joystick shows whenever you're in a game
   if (playing) {

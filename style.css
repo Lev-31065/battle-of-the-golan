@@ -368,7 +368,17 @@ button, select, input { touch-action: manipulation; }
 }
 /* "Are you sure?" popups can open on top of the home and lobby screens (z-index 30),
    so they need to be higher still, or they'd be hidden underneath. */
-#leave-confirm, #delete-confirm, #looks, #login-nudge, #stats { z-index: 40; }
+#leave-confirm, #delete-confirm, #looks, #login-nudge, #stats, #home-tip { z-index: 40; }
+/* The iPhone "Add to Home Screen" tip (#home-tip) */
+.home-tip-steps { margin: 10px 0; padding-left: 22px; text-align: left; font-size: 15px; line-height: 1.35; }
+.home-tip-steps li { margin-bottom: 8px; }
+@media (max-height: 500px) {
+  .panel.home-tip-panel { width: min(640px, 100%); padding: 10px 14px; }
+  .home-tip-panel h2 .he, .home-tip-panel h2 .en { display: inline; margin: 0 6px; }
+  .home-tip-panel .big-button { padding-top: 8px; padding-bottom: 8px; }
+  .home-tip-steps { margin: 4px 0; font-size: 13px; }
+  .home-tip-steps li { margin-bottom: 4px; }
+}
 /* The owner's "Usage" screen (stats.js) */
 .stats-panel { width: min(560px, 100%); text-align: center; }
 .stats-body { margin: 8px 0 14px; font-size: 14px; text-align: left; }
@@ -459,6 +469,44 @@ button, select, input { touch-action: manipulation; }
 .quiz-feedback { min-height: 22px; margin: 12px 0 0; font-size: 16px; font-weight: 600; }
 .quiz-feedback.good { color: #15803d; }
 .quiz-feedback.bad { color: #b91c1c; }
+
+/* Short, wide screens (a phone held sideways, ESPECIALLY an iPhone with Safari's bars showing:
+   only about 300px tall). The question and the shop get wider and flatter, so all 4 answers and
+   the whole shop fit without scrolling. (2026-11-17: a player on an iPhone only saw the top two
+   answers and didn't know there were four.) */
+@media (max-height: 500px) {
+  .overlay { padding: 6px; }
+  .quiz-panel { width: min(720px, 100%); padding: 8px 12px 6px; }
+  .quiz-title { margin: 0 40px 0 0; font-size: 13px; }
+  .quiz-title .en { display: inline; margin-left: 6px; }   /* (Hebrew + English on ONE line) */
+  .quiz-title .he { display: inline; }
+  .quiz-ask { display: none; }                            /* ("How do you say this in Hebrew?": they know by now) */
+  .quiz-prompt { margin: 0 0 6px; font-size: 22px; line-height: 1.2; }
+  .quiz-hint { margin: -4px 0 6px; font-size: 15px; }
+  .quiz-choices { gap: 6px; }
+  .quiz-choice { min-height: 44px; padding: 4px 8px; font-size: 21px; }
+  .quiz-choices.long .quiz-choice { font-size: 16px; }
+  .quiz-feedback { min-height: 18px; margin: 4px 0 0; font-size: 14px; }
+  .quiz-panel .close-button { top: 6px; right: 6px; width: 30px; height: 30px; }
+  /* The shop: two columns of smaller items. */
+  .shop-panel { width: min(760px, 100%); padding: 10px 12px; }
+  .shop-panel h2 { font-size: 18px; }
+  .shop-panel h2 .he, .shop-panel h2 .en { display: inline; margin-right: 8px; }
+  .shop-panel .panel-sub { margin: 0 40px 6px 0; font-size: 12px; }
+  .shop-items { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .shop-item { gap: 8px; padding: 5px 8px; border-width: 2px; }
+  .shop-icon { font-size: 24px; }
+  .shop-text b { font-size: 14px; }
+  .shop-text small { font-size: 11px; line-height: 1.2; }
+  .shop-price { padding: 3px 7px; font-size: 11px; }
+}
+/* VERY short (under about 330px): even less. */
+@media (max-height: 340px) {
+  .quiz-prompt { font-size: 19px; margin-bottom: 4px; }
+  .quiz-choice { min-height: 38px; font-size: 18px; }
+  .quiz-choices.long .quiz-choice { font-size: 14px; }
+  .shop-text small { display: none; }                      /* (just the names and prices) */
+}
 
 /* ---------- The word card: English on top, Hebrew underneath, at the very top ---------- */
 .word-card {
