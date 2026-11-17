@@ -10,7 +10,8 @@
 //   - A DEFENDER walks about near its own base and goes after enemies who come close.
 //   - Everyone chases an enemy who is running off with their flag, and picks their own flag
 //     up if it is lying on the ground.
-//   - Some bots stop at the shop first for a stick, a rock or a hammer, and use it.
+//   - Most bots stop at the shop first for a list of things (CTF_BOTS.shopping): any weapon in
+//     the shop, boots, or (guards) a pomegranate tree. They hold whatever suits the moment.
 // A bot can't answer questions. Wherever a player would answer one (buying, grabbing a flag,
 // thawing out after a rock) the bot waits about as long as answering takes (CTF_BOTS.answerTime).
 // Settings: CTF_BOTS in rules.js.
@@ -138,17 +139,65 @@ function ctfBotNewLife(p) {
   m.stuckAt = server.time;
   m.stuckX = p.x; m.stuckY = p.y;
   m.sideStepUntil = 0;
+  m.shopList = [];       // what it will buy, in order (m.shopItem = the next one)
   m.shopItem = null;
   m.buyAt = 0;
+  m.plantSpot = null;    // (a guard with a tree) where it will plant it
+  m.plantTries = 0;
+  m.nextTrap = server.time + 3; // (a guard with grenades) when it may leave the next one
   if (p.role === "defend" || Math.random() < CTF_BOTS.shopChance) { // (a guard always gets something to guard with)
-    // Pick what to buy, by its chances.
-    const chances = CTF_BOTS.shopItems;
-    let roll = Math.random() * Object.values(chances).reduce((sum, chance) => sum + chance, 0);
-    for (const id of Object.keys(chances)) {
-      roll -= chances[id];
-      if (roll <= 0 && ITEMS[id]) { m.shopItem = id; break; }
+    // Pick a shopping list, by the lists' chances.
+    const lists = CTF_BOTS.shopping[p.role] || CTF_BOTS.shopping.attack;
+    let roll = Math.random() * lists.reduce((sum, list) => sum + list[0], 0);
+    for (const [chance, items] of lists) {
+      roll -= chance;
+      if (roll <= 0) { m.shopList = items.filter((id) => ITEMS[id]); break; }
     }
+    m.shopItem = m.shopList.shift() || null;
   }
+}
+
+// ---------- Which thing to hold ----------
+// A bot can carry several things. Every moment it holds the one that suits the nearest enemy:
+// a spear when an enemy is close enough to stab, a hand weapon when one is in reach, ninja
+// stars / a rock / a grenade when they are further off. (A player switches in the toolbar.)
+function ctfBotChoose(p, target, gap) {
+  const has = (id) => p.items.includes(id) && (ITEMS[id].kind !== "throw" || p.ammo[id] > 0);
+  const melee = has("hammer") ? "hammer" : has("stick") ? "stick" : null;
+  let pick = null;
+  if (target) {
+    if (has("spear") && gap < CTF_BOTS.spearAt) pick = "spear";
+    else if (melee && gap < ITEMS[melee].range + target.radius + 30) pick = melee;
+    else if (has("stars") && gap < ITEMS.stars.range * 0.85) pick = "stars";
+    else if (has("rock") && gap < ITEMS.rock.range * 0.8 && !target.frozen) pick = "rock";
+    else if (has("grenade") && gap > 190 && gap < 330) pick = "grenade";
+  }
+  // Nobody to fight right now: ready for the next one (a hand weapon first; the tree stays in the bag).
+  if (!pick) pick = melee || (has("spear") ? "spear" : null) || ["stars", "rock", "grenade"].find(has) || null;
+  if (pick !== p.held) p.held = pick;
+}
+
+// Where is this player GOING to be in `secs` seconds? (Bots aim throws there.) ctfMoveBots keeps
+// track of how fast everyone moves.
+const ctfBotSpeeds = new WeakMap();
+function ctfBotAhead(target, secs) {
+  const v = ctfBotSpeeds.get(target);
+  if (!v) return { x: target.x, y: target.y };
+  return { x: target.x + v.vx * secs, y: target.y + v.vy * secs };
+}
+
+// A guard with a tree: a spot in front of its base (toward the middle) where a tree can grow.
+// Returns the spot to stand on, or null if none was found.
+function ctfBotPlantSpot(p) {
+  const home = MAP.bases[p.team];
+  const toMiddle = p.team === "blue" ? 1 : -1;
+  const reach = p.radius + POMEGRANATE.plantAhead; // (the tree grows this far in front of the bot)
+  for (let tries = 0; tries < 30; tries++) {
+    const x = home.x + toMiddle * (home.radius + CTF_BOTS.treeOut + Math.random() * 120);
+    const y = home.y + (Math.random() * 2 - 1) * 260;
+    if (canPlantAt(x + toMiddle * reach, y)) return { x, y };
+  }
+  return null;
 }
 
 // ---------- Where to go ----------
@@ -174,11 +223,18 @@ function ctfBotGoal(p, enemies) {
   // Our flag is lying on the ground: pick it up (defenders always; attackers if it is near).
   if (own.state === "dropped" && (p.role === "defend" || distance(own, p) < 450)) return { x: own.x, y: own.y, why: "grab", flag: p.team };
 
-  const armed = ITEMS[p.held] && (ITEMS[p.held].kind === "melee" || ITEMS[p.held].kind === "throw");
+  // Armed = has something to fight with. Close-up = a hand weapon or a spear (worth walking up to someone for).
+  const armed = p.items.some((id) => ["melee", "throw", "spear"].includes(ITEMS[id].kind) && (ITEMS[id].kind !== "throw" || p.ammo[id] > 0));
+  const closeUp = p.items.some((id) => ["melee", "spear"].includes(ITEMS[id].kind));
   if (p.role === "defend") {
     // Guarding: go after any enemy who comes close to the base. Otherwise stroll about near it.
     const intruder = nearest(visible.filter((e) => distance(e, home) < CTF_BOTS.guard), home);
     if (intruder && armed) return { x: intruder.x, y: intruder.y, why: "chase", enemy: intruder };
+    // (No intruder.) A tree in the bag: plant it in front of the base.
+    if (p.items.includes("tree") && m.plantTries < 4) {
+      if (!m.plantSpot) { m.plantSpot = ctfBotPlantSpot(p); if (!m.plantSpot) m.plantTries = 99; }
+      if (m.plantSpot) return { x: m.plantSpot.x, y: m.plantSpot.y, why: "plant" };
+    }
     if (!m.patrol || distance(p, m.patrol) < 30 || server.time > m.patrol.until) {
       const angle = Math.random() * Math.PI * 2, out = 110 + Math.random() * 120;
       const toMiddle = p.team === "blue" ? 1 : -1; // (mostly on the side of the base that faces the enemy)
@@ -187,10 +243,17 @@ function ctfBotGoal(p, enemies) {
     return { x: m.patrol.x, y: m.patrol.y, why: "patrol" };
   }
 
-  // Attacking. (An attacker does not go out of its way to fight: it swings at whoever is in
-  // reach as it goes by. Only an enemy carrying a flag is worth turning aside for.)
+  // Attacking. An attacker turns aside for an enemy carrying a flag, or for any enemy right next
+  // to it; otherwise it goes for the flag and fights whoever comes into reach on the way.
   const robber = nearest(visible.filter((e) => e.carrying && distance(e, p) < CTF_BOTS.see), p);
   if (robber && armed) return { x: robber.x, y: robber.y, why: "chase", enemy: robber };
+  // An enemy right next to me, and I have a hand weapon or a spear: fight.
+  const close = nearest(visible.filter((e) => distance(e, p) < CTF_BOTS.fight), p);
+  if (close && closeUp) return { x: close.x, y: close.y, why: "chase", enemy: close };
+  // The speed box is near and I have a hand weapon: smash it for the speed boost.
+  const box = server.speedBox;
+  // (Only with a hammer: with a stick it would take far too long.)
+  if (box.alive && p.items.includes("hammer") && distance(box, p) < CTF_BOTS.boxAt) return { x: box.x, y: box.y, why: "box" };
   // The enemy flag: go and get it. (A teammate has it already? Walk with them.)
   const friend = carrierOf(theirs);
   if (friend && friend.team === p.team) return { x: friend.x + (p.team === "blue" ? 70 : -70), y: friend.y, why: "escort" };
@@ -242,11 +305,23 @@ function ctfMoveBot(p, dt) {
     if (server.time >= m.buyAt) {
       if (item.kind === "throw") p.ammo[m.shopItem] = (p.ammo[m.shopItem] || 0) + item.perBuy;
       if (!p.items.includes(m.shopItem)) p.items.push(m.shopItem);
-      p.held = m.shopItem;
-      m.shopItem = null;
+      if (isHoldable(m.shopItem) && item.kind !== "plant") p.held = m.shopItem; // (boots are worn; the tree waits in the bag)
+      m.shopItem = m.shopList.shift() || null; // the next thing on its list, if any
       m.buyAt = 0;
     }
   }
+
+  // At the spot for its tree: face the middle of the map and plant it (the same as a player pressing Plant).
+  if (goal.why === "plant" && distance(p, goal) < 16) {
+    standStill = true;
+    p.facing = p.team === "blue" ? 0 : Math.PI;
+    p.held = "tree";
+    serverPlant(p);
+    if (p.items.includes("tree")) { m.plantSpot = null; m.plantTries += 1; } // (not allowed there: try another spot)
+    ctfBotChoose(p, null, Infinity); // (hands free again: back to a weapon)
+  }
+  // At the speed box with a hammer: stand and smash it.
+  if (goal.why === "box" && distance(p, goal) < ITEMS.hammer.range + 28 - 10) standStill = true;
 
   // At a flag it wants: wait for one answer, then grab it.
   if (goal.why === "grab" && distance(server.flags[goal.flag], p) < FLAG_REACH - 8) {
@@ -268,9 +343,14 @@ function ctfMoveBot(p, dt) {
   while (m.route.length && Math.hypot(m.route[0][0] - p.x, m.route[0][1] - p.y) < 70) m.route.shift();
   const next = m.route.length ? { x: m.route[0][0], y: m.route[0][1] } : goal;
 
+  // Holding a spear with an enemy close by: run straight at them, tip first.
+  const nearestEnemy = enemies.filter((e) => !e.inLog).reduce((best, e) => (!best || distance(e, p) < distance(best, p) ? e : best), null);
+  const stabbing = p.held === "spear" && !p.carrying && nearestEnemy && distance(nearestEnemy, p) < CTF_BOTS.spearAt;
+
   const oldX = p.x, oldY = p.y;
+  if (stabbing) standStill = false;
   if (!standStill) {
-    let [dx, dy] = ctfBotSteer(p, next.x, next.y);
+    let [dx, dy] = stabbing ? ctfArrow(nearestEnemy.x - p.x, nearestEnemy.y - p.y) : ctfBotSteer(p, next.x, next.y);
     // (Stuck against something? A step to the side for a moment.)
     if (server.time < m.sideStepUntil) { const turn = m.sideStepTurn; [dx, dy] = [dx * Math.cos(turn) - dy * Math.sin(turn), dx * Math.sin(turn) + dy * Math.cos(turn)]; }
     // Speed: the same rules as a player (river, bush, berries, carrying a flag, the speed box), times this bot's own speed.
@@ -325,22 +405,71 @@ function ctfMoveBot(p, dt) {
 
   // ----- Fighting -----
   // (Not while carrying a flag: nobody can. The referee's own rules check the rest.)
+  if (p.carrying) return;
+  const target = nearestEnemy;
+  const gap = target ? distance(target, p) : Infinity;
+  if (goal.why !== "plant") ctfBotChoose(p, target, gap); // (hold whatever suits the moment)
   const weapon = ITEMS[p.held];
-  if (!weapon || p.carrying || server.time < m.nextSwing) return;
-  const target = enemies.filter((e) => !e.inLog).reduce((best, e) => (!best || distance(e, p) < distance(best, p) ? e : best), null);
+  if (!weapon || server.time < m.nextSwing) return;
+  const wait = () => { m.nextSwing = server.time + weapon.cooldown + botBetween(CTF_BOTS.swingWait); };
+
+  // The speed box, with a hammer.
+  const box = server.speedBox;
+  if (goal.why === "box" && weapon.kind === "melee" && box.alive && distance(box, p) < weapon.range + box.radius - 6) {
+    p.facing = Math.atan2(box.y - p.y, box.x - p.x);
+    serverSwing(p);
+    wait();
+    return;
+  }
+  // A guard with grenades and nobody about: leave one in front of the base, as a trap.
+  if (p.role === "defend" && p.held === "grenade" && gap > 450 && server.time > m.nextTrap) {
+    const traps = server.mines.filter((mine) => mine.team === p.team).length;
+    if (traps < 2) {
+      const toMiddle = p.team === "blue" ? 0 : Math.PI;
+      serverThrow(p, toMiddle + (Math.random() * 2 - 1) * 0.9);
+      m.nextTrap = server.time + CTF_BOTS.trapEvery;
+      wait();
+      return;
+    }
+  }
   if (!target) return;
-  const gap = distance(target, p), angle = Math.atan2(target.y - p.y, target.x - p.x);
+  const angle = Math.atan2(target.y - p.y, target.x - p.x);
   if (weapon.kind === "melee" && gap < weapon.range + target.radius - 6) {
     p.facing = angle;
     serverSwing(p);
-    m.nextSwing = server.time + weapon.cooldown + botBetween(CTF_BOTS.swingWait);
-  } else if (weapon.kind === "throw" && !weapon.lands && gap < weapon.range * 0.8 && !target.frozen) {
-    serverThrow(p, angle + (Math.random() * 2 - 1) * CTF_BOTS.throwError);
-    m.nextSwing = server.time + weapon.cooldown + botBetween(CTF_BOTS.swingWait) + 0.6;
+    wait();
+  } else if (weapon.kind === "throw") {
+    // Aim where the enemy will be when it gets there (a grenade: where it lands, its full range away).
+    const flyTime = (weapon.lands ? weapon.range : gap) / weapon.speed;
+    const spot = ctfBotAhead(target, flyTime);
+    const spotGap = Math.hypot(spot.x - p.x, spot.y - p.y);
+    const inRange = weapon.lands ? spotGap > 200 && spotGap < 330 : spotGap < weapon.range * 0.85;
+    if (!inRange || (weapon.freezes && target.frozen)) return;
+    serverThrow(p, Math.atan2(spot.y - p.y, spot.x - p.x) + (Math.random() * 2 - 1) * CTF_BOTS.throwError);
+    wait();
+    m.nextSwing += weapon.lands ? 1.5 : 0.3; // (a short pause before the next throw)
   }
+  // (A spear needs no button: the referee stabs whoever its tip touches, serverCheckSpears.)
 }
 
 function ctfMoveBots(dt) {
+  // How fast is everyone moving? (For aiming throws ahead of them: ctfBotAhead.) Smoothed a little.
+  // (People's phones send where they are about 20 times a second, so this measures from one
+  // change of place to the next, not frame by frame.)
+  for (const p of Object.values(server.players)) {
+    const v = ctfBotSpeeds.get(p);
+    if (!v || !p.alive) { ctfBotSpeeds.set(p, { x: p.x, y: p.y, t: server.time, vx: 0, vy: 0 }); continue; }
+    const secs = server.time - v.t;
+    if (p.x !== v.x || p.y !== v.y) {
+      if (secs > 0) {
+        const vx = (p.x - v.x) / secs, vy = (p.y - v.y) / secs;
+        const jump = Math.hypot(vx, vy) > PLAYER_SPEED * 3; // (a respawn, not real speed)
+        v.vx = jump ? 0 : v.vx * 0.5 + vx * 0.5;
+        v.vy = jump ? 0 : v.vy * 0.5 + vy * 0.5;
+      }
+      v.x = p.x; v.y = p.y; v.t = server.time;
+    } else if (secs > 0.3) { v.vx = 0; v.vy = 0; } // (standing still)
+  }
   for (const p of Object.values(server.players)) {
     if (p.bot) ctfMoveBot(p, dt);
   }

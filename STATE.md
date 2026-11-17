@@ -69,6 +69,14 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## v 2026-11-17c (headless-tested, NOT yet tried by Daniel)
+- **Daniel on Capture the Flag bots (2026-11-17):** "very good", but make them a little better and able to use all the weapons.
+- **Bots now buy and use everything:** stick, hammer, rock, ninja stars, spear (run at you tip first; it breaks after one stab, as for players), pomegranate grenades (thrown so they land where you are going; guards also leave up to 2 as traps in front of their base), the tree (guards plant it in front of the base), boots. They carry a few things and hold whatever suits the moment. Attackers with a hammer smash the speed box when they pass it.
+- **A little better:** walk a bit faster (0.86–0.99 of a player), "answer" faster (1.2–2.5 s), aim throws ahead of a moving enemy, shop more often (65%).
+- Test (6 games, the person standing still, so 2 bots against 3): every item bought and used, no errors. Bots knock each other out far more than before, so bot-only games last longer: 2 of 6 finished within 7 min (old bots: 3 of 4, in about 4–5.5 min).
+- Tried and dropped: attackers turning aside to fight ANY close enemy (`CTF_BOTS.fight`): games became brawls, almost no flags got home.
+- Things to watch: are games too long now? Knobs: `CTF_BOTS.swingWait`, `speed`, `shopping`, `trapEvery`, `spearAt`.
+
 ## v 2026-11-17b (headless-tested, NOT yet tried by Daniel)
 - **Race buttons:** the sound / voice / leave / full-screen buttons sit at the very top in the race (Daniel: on a phone that wasn't full screen, the Drop button ended up under the skid button). The gift + Drop buttons moved up under them. `body[data-game]` (set in `updateHud`, game.js) + `body[data-game="race"]` rules in style.css. Capture the Flag unchanged. The question box may cover the round buttons before a gate (Daniel: fine).
 

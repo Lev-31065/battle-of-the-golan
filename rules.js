@@ -534,14 +534,30 @@ const CTF_BOTS = {
   fewerThan: 4,          // bots join when a game starts with fewer than this many players…
   players: 6,            // …until there are this many in all, half on each team (6 = 3 against 3). If one team already has more people than that, the other team is filled up to match (up to 8 in all). 0 = no bots
   names: ["🤖 אוּרִי", "🤖 מַיָּה", "🤖 אִיתַי", "🤖 שִׁירָה", "🤖 נָדָב", "🤖 תָּמָר", "🤖 רוֹנִי", "🤖 עִדּוֹ"],
-  speed: [0.9, 0.84, 0.88, 0.94, 0.82, 0.86, 0.9, 0.8], // each bot's walking speed (1 = as fast as a player)
-  answerTime: [1.5, 3],  // a bot "answers a question" in this many seconds (between the two numbers)
-  shopChance: 0.5,       // how often a bot goes to the shop first when it comes (back) to life. Otherwise it sets off with empty hands
-  shopItems: { stick: 0.5, rock: 0.3, hammer: 0.2 }, // what it buys there, and how often (it waits the item's cost in answers)
-  see: 230,              // an attacking bot with a weapon turns aside for an enemy carrying a flag who comes this close…
+  speed: [0.96, 0.9, 0.94, 0.99, 0.88, 0.92, 0.96, 0.86], // each bot's walking speed (1 = as fast as a player). (Raised 2026-11-17: Daniel wanted the bots a little better)
+  answerTime: [1.2, 2.5],  // a bot "answers a question" in this many seconds (between the two numbers)
+  shopChance: 0.65,       // how often an ATTACKER goes to the shop first when it comes (back) to life (a guard always does). Otherwise it sets off with empty hands
+  // What a bot buys: one of these lists, picked by its chance (the first number). It buys the things in
+  // order, waiting each item's cost in answers. It holds whichever thing suits the moment (ctfBotChoose in ctf-bots.js).
+  shopping: {
+    attack: [
+      [3, ["stick"]], [3, ["hammer"]], [2, ["rock", "stick"]], [2, ["stars"]],
+      [2, ["spear", "stick"]], [1, ["boots", "stick"]], [1, ["grenade", "stick"]],
+    ],
+    defend: [
+      [2, ["hammer"]], [2, ["rock", "stick"]], [2, ["spear", "stick"]], [2, ["grenade", "stick"]],
+      [1, ["tree", "stick"]], [1, ["stars"]],
+    ],
+  },
+  see: 300,              // an attacking bot with a weapon turns aside for an enemy carrying a flag who comes this close…
+  fight: 0,              // …or for ANY enemy this close (if it has a hand weapon or a spear, and no flag). 0 = never (more than about 90 and games turn into brawls: hardly any flags get home)
   guard: 380,            // …and a bot guarding its base goes after any enemy this close to the base
-  swingWait: [0.2, 0.7], // after a swing or a throw it waits its weapon's own pause plus this much (so it is beatable)
-  throwError: 0.15,      // how badly it aims a rock (radians: 0.15 is about 9 degrees to either side)
+  swingWait: [0.2, 0.6], // after a swing or a throw it waits its weapon's own pause plus this much (so it is beatable)
+  throwError: 0.1,       // how badly it aims a throw (radians: 0.1 is about 6 degrees to either side). It aims where the enemy is GOING
+  spearAt: 240,          // with a spear: it points it at an enemy this close and runs straight at them
+  boxAt: 260,            // an attacker with a hand weapon passing this close to the speed box smashes it for the boost
+  trapEvery: 15,         // a guard with grenades leaves one in front of its base this often (seconds), up to 2 at a time
+  treeOut: 170,          // a guard with a tree plants it about this far out from its base, toward the middle
 };
 
 // ---------- Mastery points and looks (looks.js) ----------
@@ -592,7 +608,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-17b";
+const GAME_VERSION = "2026-11-17c";
 
 // ---------- Helpers ----------
 
