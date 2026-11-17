@@ -613,6 +613,13 @@ button, select, input { touch-action: manipulation; }
 .return-button[hidden] { display: none; }
 .return-button .he { display: block; font-size: 15px; font-weight: 800; line-height: 18px; }
 .return-button .en { display: block; font-size: 10px; line-height: 12px; opacity: 0.85; }
+/* The race has no minimap, so its small round buttons (sound, voice, leave, full screen) sit at the very
+   top of the screen, and the gift + Drop buttons move up under them. Before, on a phone that was not
+   full screen, the Drop button ended up under the skid button. (The question box may cover the round
+   buttons for a moment before a gate: Daniel said that's fine, 2026-11-17.) */
+body[data-game="race"] .mute-button { top: 8px; }
+body[data-game="race"] .item-button { top: 50px; }
+body[data-game="race"] .drop-button { top: 142px; }
 .item-icon { display: block; font-size: 34px; line-height: 38px; }
 .item-label .he { display: block; font-size: 12px; font-weight: 800; line-height: 14px; }
 .item-label .en { display: block; font-size: 9px; line-height: 11px; opacity: 0.75; }

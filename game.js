@@ -1226,6 +1226,8 @@ function updateHud(p) {
     // The room code, so you can tell a friend who closed the game by accident.
     setBilingual(roomTag, `Room ${client.roomCode}`, `חֶדֶר ${client.roomCode}`);
   }
+  // Tell style.css which game this is (body[data-game="race"] moves some buttons for the race).
+  document.body.dataset.game = client.mode || "";
   // Buttons that belong to one game only (data-game-button="race") hide in the others.
   for (const button of document.querySelectorAll("[data-game-button]")) {
     if (button.dataset.gameButton !== client.mode) button.hidden = true;
