@@ -6,7 +6,8 @@
 - **v 2026-11-17d** (same day): Auto level finds a new player's level with big jumps (up 10, then halfway steps). Not yet tried by Daniel.
 - **v 2026-11-17e** (same day): fix attempt for an iPhone where the question popup closed with no next question and no item (details in STATE.md). Ask Daniel whether it happens again, and what any ⚠️ Problem message says.
 - **v 2026-11-17f** (same day): the question popup and shop fit short sideways screens (iPhone with Safari's bars); ⛶ on iPhones explains "Add to Home Screen" for full screen. Not yet tried on an iPhone.
-- Live version: **v 2026-11-17f** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
+- **v 2026-11-17g** (same day): bots wade straight across rivers, bots are hexagons, "Join the game" button for games already going on (race: start beside 4th place). Not yet tried by Daniel.
+- Live version: **v 2026-11-17g** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
 - Daniel tried 16a + 16b: "pretty good". Capture the Flag (bots, joystick on the player) NOT tested yet.
 - Daniel was about to try 17a when the session ended; he said the list of changes "sounds good".
 - **v 17a, headless-tested, NOT yet tried by Daniel (details at the top of STATE.md):**

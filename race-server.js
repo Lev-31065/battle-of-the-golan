@@ -39,6 +39,17 @@ function raceNewPlayer(p) {
   p.finishTime = 0;
   p.lastMoveAt = server.time;
   raceResetSled(p);
+  // Joining a race that is already going (the "Join the game" button): start right next to the
+  // sled in 4th place (or the last one, with fewer sleds still racing), at its speed. Daniel 2026-11-17.
+  if (server.phase === "playing" && server.race.startAt < server.time) {
+    const racing = Object.values(server.players).filter((q) => q !== p && !q.finished).sort((a, b) => b.y - a.y);
+    const near = racing[3] || racing[racing.length - 1];
+    if (near) {
+      p.y = near.y;
+      p.x = Math.max(-0.8, Math.min(0.8, near.x)) + (near.x > 0 ? -0.35 : 0.35); // (beside it, on the path)
+      p.speed = Math.min(RACE.maxSpeed, near.speed || 0);
+    }
+  }
 }
 
 // The things a sled has besides its spot: how high it is flying, the gift it is holding,

@@ -351,6 +351,16 @@ function ctfMoveBot(p, dt) {
   if (stabbing) standStill = false;
   if (!standStill) {
     let [dx, dy] = stabbing ? ctfArrow(nearestEnemy.x - p.x, nearestEnemy.y - p.y) : ctfBotSteer(p, next.x, next.y);
+    // In a river (not on a bridge)? Wade STRAIGHT ACROSS to the side where it is going, the
+    // shortest way out. (Walking in water is slower than the current, so a bot that waded along
+    // the river toward a spot upstream hardly moved. Daniel, 2026-11-17.) Not when the spot it
+    // wants is in the water itself, like an enemy who is wading too.
+    const flowHere = isInWater(p.x, p.y) ? riverFlowAt(p.x, p.y) : null;
+    if (flowHere && !isInWater(next.x, next.y)) {
+      const acrossX = -flowHere.y, acrossY = flowHere.x; // (at right angles to the flow)
+      const side = (next.x - p.x) * acrossX + (next.y - p.y) * acrossY >= 0 ? 1 : -1;
+      [dx, dy] = [acrossX * side, acrossY * side];
+    }
     // (Stuck against something? A step to the side for a moment.)
     if (server.time < m.sideStepUntil) { const turn = m.sideStepTurn; [dx, dy] = [dx * Math.cos(turn) - dy * Math.sin(turn), dx * Math.sin(turn) + dy * Math.cos(turn)]; }
     // Speed: the same rules as a player (river, bush, berries, carrying a flag, the speed box), times this bot's own speed.

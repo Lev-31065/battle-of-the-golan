@@ -864,7 +864,19 @@ function drawPlayer(ctx, p, time, isMe, plain) {
   ctx.strokeStyle = COLORS.outline;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(p.x, y, p.radius, 0, Math.PI * 2);
+  if (p.bot) {
+    // Computer players (bots) are HEXAGONS, so everyone can tell them from people (round).
+    const r = p.radius * 1.08;
+    for (let k = 0; k < 6; k++) {
+      const angle = Math.PI / 6 + k * Math.PI / 3; // (a point at the top and the bottom)
+      const hx = p.x + Math.cos(angle) * r, hy = y + Math.sin(angle) * r;
+      if (k === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath();
+    ctx.lineJoin = "round";
+  } else {
+    ctx.arc(p.x, y, p.radius, 0, Math.PI * 2);
+  }
   ctx.fill();
   ctx.stroke();
 

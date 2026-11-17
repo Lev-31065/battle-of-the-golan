@@ -1522,6 +1522,12 @@ function raceOnPhase(phase) {
     forgetGates();
     steerFingers.clear();
     snowPuffs.length = 0;
+    // Joined a race that was already going? The referee put me next to the sled in 4th place
+    // (raceNewPlayer). The gates behind me count as done, and I keep that sled's speed.
+    if (me && me.y > TRACK.startZ) {
+      for (const gate of TRACK.gates) if (gate.z <= me.y) lastGateZ = gate.z;
+      mySpeed = Math.min(RACE.maxSpeed, me.speed || 0);
+    }
   } else if (phase === "over") {
     steerFingers.clear();
     showRaceWinner();

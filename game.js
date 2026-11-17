@@ -687,6 +687,14 @@ document.getElementById("switch-team").addEventListener("click", () => {
   const p = myPlayer();
   if (p) sendToServer({ type: "team", team: otherTeam(p.team) });
 });
+// Waiting in the room while a game is going on: tap to jump in (server.js: joinNow).
+const joinNowButton = document.getElementById("join-now-button");
+const joinNowNote = document.getElementById("join-now-note");
+joinNowButton.addEventListener("click", () => {
+  sendToHost({ type: "joinNow" });
+  joinNowButton.hidden = true; // (until the referee answers)
+  lockSideways();
+});
 startButton.addEventListener("click", () => {
   sendToServer({ type: "start" }); // (the game starts first…)
   lockSideways();                  // …and then the phone turns sideways
@@ -1056,8 +1064,12 @@ function renderLobby(hostId) {
     }
   }
   if (game.startText) setBilingual(startButton, game.startText.en, game.startText.he);
-  startButton.hidden = !client.isHost || pub;
-  lobbyWait.hidden = client.isHost || pub;
+  startButton.hidden = !client.isHost || pub || client.waiting;
+  lobbyWait.hidden = client.isHost || pub || client.waiting;
+  if (client.waiting) publicWait.hidden = true;
+  // A game is going on and I'm not in it yet: "Join the game!" (when I'm ready).
+  joinNowButton.hidden = !client.waiting || client.serverPhase !== "playing";
+  joinNowNote.hidden = !client.waiting;
 }
 
 // ---------- Receiving the referee's snapshots ----------
@@ -1101,7 +1113,9 @@ function applySnapshot(snap) {
   // Not in the game any more? (The referee removes phones it hasn't heard from in
   // 8 seconds, like when you switch apps.) Ask to join again: you come back at your
   // base like after a knockout, on the same team.
-  if (!client.isHost && client.myId && !stillHere.has(client.myId) && performance.now() - client.joinSentAt > 2000) {
+  // (Waiting to join a game that is going on? Then I'm on the referee's waiting list: nothing to do.)
+  client.waiting = (snap.waiting || []).includes(client.myId);
+  if (!client.isHost && client.myId && !client.waiting && !stillHere.has(client.myId) && performance.now() - client.joinSentAt > 2000) {
     client.joinSentAt = performance.now();
     resetTimers();
     sendToHost({ type: "join", name: client.name, look: myLook() });
@@ -1134,7 +1148,11 @@ function applySnapshot(snap) {
     }
   }
 
-  if (snap.phase !== client.phase) changePhase(snap.phase);
+  // Waiting to join? This phone stays in the room (the lobby) with a "Join the game" button.
+  // (While the last game's winner shows, there's no button: everyone waiting joins the room by itself a moment later.)
+  client.serverPhase = snap.phase;
+  const phase = client.waiting ? "lobby" : snap.phase;
+  if (phase !== client.phase) changePhase(phase);
   if (client.phase === "lobby") renderLobby(snap.hostId);
 }
 

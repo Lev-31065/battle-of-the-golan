@@ -28,6 +28,7 @@ const server = {
   mode: "ctf",      // which game: "ctf" = Capture the Flag (two more games are coming)
   public: false,    // true = a public room (PUBLIC in rules.js): made-up names, and the game starts by itself
   autoStartAt: null, // (public rooms) when the game will start by itself (null = not enough players yet)
+  waiting: {},      // people who came while a game was going: id → { name, look, lastSeen }. They join when they tap "Join the game" (or when it ends)
   // (Each game adds its own things here too, like server.flags in Capture the Flag.)
 };
 
@@ -73,6 +74,7 @@ function serverReset(hostId, deckId, options = {}) {
   server.phase = "lobby";
   server.players = {};
   server.pastTeams = {};
+  server.waiting = {};
   serverGame().newRound();
 }
 
@@ -107,11 +109,18 @@ function publicName() {
 
 // (Public rooms) is the room full? Bots do not count.
 function serverIsFull() {
-  return server.public && Object.values(server.players).filter((p) => !p.bot).length >= PUBLIC.maxPlayers;
+  return server.public && Object.values(server.players).filter((p) => !p.bot).length + Object.keys(server.waiting).length >= PUBLIC.maxPlayers;
 }
 
-function serverAddPlayer(id, name, look) {
+function serverAddPlayer(id, name, look, now = false) {
   if (server.players[id]) return;
+  // A game is going on: they wait in the room until they tap "Join the game" (joinNow below), so
+  // nobody is dropped into the middle of a battle or a race before they're ready. (Daniel, 2026-11-17)
+  if (server.phase !== "lobby" && id !== server.hostId && !now) {
+    server.waiting[id] = { name, look, lastSeen: server.time };
+    return;
+  }
+  delete server.waiting[id];
   // In a public room nobody types a nickname (the players are strangers): everyone gets a made-up one.
   if (server.public) name = publicName();
   // Closed the game and came straight back? The old "you" may still be standing there
@@ -166,6 +175,13 @@ function serverHandle(id, msg) {
   if (!msg || typeof msg !== "object") return;
   if (msg.type === "join") {
     serverAddPlayer(id, msg.name, msg.look);
+    return;
+  }
+  // Waiting to join a game that is going on: "I'm ready" puts them in. Anything else just says "still here".
+  const waiter = server.waiting[id];
+  if (waiter) {
+    waiter.lastSeen = server.time;
+    if (msg.type === "joinNow") serverAddPlayer(id, waiter.name, waiter.look, true);
     return;
   }
   const p = server.players[id];
@@ -225,11 +241,16 @@ function serverUpdate(dt) {
   for (const p of Object.values(server.players)) {
     if (p.id !== server.hostId && server.time - p.lastSeen > 8) serverRemovePlayer(p.id);
   }
+  for (const [id, waiter] of Object.entries(server.waiting)) {
+    if (server.time - waiter.lastSeen > 8) delete server.waiting[id];
+  }
 
   // The game ended a few seconds ago: everyone goes back to the teams screen (the lobby).
   if (server.phase === "over" && server.time - server.overAt >= WINNER_SCREEN_TIME) {
     server.phase = "lobby";
     serverGame().newRound();
+    // Everyone who was waiting is in the room now.
+    for (const [id, waiter] of Object.entries(server.waiting)) serverAddPlayer(id, waiter.name, waiter.look, true);
   }
 
   // A public room: once there are enough players, the game starts by itself a little later.
@@ -259,6 +280,7 @@ function serverSnapshot() {
     startIn: server.autoStartAt === null ? null : Math.max(0, Math.ceil(server.autoStartAt - server.time)), // (public rooms) seconds until the game starts by itself
 
     players: Object.values(server.players).map((p) => ({ ...p })),
+    waiting: Object.keys(server.waiting), // (phones waiting to join a game that is going on)
     events: server.events,
   };
   serverGame().snapshot(snapshot); // the game adds its own things (flags, score…)
