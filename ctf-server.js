@@ -582,7 +582,11 @@ function ctfHandle(p, msg) {
       // The phone already made the player answer the questions (the item's cost).
       // Hand weapons: you buy each one once. Thrown things: you can buy more any time
       // (each buy adds `perBuy` of them). Either way, you start holding it straight away.
-      if (ITEMS[msg.item] && p.alive && nearShop(p, 40)) {
+      // (Extra reach: the phone checked it was at the shop when the shop opened, but the river or
+      // a bump may have moved the player a little while answering.)
+      if (ITEMS[msg.item] && p.alive && !nearShop(p, 120)) {
+        toast("🛒 Too far from the shop: walk back to it and buy again.", "רָחוֹק מִדַּי מֵהַחֲנוּת: חוֹזְרִים אֵלֶיהָ וְקוֹנִים שׁוּב.", p.id);
+      } else if (ITEMS[msg.item] && p.alive) {
         const item = ITEMS[msg.item];
         if (item.kind === "throw") {
           p.ammo[msg.item] = (p.ammo[msg.item] || 0) + item.perBuy;

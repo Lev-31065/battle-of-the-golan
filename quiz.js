@@ -81,8 +81,9 @@ function closeQuiz() {
   clearInterval(quiz.timer);
   // Closed without getting one right? Still read back the words you missed.
   if (wasOpen && quiz.missed.length > 0) {
-    speakSteps(quiz.missed.map((entry) => ({ card: entry, lines: [englishLine(entry), hebrewLine(entry)] })));
+    const missed = quiz.missed;
     quiz.missed = [];
+    quizSafely("voice", () => speakSteps(missed.map((entry) => ({ card: entry, lines: [englishLine(entry), hebrewLine(entry)] }))));
   }
 }
 
@@ -150,17 +151,25 @@ function showNewQuestion() {
   }
 }
 
+// Run some extra (a sound, the voice, a message, saving): if it goes wrong on some phone,
+// show "⚠️ Problem" and carry on. (2026-11-17: on one iPhone the popup closed after a right
+// answer and the reward never came: probably something here broke and stopped the rest.)
+function quizSafely(what, action) {
+  try { action(); } catch (error) { reportProblem(error, what); }
+}
+
 function choose(button) {
   if (quiz.locked) return;
   quiz.locked = true;
   const correctAnswer = quiz.entry.hebrew;
   const isRight = button.textContent === correctAnswer;
   // Playing on Auto? Your answer (and how fast it was) may move your level (game.js).
-  autoLevelAnswer(isRight, (performance.now() - quiz.shownAt) / 1000);
+  quizSafely("auto level", () => autoLevelAnswer(isRight, (performance.now() - quiz.shownAt) / 1000));
 
   if (isRight) {
-    playSound("correct");
-    recordAnswer(quiz.entry, true);
+    const onCorrect = quiz.onCorrect; // (the reward: kept safe here before anything else runs)
+    quizSafely("sound", () => playSound("correct"));
+    quizSafely("saving", () => recordAnswer(quiz.entry, true));
     // Read it back: Hebrew, then English + Hebrew, then every word you missed.
     const entry = quiz.entry;
     const steps = [{ card: entry, lines: [hebrewLine(entry), englishLine(entry), hebrewLine(entry)] }];
@@ -173,15 +182,16 @@ function choose(button) {
     // (If the reward shows its own message, like "You earned the Hammer!",
     // that message simply replaces this one.)
     closeQuiz();
-    speakSteps(steps);
-    showToast("✅ Correct!", "נָכוֹן!");
-    if (quiz.onCorrect) quiz.onCorrect();
+    quizSafely("voice", () => speakSteps(steps));
+    quizSafely("message", () => showToast("✅ Correct!", "נָכוֹן!"));
+    // The reward ALWAYS runs, even if something above went wrong.
+    if (onCorrect) quizSafely("reward", onCorrect);
   } else {
-    playSound("wrong");
-    recordAnswer(quiz.entry, false);
+    quizSafely("sound", () => playSound("wrong"));
+    quizSafely("saving", () => recordAnswer(quiz.entry, false));
     // Remember it for the read-back, and say the right answer in Hebrew now.
     if (!quiz.missed.includes(quiz.entry)) quiz.missed.push(quiz.entry);
-    speakSteps([{ card: null, lines: [hebrewLine(quiz.entry)] }]);
+    quizSafely("voice", () => speakSteps([{ card: null, lines: [hebrewLine(quiz.entry)] }]));
     button.classList.add("wrong");
     // Light up the right answer in green so you learn it.
     for (const other of quizChoices.children) {

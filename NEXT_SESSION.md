@@ -4,7 +4,8 @@
 - **v 2026-11-17b** (same day): race round buttons moved to the top, gift + Drop buttons up under them. Not yet tried by Daniel.
 - **v 2026-11-17c** (same day): Daniel tried Capture the Flag bots ("very good"); now they buy and use every shop item and are a little faster and better aimed (details in STATE.md). Not yet tried by Daniel. Watch: games may run longer.
 - **v 2026-11-17d** (same day): Auto level finds a new player's level with big jumps (up 10, then halfway steps). Not yet tried by Daniel.
-- Live version: **v 2026-11-17d** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
+- **v 2026-11-17e** (same day): fix attempt for an iPhone where the question popup closed with no next question and no item (details in STATE.md). Ask Daniel whether it happens again, and what any ⚠️ Problem message says.
+- Live version: **v 2026-11-17e** (shown under Privacy on the home screen). The project folder matches the live site (the `supabase` folder stays off GitHub on purpose).
 - Daniel tried 16a + 16b: "pretty good". Capture the Flag (bots, joystick on the player) NOT tested yet.
 - Daniel was about to try 17a when the session ended; he said the list of changes "sounds good".
 - **v 17a, headless-tested, NOT yet tried by Daniel (details at the top of STATE.md):**

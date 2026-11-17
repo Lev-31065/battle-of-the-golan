@@ -118,7 +118,9 @@ document.getElementById("shop-close").addEventListener("click", () => { shopEl.h
 function startBuying(id) {
   const p = myPlayer();
   const item = ITEMS[id];
-  if (!p || !item || (item.kind !== "throw" && (p.items || []).includes(id))) return;
+  // (Already own this hand weapon? Nothing to buy. If this phone has lost track of my player for
+  // a moment, carry on anyway: stopping here silently left people with no question and no item.)
+  if (!item || (p && item.kind !== "throw" && (p.items || []).includes(id))) return;
   shopEl.hidden = true;
   const questionNumber = (shopPaid[id] || 0) + 1;
   openQuiz({
