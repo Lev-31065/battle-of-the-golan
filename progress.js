@@ -230,7 +230,8 @@ function autoDeckId() {
 }
 
 // Called after every answer while playing on Auto.
-// Returns "up" or "down" if your level changed, otherwise null.
+// Returns "up" or "down" if your level changed, "try" while still finding your level (now trying
+// another one), "found" when your level has just been found, otherwise null.
 function noteAutoAnswer(correct, seconds) {
   const auto = autoState();
   auto.recent.push({ right: correct, fast: correct && seconds <= AUTO_LEVEL.fastSeconds });
@@ -239,21 +240,47 @@ function noteAutoAnswer(correct, seconds) {
   const index = DECKS.findIndex((deck) => deck.id === auto.deckId);
 
   if (auto.placing) {
-    // 1) Still finding your level.
-    const lastFew = auto.recent.slice(-AUTO_LEVEL.jumpAfter);
-    const struggles = auto.recent.filter((a) => !a.fast).length;
-    if (struggles >= AUTO_LEVEL.settleAfter) {
-      auto.placing = false;                 // this is your level
-    } else if (lastFew.length === AUTO_LEVEL.jumpAfter && lastFew.every((a) => a.fast)) {
-      // Jump to the next main level (skip the B levels and checkpoints while climbing).
-      const next = DECKS.findIndex((deck, i) => i > index && !deck.review && !deck.checkpoint);
-      if (next === -1) {
-        auto.placing = false;               // already at the top!
-      } else {
-        auto.deckId = DECKS[next].id;
-        auto.recent = [];
-        move = "up";
+    // 1) Still finding your level: big jumps, then halfway steps (AUTO_LEVEL in rules.js).
+    //    lo = the highest main level passed so far, hi = the lowest one found too hard
+    //    (both are places in the list of main levels; -1 / main.length = none yet).
+    const main = DECKS.filter((deck) => !deck.review && !deck.checkpoint);
+    let at = main.findIndex((deck) => deck.id === auto.deckId);
+    if (at === -1) { // (on a B level or a checkpoint: the A level before it)
+      const after = main.findIndex((deck) => DECKS.indexOf(deck) > index);
+      at = after === -1 ? main.length - 1 : Math.max(0, after - 1);
+    }
+    // (A player who was halfway through the OLD climb passed every level below this one.)
+    if (auto.lo === undefined) { auto.lo = at - 1; auto.hi = main.length; }
+    const rights = auto.recent.filter((a) => a.right).length;
+    const wrongs = auto.recent.length - rights;
+    let next = null;   // the level to try next
+    let found = null;  // or: this is your level
+    if (rights - wrongs >= AUTO_LEVEL.placePass) {
+      auto.lo = at;
+      if (auto.hi >= main.length) next = Math.min(at + AUTO_LEVEL.bigJump, main.length - 1); // nothing too hard yet: big jump
+      else next = Math.ceil((auto.lo + auto.hi) / 2);                                           // halfway up
+      if (next <= at) found = at; // (at the top, or the next level up was already too hard)
+    } else if (wrongs - rights >= AUTO_LEVEL.placeFail) {
+      if (auto.lo < 0 && !auto.retried) { auto.retried = true; auto.recent = []; } // (level 1 too hard? One more go first: maybe it was just a slow start)
+      else if (auto.lo < 0) found = 0;               // level 1 is too hard: start at level 1 anyway
+      else {
+        auto.hi = at;
+        next = Math.floor((auto.lo + auto.hi) / 2);  // halfway down
+        if (next <= auto.lo) found = auto.lo;        // the level just below was passed: that's it
       }
+    }
+    if (found !== null) {
+      auto.placing = false;
+      delete auto.lo;
+      delete auto.hi;
+      delete auto.retried;
+      auto.deckId = main[found].id;
+      auto.recent = [];
+      move = "found";
+    } else if (next !== null) {
+      auto.deckId = main[next].id;
+      auto.recent = [];
+      move = "try";
     }
   } else {
     // 2) Settled. Going up looks at a few recent answers; going down looks at more.

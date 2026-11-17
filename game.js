@@ -883,7 +883,9 @@ function autoLevelAnswer(correct, seconds) {
   const { number, numberHe } = findDeck(currentDeckId);
   // Wait a moment, so this doesn't cover up "Correct!" or "You earned the Hammer!".
   setTimeout(() => {
-    if (move === "up") showToast(`⬆️ Level up! Now level ${number}`, `⬆️ עוֹלִים רָמָה! עַכְשָׁו רָמָה ${numberHe}`);
+    if (move === "try") showToast(`🔍 Finding your level: now trying level ${number}`, `🔍 מְחַפְּשִׂים רָמָה מַתְאִימָה: מְנַסִּים רָמָה ${numberHe}`);
+    else if (move === "found") showToast(`✅ Found your level: level ${number}`, `✅ מָצָאנוּ רָמָה מַתְאִימָה: רָמָה ${numberHe}`);
+    else if (move === "up") showToast(`⬆️ Level up! Now level ${number}`, `⬆️ עוֹלִים רָמָה! עַכְשָׁו רָמָה ${numberHe}`);
     else showToast(`⬇️ Back to level ${number} for some practice`, `⬇️ חוֹזְרִים לְרָמָה ${numberHe} לְתַרְגּוּל`);
   }, 2500);
 }

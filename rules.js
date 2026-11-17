@@ -288,9 +288,16 @@ const SESSION_GAP_HOURS = 1;
 // Your level is remembered for next time.
 const AUTO_LEVEL = {
   fastSeconds: 4,       // answering right within this many seconds counts as "fast"
-  // 1) Finding your level
-  jumpAfter: 3,         // this many fast right answers in a row → jump up a level
-  settleAfter: 3,       // this many slow or wrong answers at one level → that's your level
+  // 1) Finding your level (new players). Big jumps, then halfway steps, like guessing a number:
+  //    pass a level → jump up bigJump levels (until something is too hard);
+  //    after that, try halfway between the highest level passed and the lowest one failed,
+  //    until they're next to each other: the highest one passed is your level.
+  //    (Only the main "A" levels; B levels and checkpoints are skipped.) Daniel 2026-11-17: the old
+  //    one-level-at-a-time climb was far too slow for new players.
+  placePass: 3,         // RIGHT answers minus wrong ones at a level reaches this = passed it (so 3 right in a row, or 4 right + 1 wrong…)
+  placeFail: 2,         // WRONG answers minus right ones reaches this = too hard. (Counting the difference, not just wrong answers,
+                        // means one unlucky slip or one lucky guess hardly ever sends a player to the wrong level.)
+  bigJump: 10,          // levels to jump up after passing one, until a level is too hard
   // 2) After that: going UP
   upLookBack: 5,        // judge by your last 5 answers at this level
   upIfRight: 0.8,       // move up if at least 80% were right (4 of 5)...
@@ -608,7 +615,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-17c";
+const GAME_VERSION = "2026-11-17d";
 
 // ---------- Helpers ----------
 
