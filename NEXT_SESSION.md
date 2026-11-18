@@ -1,14 +1,15 @@
 # Next session
 
 ## Where we stopped (2026-11-18)
-- Live version: **v 2026-11-18b**. Everything is uploaded; the project folder matches the repo.
+- Live version: **v 2026-11-18c**. Everything is uploaded; the project folder matches the repo.
 - This session (details at the top of STATE.md):
   - **18a:** the shop no longer buys the item under the finger that opened it; new prices; you can buy several spears; hurt bots go eat berries; the Auto level reset; race bots take shortcuts.
   - **18b:** every outfit has a blue and a red version. The Bandit is now a hooded **Archer** (cloak, hood, bow, quiver; no round body).
+  - **18c:** the shop is smaller on phones held sideways (4 small cards per row, no long descriptions).
 - Daniel said the race bots are good for now.
 
 ## Next steps
-1. Daniel tests 18b on his phone (check the version under Privacy): the shop tap, prices, buying 2 spears, bots healing, and the new outfits in Capture the Flag.
+1. Daniel tests 18c on his phone (check the version under Privacy): the shop tap, prices, buying 2 spears, the smaller shop, bots healing, and the new outfits in Capture the Flag.
 2. Ask Daniel:
    - Do the team outfits and the Archer look right? Should other outfits become whole figures like the Archer?
    - Should the race outfits change too? (The race has no teams; the Archer still looks like the old bandit on the sled.)

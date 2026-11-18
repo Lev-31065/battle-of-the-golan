@@ -69,6 +69,9 @@
   - Claude's choices, not objected to: an untouched grenade explodes by itself at 20 s; tree grenades are hidden traps (not pick-up-able); 💣 icon (no pomegranate emoji).
 - **Step 7: % mastery on deck dashboard rows (2026-11-11, v 11-11e), Daniel: "looks good" (2026-11-12):** `makeMastery(deck)` in `decks.js` = `deckProgress()` (progress.js): words at flashcard level 3+ ÷ deck words, for whoever is logged in on that computer. Bar + % under the word count (`.deck-row-right` stacks them), green at 100%. On every row except Auto. `.deck-columns` = `repeat(3, minmax(0, 1fr))` so the bars can't widen a column.
 
+## v 2026-11-18c (uploaded, headless-tested, NOT yet tried by Daniel)
+- **Smaller shop** on phones held sideways (`max-height: 500px` in style.css): a 580px-wide panel with 4 small cards per row (picture, name, price) and no long descriptions. All 8 items fit with no scrolling. Tall screens still show the descriptions.
+
 ## v 2026-11-18b (uploaded, headless-tested, NOT yet tried by Daniel)
 - **Outfits have a blue and a red version** (`team` in `LOOKS`, rules.js; `drawLook` in ctf-draw.js uses `look.team[p.team]`). Shirt/jacket/robe/suit/hat in team colors; the cowboy hat is slate-blue or red-brown with a team band; the ninja's band is light blue or light red; the King has a team-colored robe, a thin white fur collar and a gold crown. The race still uses the old `cloth`/`dark`.
 - **Bandit → "Archer" 🏹 קַשָּׁת** (id still `bandit`, so saved picks keep it). `fullBody: true`: no round body or big eyes. `drawArcher` draws a cloak (tail sways while walking), a bow and a quiver on the back, a hood with its point behind, and a dark face opening with small eyes. Deep teal on blue, maroon on red. In `drawPlayer` the ball and eyes are skipped for it, but berries, ice, the name tag and the health bar still draw.
