@@ -152,13 +152,19 @@ function serverCheckSpears() {
   }
 }
 
-// The spear is used up after one stab (ITEMS.spear.oneUse): it's gone from your toolbar and
-// your hands are empty. You can buy a new one at the shop.
+// The spear is used up after one stab (ITEMS.spear.oneUse). Have more? You hold the next one.
+// That was the last? It's gone from your toolbar and your hands are empty.
 function breakSpear(p) {
   if (!ITEMS.spear.oneUse) return;
+  floatText("💥 Snap!", p.x, p.y - 40, "#fbbf24", 0.9, null, "נִשְׁבְּרָה!");
+  p.ammo.spear = (p.ammo.spear || 1) - 1;
+  if (p.ammo.spear > 0) {
+    toast(`🔱 Your spear broke. ${p.ammo.spear} left.`, `הַחֲנִית נִשְׁבְּרָה. נִשְׁאֲרוּ ${p.ammo.spear}.`, p.id);
+    return;
+  }
+  delete p.ammo.spear;
   p.items = p.items.filter((id) => id !== "spear");
   if (p.held === "spear") p.held = null;
-  floatText("💥 Snap!", p.x, p.y - 40, "#fbbf24", 0.9, null, "נִשְׁבְּרָה!");
   toast("🔱 Your spear broke. Buy a new one at the shop.", "הַחֲנִית נִשְׁבְּרָה. אֶפְשָׁר לִקְנוֹת חֲדָשָׁה בַּחֲנוּת.", p.id);
 }
 
@@ -588,7 +594,7 @@ function ctfHandle(p, msg) {
         toast("🛒 Too far from the shop: walk back to it and buy again.", "רָחוֹק מִדַּי מֵהַחֲנוּת: חוֹזְרִים אֵלֶיהָ וְקוֹנִים שׁוּב.", p.id);
       } else if (ITEMS[msg.item] && p.alive) {
         const item = ITEMS[msg.item];
-        if (item.kind === "throw") {
+        if (item.perBuy) { // thrown things and spears: you can have more than one
           p.ammo[msg.item] = (p.ammo[msg.item] || 0) + item.perBuy;
           if (!p.items.includes(msg.item)) p.items.push(msg.item);
           p.held = msg.item;

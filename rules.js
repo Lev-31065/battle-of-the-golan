@@ -49,24 +49,25 @@ const ITEMS = {
   },
   // kind "wear" = you wear it, you don't hold it. It works all the time and isn't in the toolbar.
   boots: {
-    kind: "wear", cost: 3,
+    kind: "wear", cost: 2,
     icon: "🥾", name: "Forest boots", nameHe: "מַגְּפֵי יַעַר",
     about: "Walk through bushes at full speed", aboutHe: "הוֹלְכִים בְּתוֹךְ שִׂיחִים בִּמְהִירוּת מְלֵאָה",
   },
   // 34 damage × 3 hits = 102, so 3 hits knock out anything with 100 health.
   hammer: {
-    kind: "melee", cost: 5, damage: 34, range: 85, cooldown: 0.6,
+    kind: "melee", cost: 6, damage: 34, range: 85, cooldown: 0.6,
     icon: "🔨", name: "Hammer", nameHe: "פַּטִּישׁ",
     about: "Strong: hits every enemy close to you", aboutHe: "חָזָק: פּוֹגֵעַ בְּכָל אוֹיֵב קָרוֹב",
   },
   // kind "spear" = no button. It sticks out in front of you while you hold it;
   // touch an enemy with the TIP and they're knocked out. Listed late because it's hard to use.
   spear: {
-    kind: "spear", cost: 4, oneUse: true, length: 95, side: 8, tipReach: 8, cooldown: 0.8,
+    kind: "spear", cost: 3, perBuy: 1, oneUse: true, length: 95, side: 8, tipReach: 8, cooldown: 0.8,
     // length = how far the tip sticks out past your body. side = how far right of center it's held.
     // tipReach = how close the tip must get to an enemy.
     // cooldown = seconds after a stab before the spear can stab again.
     // oneUse = it breaks after one stab (an enemy or the speed box). Daniel: it was too strong.
+    // perBuy = you can buy more than one; each buy adds one (the toolbar shows how many). Daniel 2026-11-18.
     icon: "🔱", name: "Spear", nameHe: "חֲנִית",
     about: "No button: touch an enemy with the tip = knocked out! Breaks after one stab",
     aboutHe: "בְּלִי כַּפְתּוֹר: נוֹגְעִים בְּאוֹיֵב עִם הַחֹד = נוֹקְאָאוּט! נִשְׁבֶּרֶת אַחֲרֵי דְּקִירָה אַחַת",
@@ -74,7 +75,7 @@ const ITEMS = {
   // lands = true: it doesn't hit anyone while flying. It lands at the end of its range and
   // becomes a hidden trap (settings in POMEGRANATE below).
   grenade: {
-    kind: "throw", cost: 3, perBuy: 2, damage: 0, range: 260, speed: 360, size: 11, cooldown: 0.6,
+    kind: "throw", cost: 2, perBuy: 2, damage: 0, range: 260, speed: 360, size: 11, cooldown: 0.6,
     freezes: false, goesThrough: true, lands: true,
     icon: "💣", pic: "pomegranate", name: "Pomegranate grenade", nameHe: "רִמּוֹן יָד",
     about: "You get 2. Throw one: it hides, and blows up when an enemy comes near (half their health)",
@@ -82,7 +83,7 @@ const ITEMS = {
   },
   // Same damage as the hammer, but thrown. Flies its full range, through everyone in its path.
   stars: {
-    kind: "throw", cost: 3, perBuy: 5, damage: 34, range: 470, speed: 470, size: 12, cooldown: 0.35,
+    kind: "throw", cost: 2, perBuy: 5, damage: 34, range: 470, speed: 470, size: 12, cooldown: 0.35,
     freezes: false, goesThrough: true,
     icon: "⭐", name: "Ninja stars", nameHe: "כּוֹכְבֵי נִינְגָּ׳ה",
     about: "You get 5. Each one hits every enemy in its path",
@@ -90,7 +91,7 @@ const ITEMS = {
   },
   // kind "plant" = hold it, then press the Plant button to plant it in front of you.
   tree: {
-    kind: "plant", cost: 8,
+    kind: "plant", cost: 4,
     icon: "🌳", name: "Pomegranate tree", nameHe: "עֵץ רִמּוֹנִים",
     about: "Plant it anywhere: it drops 4 hidden grenades over 2 minutes, then becomes a log",
     aboutHe: "שׁוֹתְלִים אוֹתוֹ אֵיפֹה שֶׁרוֹצִים: הוּא מַפִּיל 4 רִמּוֹנֵי יָד בְּמֶשֶׁךְ 2 דַּקּוֹת, וְאָז הוֹפֵךְ לְבוּל עֵץ",
@@ -494,6 +495,8 @@ const RACE = {
   botEase: [0.9, 0.82],   // …it eases off to 90% when it is that far ahead, and to 82% when it is three times that far ahead (so a bot in front never runs away with the race)
   botPush: 1.06,          // …and pushes to 106% when it is that far behind
   botShortcut: 0.6,       // how often the best bot takes the fast shortcut down the mountain face (the weaker bots less often)
+  botTrail: 0.75,         // how often a bot takes a secret trail it comes to (0.75 = 3 times in 4). Daniel 2026-11-17: bots should take the trails…
+  botGap: 0.3,            // …and only now and then drop through a gap in the rocks of a zigzag (0.3 = about 1 time in 3)
   // Answer gates: an English word on a sign, a Hebrew answer over each lane. Drive through the right one!
   gateZone: 70,           // the straight, wide stretch around each gate (in segments)
   gateZoneShort: 95,      // …and where two or three gates stand in a row on one long straight: how far apart they are
@@ -564,7 +567,9 @@ const CTF_BOTS = {
   spearAt: 240,          // with a spear: it points it at an enemy this close and runs straight at them
   boxAt: 260,            // an attacker with a hand weapon passing this close to the speed box smashes it for the boost
   trapEvery: 15,         // a guard with grenades leaves one in front of its base this often (seconds), up to 2 at a time
-  treeOut: 170,          // a guard with a tree plants it about this far out from its base, toward the middle
+  hurtAt: 0.7,           // a bot with less than this share of its health (0.7 = 70%)…
+  berryAt: 400,          // …walks over to eat a ripe berry this close, to heal. (It eats any berry it walks through anyway, hurt or not.)
+  treeOut: 170,         // a guard with a tree plants it about this far out from its base, toward the middle
 };
 
 // ---------- Mastery points and looks (looks.js) ----------
@@ -615,7 +620,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-17g";
+const GAME_VERSION = "2026-11-18a";
 
 // ---------- Helpers ----------
 

@@ -223,6 +223,15 @@ function ctfBotGoal(p, enemies) {
   // Our flag is lying on the ground: pick it up (defenders always; attackers if it is near).
   if (own.state === "dropped" && (p.role === "defend" || distance(own, p) < 450)) return { x: own.x, y: own.y, why: "grab", flag: p.team };
 
+  // Hurt, and a ripe berry is close by: go and eat it to heal.
+  if (p.hp < p.maxHp * CTF_BOTS.hurtAt) {
+    let food = null;
+    MAP.berries.forEach((berry, i) => {
+      if (berryRipe(i) && distance(berry, p) < CTF_BOTS.berryAt && (!food || distance(berry, p) < distance(food, p))) food = berry;
+    });
+    if (food) return { x: food.x, y: food.y, why: "berry" };
+  }
+
   // Armed = has something to fight with. Close-up = a hand weapon or a spear (worth walking up to someone for).
   const armed = p.items.some((id) => ["melee", "throw", "spear"].includes(ITEMS[id].kind) && (ITEMS[id].kind !== "throw" || p.ammo[id] > 0));
   const closeUp = p.items.some((id) => ["melee", "spear"].includes(ITEMS[id].kind));
@@ -303,7 +312,7 @@ function ctfMoveBot(p, dt) {
     const item = ITEMS[m.shopItem];
     if (!m.buyAt) m.buyAt = server.time + item.cost * botBetween(CTF_BOTS.answerTime);
     if (server.time >= m.buyAt) {
-      if (item.kind === "throw") p.ammo[m.shopItem] = (p.ammo[m.shopItem] || 0) + item.perBuy;
+      if (item.perBuy) p.ammo[m.shopItem] = (p.ammo[m.shopItem] || 0) + item.perBuy;
       if (!p.items.includes(m.shopItem)) p.items.push(m.shopItem);
       if (isHoldable(m.shopItem) && item.kind !== "plant") p.held = m.shopItem; // (boots are worn; the tree waits in the bag)
       m.shopItem = m.shopList.shift() || null; // the next thing on its list, if any

@@ -290,7 +290,8 @@ function easyShortcutNear(me, side) {
 
 // The line on the map my sled will ride for this shortcut, starting where it is now.
 // Returns { line: [[x, z], …], endY, endX (where it is back on the path) }, or null if it can't be done.
-function easyShortcutLine(me, cut) {
+// (The referee uses it for bots too: then gateZ = where that bot's next gate is.)
+function easyShortcutLine(me, cut, gateZ) {
   const L = RACE.segmentLength, spot = {}, line = [];
   trackToWorld(me.y, me.x, spot);
   const fx = Math.sin(spot.heading), fz = -Math.cos(spot.heading); // (the way the path points here)
@@ -340,8 +341,8 @@ function easyShortcutLine(me, cut) {
   trackToWorld(endSeg * L, endX, spot);
   line.push([spot.x, spot.z]);
   // (Never past a gate I have not answered: it would only bounce me back.)
-  const gate = nextGate();
-  if (gate && gate.z <= (endSeg + 2) * L) return null;
+  if (gateZ === undefined) { const gate = nextGate(); gateZ = gate ? gate.z : Infinity; }
+  if (gateZ <= (endSeg + 2) * L) return null;
   return { line, endY: endSeg * L, endX };
 }
 

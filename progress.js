@@ -217,9 +217,24 @@ function recordAnswer(entry, correct) {
 
 function autoState() {
   if (!progress.auto || !findDeck(progress.auto.deckId)) {
-    progress.auto = { deckId: DECKS[0].id, placing: true, recent: [], updated: 0 };
+    progress.auto = { deckId: DECKS[0].id, placing: true, recent: [], updated: 0, fast: true };
   }
-  return progress.auto;
+  const auto = progress.auto;
+  // Daniel 2026-11-17: everyone whose level was found the OLD, slow way gets the fast search
+  // again, starting from the level they're at now (the levels below it count as passed).
+  // `fast` marks that it's done, so it happens once (on every phone and account).
+  if (!auto.fast) {
+    auto.fast = true;
+    auto.placing = true;
+    auto.recent = [];
+    delete auto.lo;
+    delete auto.hi;
+    delete auto.retried;
+    // (`updated` stays as it was: whichever copy wins when phones and the account are
+    // combined gets this same reset the first time it's read.)
+    saveProgress();
+  }
+  return auto;
 }
 
 // Your Auto level's deck id, like "level-4" (level 4A) or "review-6" (level 6B).

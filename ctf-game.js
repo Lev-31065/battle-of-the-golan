@@ -75,8 +75,8 @@ function fillShop(p) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "shop-item";
-    // Hand weapons: once you own one, its button is grayed out. Thrown things can always be bought again.
-    const owned = item.kind !== "throw" && (p.items || []).includes(id);
+    // Hand weapons: once you own one, its button is grayed out. Thrown things and spears (perBuy) can always be bought again.
+    const owned = !item.perBuy && (p.items || []).includes(id);
     button.disabled = owned;
 
     const icon = document.createElement("span");
@@ -97,21 +97,28 @@ function fillShop(p) {
     else setBilingual(price, ...questionsText(item.cost));
 
     button.append(icon, text, price);
-    button.addEventListener("click", () => startBuying(id));
+    button.addEventListener("click", () => { if (shopTouched) startBuying(id); });
     shopItemsEl.appendChild(button);
   }
 }
+
+// The Shop button opens the shop the moment your finger touches it. When you lift that finger,
+// the phone sends a "tap" to whatever is under it NOW, which is a shop item (it used to start
+// buying the tree). So the shop only listens to taps that STARTED inside the open shop.
+let shopTouched = false;
+shopEl.addEventListener("pointerdown", () => { shopTouched = true; }, true);
 
 function tryOpenShop() {
   const p = myPlayer();
   if (!p || isBusy() || !nearShop(p)) return;
   resetStick(); // shopping means standing still
   fillShop(p);
+  shopTouched = false; // (the finger that opened it doesn't count)
   shopEl.hidden = false;
 }
 
 onPress(shopButton, tryOpenShop);
-document.getElementById("shop-close").addEventListener("click", () => { shopEl.hidden = true; });
+document.getElementById("shop-close").addEventListener("click", () => { if (shopTouched) shopEl.hidden = true; });
 
 // Ask the next question for this item. Each right answer pays one question;
 // a wrong answer just shows the right one and then asks another (quiz.js does that).
@@ -120,7 +127,7 @@ function startBuying(id) {
   const item = ITEMS[id];
   // (Already own this hand weapon? Nothing to buy. If this phone has lost track of my player for
   // a moment, carry on anyway: stopping here silently left people with no question and no item.)
-  if (!item || (p && item.kind !== "throw" && (p.items || []).includes(id))) return;
+  if (!item || (p && !item.perBuy && (p.items || []).includes(id))) return;
   shopEl.hidden = true;
   const questionNumber = (shopPaid[id] || 0) + 1;
   openQuiz({
@@ -145,7 +152,7 @@ function startBuying(id) {
       if (item.kind === "plant") {
         showToast(`${item.icon} You got a Pomegranate tree! Walk to a good spot and press Plant.`, `יֵשׁ עֵץ רִמּוֹנִים! הוֹלְכִים לְמָקוֹם טוֹב וְלוֹחֲצִים "לִשְׁתֹּל".`);
       } else if (item.kind === "spear") {
-        showToast(`${item.icon} You got the Spear! Touch an enemy with the tip to knock them out.`, `יֵשׁ חֲנִית! נוֹגְעִים בְּאוֹיֵב עִם הַחֹד כְּדֵי לְהַפִּיל אוֹתוֹ.`);
+        showToast(`${item.icon} +1 Spear! Touch an enemy with the tip to knock them out.`, `חֲנִית +1! נוֹגְעִים בְּאוֹיֵב עִם הַחֹד כְּדֵי לְהַפִּיל אוֹתוֹ.`);
       } else if (item.kind === "throw") {
         showToast(`${item.icon} +${item.perBuy} ${item.name}! Drag from the Throw button to aim.`, `${item.nameHe} +${item.perBuy}! גּוֹרְרִים מִכַּפְתּוֹר הַזְּרִיקָה כְּדֵי לְכַוֵּן.`);
       } else {

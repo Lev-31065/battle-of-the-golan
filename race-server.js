@@ -366,6 +366,9 @@ function raceAddBots() {
       spinUntil: LONG_AGO, // spinning round after a banana peel or a mango
       freeUntil: LONG_AGO, // stuck? Until then, nothing stops it
       forkSide: 0,        // which way round an island it is going (-1 left, 1 right, 0 = no island here)
+      plan: null,         // a secret trail or zigzag gap it has decided to take (one of easyShortcuts()), until it gets there
+      ride: null,         // the secret way it is riding right now (a line on the map, like easy mode's)
+      cutsSeen: new Set(), // the secret ways it has already made up its mind about (take it or not: once each)
       carveTime: 0,       // how long it has been going round this bend (for the carve boost)
       useAt: 0,           // when it will use the gift it is holding
       crashAt: LONG_AGO,
@@ -375,6 +378,96 @@ function raceAddBots() {
     raceNewPlayer(p);
     server.players[p.id] = p;
   }
+}
+
+// To keep the race close, a bot far ahead of the best player eases off a little, and one
+// far behind pushes harder. Returns how much of its top speed it uses (like 0.9 or 1.06).
+// (Each bot has its own idea of "far ahead": the best bots are allowed a longer lead (p.lead)
+// before they ease off. Otherwise every bot that is faster than the player ends up waiting at
+// the same spot just in front, all in a bunch.)
+function raceBotCatchUp(p) {
+  const humans = Object.values(server.players).filter((other) => !other.bot);
+  if (!humans.length) return 1;
+  const gap = p.y - Math.max(...humans.map((other) => other.y));
+  const ahead = gap - (p.lead || 0);
+  return ahead > RACE.botCatchUp * 3 ? RACE.botEase[1] : ahead > RACE.botCatchUp ? RACE.botEase[0] : gap < -RACE.botCatchUp ? RACE.botPush : 1;
+}
+
+// ---------- Bots and the secret ways (Daniel 2026-11-17) ----------
+// The secret trails and the gaps in the zigzag rocks are off the path, so a bot can't just
+// steer there. It rides them like a sled in easy mode does (race-game.js): along a line drawn
+// on the map, then back onto the path further down. Coming up to one, a bot makes up its mind
+// once: take it (RACE.botTrail / botGap of the time) or not. If yes, it moves over to that edge
+// of the path, and off it goes. (Never past a gate it has not answered: then it stays on the path.)
+function raceBotPlanShortcut(p, spinning) {
+  const at = p.y / RACE.segmentLength;
+  if (p.plan) {
+    if (at > p.plan.at + 3) p.plan = null; // (missed it: bounced back by a gate, or knocked aside)
+    else if (at >= p.plan.at - 1 && p.air === 0 && !spinning) {
+      const cut = p.plan;
+      p.plan = null;
+      // (Only from that edge of the path: from anywhere else it would have to swerve right across.)
+      if (p.x * cut.side > findSegment(p.y).width - 0.8) raceBotStartRide(p, cut);
+    }
+    return;
+  }
+  easyShortcuts().forEach((cut, i) => {
+    if (p.plan || p.cutsSeen.has(i) || at < cut.at - RACE.easySecretAt || at > cut.at - 5) return;
+    p.cutsSeen.add(i);
+    if (Math.random() < (cut.kind === "trail" ? RACE.botTrail : RACE.botGap)) p.plan = cut;
+  });
+}
+
+function raceBotStartRide(p, cut) {
+  const gate = TRACK.gates[p.gatesDone];
+  const way = easyShortcutLine(p, cut, gate ? gate.z : Infinity);
+  if (!way) return;
+  const at = [0];
+  for (let i = 1; i < way.line.length; i++) at.push(at[i - 1] + Math.hypot(way.line[i][0] - way.line[i - 1][0], way.line[i][1] - way.line[i - 1][1]));
+  const here = trackToWorld(p.y, p.x, {});
+  p.ride = { line: way.line, at, s: 0, i: 0, length: at[at.length - 1], endY: way.endY, endX: way.endX, speed: cut.speed, heading: here.heading + p.steer * RACE.maxTurn };
+}
+
+const BOT_HERE = {}, BOT_AHEAD = {}, BOT_SPOT = {}; // (spare spots, so nothing new is made every frame)
+function raceBotRide(p, dt, spinning) {
+  const ride = p.ride, U = 0.01, around = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const sinceOrange = server.time - (p.orangeUntil || LONG_AGO), orange = sinceOrange < 0;
+  const top = RACE.maxSpeed * p.skill * raceBotCatchUp(p) * ride.speed
+    * (server.time < p.boostUntil ? RACE.boostSpeed : 1) * (server.time < (p.anonaUntil || LONG_AGO) ? RACE.anonaSpeed : 1)
+    * (orange ? RACE.orangeSpeed : 1) * (spinning ? RACE.spinSpeed : 1);
+  if (p.speed > top) p.speed = Math.max(top, p.speed - (spinning ? RACE.offTrackSlowdown : sinceOrange >= 0 && sinceOrange < 2 ? RACE.orangeFade : RACE.coast) * dt);
+  else p.speed = Math.min(top, p.speed + RACE.accel * (orange ? RACE.orangeKick : 1) * dt);
+  ride.s += Math.max(0, p.speed) * U * dt;
+  if (ride.s >= ride.length) {
+    // Back on the path.
+    p.ride = null;
+    p.y = ride.endY;
+    p.x = ride.endX;
+    p.steer = 0;
+    p.lane = Math.max(-0.7, Math.min(0.7, ride.endX / Math.max(0.1, findSegment(p.y).width - 0.3)));
+    p.laneUntil = server.time + 2;
+    return;
+  }
+  // Where on the line it is, and which way the line goes a little further on (its nose points there).
+  const spotAt = (s, out) => {
+    let i = ride.i;
+    while (i < ride.at.length - 2 && ride.at[i + 1] < s) i++;
+    const f = Math.max(0, Math.min(1, (s - ride.at[i]) / Math.max(0.001, ride.at[i + 1] - ride.at[i])));
+    out.x = ride.line[i][0] + (ride.line[i + 1][0] - ride.line[i][0]) * f;
+    out.z = ride.line[i][1] + (ride.line[i + 1][1] - ride.line[i][1]) * f;
+    return i;
+  };
+  ride.i = spotAt(ride.s, BOT_HERE);
+  spotAt(Math.min(ride.length, ride.s + 7), BOT_AHEAD);
+  if (Math.hypot(BOT_AHEAD.x - BOT_HERE.x, BOT_AHEAD.z - BOT_HERE.z) > 0.5) {
+    ride.heading += around(Math.atan2(BOT_AHEAD.x - BOT_HERE.x, -(BOT_AHEAD.z - BOT_HERE.z)) - ride.heading) * Math.min(1, 9 * dt);
+  }
+  // The other phones only know a sled by where it is along the path and how far to the side,
+  // so turn its spot on the map into those (the same as a phone does for its own sled off the path).
+  worldToTrack(BOT_HERE.x, BOT_HERE.z, BOT_SPOT, findSegment(p.y).index);
+  p.y = BOT_SPOT.y;
+  p.x = BOT_SPOT.x;
+  p.steer = Math.max(-8, Math.min(8, around(ride.heading - BOT_SPOT.heading) / RACE.maxTurn));
 }
 
 function raceMoveBot(p, dt) {
@@ -406,6 +499,13 @@ function raceMoveBot(p, dt) {
     return;
   }
 
+  // Riding a secret trail, or dropping through a gap in a zigzag: it follows the line by itself.
+  if (p.ride) {
+    raceBotRide(p, dt, spinning);
+    return;
+  }
+  raceBotPlanShortcut(p, spinning);
+
   // Pick a new lane every few seconds.
   if (server.time > p.laneUntil) {
     p.laneUntil = server.time + 3 + Math.random() * 4;
@@ -413,6 +513,7 @@ function raceMoveBot(p, dt) {
   }
   const room = Math.max(0.1, segment.width - 0.3); // stay on the path
   let target = Math.max(-room, Math.min(room, p.lane * room));
+  if (p.plan) target = p.plan.side * room; // (heading for a secret way: over to that edge of the path)
   // Where the path splits around an island: pick a way round (once), and stay on that side.
   const islandSoon = Math.max(segment.island, findSegment(p.y + 12 * RACE.segmentLength).island, findSegment(p.y + 25 * RACE.segmentLength).island);
   const islandAhead = Math.max(islandSoon, findSegment(p.y + 55 * RACE.segmentLength).island);
@@ -481,14 +582,7 @@ function raceMoveBot(p, dt) {
 
   // Speed. To keep the race close, a bot far ahead of the best player eases off a
   // little, and one far behind pushes harder.
-  const humans = Object.values(server.players).filter((other) => !other.bot);
-  const best = Math.max(...humans.map((other) => other.y));
-  const gap = p.y - best;
-  // (Each bot has its own idea of "far ahead": the best bots are allowed a longer lead (p.lead)
-  // before they ease off. Otherwise every bot that is faster than the player ends up waiting at
-  // the same spot just in front, all in a bunch.)
-  const ahead = gap - (p.lead || 0);
-  const catchUp = !humans.length ? 1 : ahead > RACE.botCatchUp * 3 ? RACE.botEase[1] : ahead > RACE.botCatchUp ? RACE.botEase[0] : gap < -RACE.botCatchUp ? RACE.botPush : 1;
+  const catchUp = raceBotCatchUp(p);
   const boosting = server.time < p.boostUntil;
   // (A very sharp bend: it has to skid round, like a player, so it is slower there. The
   // shortcut down the mountain face and the tilted bends are faster, like for a player.)
