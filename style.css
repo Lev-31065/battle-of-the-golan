@@ -488,17 +488,21 @@ button, select, input { touch-action: manipulation; }
   .quiz-choices.long .quiz-choice { font-size: 16px; }
   .quiz-feedback { min-height: 18px; margin: 4px 0 0; font-size: 14px; }
   .quiz-panel .close-button { top: 6px; right: 6px; width: 30px; height: 30px; }
-  /* The shop: two columns of smaller items. */
-  .shop-panel { width: min(760px, 100%); padding: 10px 12px; }
-  .shop-panel h2 { font-size: 18px; }
+  /* The shop: small cards, 4 in a row (picture, name, price), so the whole shop fits
+     with the game still showing round it. (Daniel 2026-11-18: it was too big. The long
+     descriptions are hidden here; on a tall screen they still show.) */
+  .shop-panel { width: min(580px, 100%); padding: 8px 10px; }
+  .shop-panel h2 { font-size: 17px; }
   .shop-panel h2 .he, .shop-panel h2 .en { display: inline; margin-right: 8px; }
-  .shop-panel .panel-sub { margin: 0 40px 6px 0; font-size: 12px; }
-  .shop-items { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .shop-item { gap: 8px; padding: 5px 8px; border-width: 2px; }
-  .shop-icon { font-size: 24px; }
-  .shop-text b { font-size: 14px; }
-  .shop-text small { font-size: 11px; line-height: 1.2; }
-  .shop-price { padding: 3px 7px; font-size: 11px; }
+  .shop-panel .panel-sub { margin: 0 40px 6px 0; font-size: 11px; line-height: 1.25; }
+  .shop-panel .close-button { top: 6px; right: 6px; width: 30px; height: 30px; }
+  .shop-items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .shop-item { flex-direction: column; justify-content: center; gap: 2px; padding: 4px 3px; border-width: 2px; border-radius: 10px; text-align: center; }
+  .shop-icon { font-size: 22px; line-height: 1; }
+  .shop-text { flex: 0 0 auto; }
+  .shop-text b { font-size: 12px; line-height: 1.15; }
+  .shop-text small { display: none; }
+  .shop-price { padding: 2px 6px; font-size: 10px; line-height: 1.2; }
 }
 /* VERY short (under about 330px): even less. */
 @media (max-height: 340px) {
