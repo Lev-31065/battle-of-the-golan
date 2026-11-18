@@ -579,18 +579,29 @@ const CTF_BOTS = {
 // LOOKS: whole OUTFITS for your player, in Capture the Flag AND on your sled: clothes from
 // head to toe, not just a hat. Each one opens up when you have `cost` points (you don't
 // spend the points). Only for logged-in players.
-//   cloth + dark = the two main colors of the clothes (both games use them)
+//   cloth + dark = the two main colors of the clothes (the sled race uses these)
+//   team         = Capture the Flag: a blue and a red version of the clothes, so you can always
+//                  tell which team someone is on (Daniel 2026-11-18). hat = the hat's color.
+//   fullBody     = the outfit IS the whole figure: no round body under it (the archer)
 // To add a look: a line here + how it is drawn (ctf-draw.js: drawLook, race-3d.js: riderOutfit and riderLook).
-// (No outfit is mostly blue or red: in Capture the Flag those are the team colors.)
+// (The id "bandit" stays as it was, so players who picked it keep it. It's drawn as the archer now.)
 const LOOKS = [
   { id: "none",     cost: 0,   icon: "🙂", en: "Just me",    he: "רַק אֲנִי" },
-  { id: "tembel",   cost: 25,  icon: "👒", en: "Kibbutznik", he: "קִבּוּצְנִיק", cloth: "#c2ae7c", dark: "#8f7d51" },
-  { id: "shades",   cost: 60,  icon: "🕶️", en: "Cool kid",   he: "מַגְנִיב",     cloth: "#2f343c", dark: "#14161a" },
-  { id: "cowboy",   cost: 120, icon: "🤠", en: "Cowboy",     he: "בּוֹקֵר",      cloth: "#7a4a22", dark: "#4f2f14" },
-  { id: "headband", cost: 200, icon: "🥷", en: "Ninja",      he: "נִינְגָ'ה",    cloth: "#262a31", dark: "#0d0f13" },
-  { id: "wizard",   cost: 320, icon: "🧙", en: "Wizard",     he: "קוֹסֵם",       cloth: "#6d28d9", dark: "#4c1d95" },
-  { id: "bandit",   cost: 450, icon: "🦹", en: "Bandit",     he: "שׁוֹדֵד",      cloth: "#6b5a3e", dark: "#3d3222" },
-  { id: "crown",    cost: 600, icon: "👑", en: "King",       he: "מֶלֶךְ",       cloth: "#efe6cf", dark: "#b8a674" },
+  { id: "tembel",   cost: 25,  icon: "👒", en: "Kibbutznik", he: "קִבּוּצְנִיק", cloth: "#c2ae7c", dark: "#8f7d51",
+    team: { blue: { cloth: "#5b9bd5", dark: "#2b5f92" }, red: { cloth: "#d9654e", dark: "#8a2f20" } } },
+  { id: "shades",   cost: 60,  icon: "🕶️", en: "Cool kid",   he: "מַגְנִיב",     cloth: "#2f343c", dark: "#14161a",
+    team: { blue: { cloth: "#2f5fb3", dark: "#14295a" }, red: { cloth: "#b3262d", dark: "#55090d" } } },
+  { id: "cowboy",   cost: 120, icon: "🤠", en: "Cowboy",     he: "בּוֹקֵר",      cloth: "#7a4a22", dark: "#4f2f14",
+    team: { blue: { cloth: "#3b6fc4", dark: "#1e3f7a", hat: "#566b8f" }, red: { cloth: "#c8352f", dark: "#7a1712", hat: "#8f4a32" } } },
+  { id: "headband", cost: 200, icon: "🥷", en: "Ninja",      he: "נִינְגָ'ה",    cloth: "#262a31", dark: "#0d0f13",
+    team: { blue: { cloth: "#21407e", dark: "#0b1834", band: "#7db4ff" }, red: { cloth: "#7e2125", dark: "#2c0709", band: "#ff8a80" } } },
+  { id: "wizard",   cost: 320, icon: "🧙", en: "Wizard",     he: "קוֹסֵם",       cloth: "#6d28d9", dark: "#4c1d95",
+    team: { blue: { cloth: "#2563eb", dark: "#1e3a8a", hat: ["#1e3a8a", "#1d4ed8", "#3b82f6", "#93c5fd"] },
+            red:  { cloth: "#dc2626", dark: "#7f1d1d", hat: ["#7f1d1d", "#b91c1c", "#ef4444", "#fca5a5"] } } },
+  { id: "bandit",   cost: 450, icon: "🏹", en: "Archer",     he: "קַשָּׁת",       cloth: "#6b5a3e", dark: "#3d3222", fullBody: true,
+    team: { blue: { cloth: "#1f5f7a", dark: "#0c2f40", light: "#3f8fae" }, red: { cloth: "#7a1f2e", dark: "#3f0b16", light: "#a8394c" } } },
+  { id: "crown",    cost: 600, icon: "👑", en: "King",       he: "מֶלֶךְ",       cloth: "#efe6cf", dark: "#b8a674",
+    team: { blue: { cloth: "#2f5fd0", dark: "#162f73" }, red: { cloth: "#c62828", dark: "#5f0f0f" } } },
 ];
 function findLook(id) {
   return LOOKS.find((look) => look.id === id) || null;
@@ -620,7 +631,7 @@ const PUBLIC = {
 // Shown small on the home screen, so you can check that a phone has the NEWEST copy of
 // the game (phones keep old copies for a while). Change it with every upload, together
 // with the ?v=… after each script and style.css in index.html.
-const GAME_VERSION = "2026-11-18a";
+const GAME_VERSION = "2026-11-18b";
 
 // ---------- Helpers ----------
 

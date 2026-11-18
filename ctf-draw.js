@@ -574,15 +574,16 @@ function drawFlag(ctx, x, y, team, time) {
 // ---------- Players ----------
 
 // The LOOK a player picked (LOOKS in rules.js) is a whole OUTFIT, seen from above like the
-// player itself: clothes cover the body (a thin rim of the team color stays round the edge,
-// and the hands stay team-colored, so you can always tell blue from red), plus what goes on
-// the head. It is drawn in two goes: first everything UNDER the eyes, then (overEyes = true)
-// the few things that go over them (sunglasses, a mask). Inside, "forward" (the way the
-// player faces) is plus x.
+// player itself. Each outfit has a blue and a red version (`team` in LOOKS), so the clothes
+// themselves show the team; a thin rim of the team color also stays round the edge, and the
+// hands stay team-colored. It is drawn in two goes: first everything UNDER the eyes, then
+// (overEyes = true) the few things that go over them (sunglasses). Inside, "forward" (the way
+// the player faces) is plus x. The archer (fullBody) is the whole figure: no round body at all.
 function drawLook(ctx, p, y, time, overEyes) {
   const look = findLook(p.look);
   if (!look || !look.cloth) return;
   const id = look.id, R = p.radius, line = COLORS.outline;
+  const k = (look.team && look.team[p.team]) || look; // this team's colors
   const disc = (x, yy, rx, ry, fill, edge) => {
     ctx.beginPath();
     ctx.ellipse(x, yy, rx, ry, 0, 0, Math.PI * 2);
@@ -605,81 +606,80 @@ function drawLook(ctx, p, y, time, overEyes) {
       ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.45)";
       for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(9.5, 7 * side - 2, 1.4, 0, Math.PI * 2); ctx.fill(); }
-    } else if (id === "bandit") {
-      // The bandit's scarf, pulled up over the nose: a strip of cloth across the very front.
-      ctx.beginPath();
-      ctx.arc(0, 0, R - 5, -0.62, 0.62);
-      ctx.arc(-4, 0, R - 5, 0.5, -0.5, true);
-      ctx.closePath();
-      ctx.fillStyle = "#8f3b1e";
-      ctx.fill();
-      ctx.strokeStyle = line;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
     }
+    ctx.restore();
+    return;
+  }
+
+  if (id === "bandit") {
+    drawArcher(ctx, p, k, R, time);
     ctx.restore();
     return;
   }
 
   // The clothes: they cover the body, all but a rim of the team color.
   const cloth = ctx.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
-  cloth.addColorStop(0, look.cloth);
-  cloth.addColorStop(1, look.dark);
+  cloth.addColorStop(0, k.cloth);
+  cloth.addColorStop(1, k.dark);
   disc(0, 0, R - 4, R - 4, cloth, false);
   ctx.strokeStyle = "rgba(0,0,0,0.35)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
   if (id === "tembel") {
-    // A kibbutznik: a khaki work shirt (a collar at the front) and a kova tembel.
-    ctx.strokeStyle = look.dark;
+    // A kibbutznik: a work shirt in the team color (a collar at the front) and a kova tembel.
+    ctx.strokeStyle = k.dark;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(R - 6, -7); ctx.lineTo(R - 11, 0); ctx.lineTo(R - 6, 7);
     ctx.stroke();
-    disc(-5, 0, R * 0.74, R * 0.74, "#e6dab4", true);
-    disc(-6, 0, R * 0.46, R * 0.46, "#d2c394", true);
+    disc(-5, 0, R * 0.66, R * 0.66, "#e6dab4", true);
+    disc(-6, 0, R * 0.4, R * 0.4, "#d2c394", true);
   } else if (id === "shades") {
-    // A cool kid: a dark jacket with a zip, and spiky hair.
-    ctx.strokeStyle = "#9ca3af";
+    // A cool kid: a jacket in the team color with a zip, and spiky hair.
+    ctx.strokeStyle = "#d1d5db";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(R - 5, 0); ctx.lineTo(R - 13, 0);
     ctx.stroke();
     ctx.fillStyle = "#3b2414";
     ctx.beginPath();
-    for (let k = 0; k < 14; k++) {
-      const a = k / 14 * Math.PI * 2, r = R * (k % 2 ? 0.66 : 0.48);
+    for (let n = 0; n < 14; n++) {
+      const a = n / 14 * Math.PI * 2, r = R * (n % 2 ? 0.62 : 0.45);
       ctx.lineTo(-6 + Math.cos(a) * r, Math.sin(a) * r);
     }
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = line; ctx.lineWidth = 1.5; ctx.stroke();
   } else if (id === "cowboy") {
-    // A cowboy: a leather vest, a neckerchief at the front, and the hat.
-    ctx.fillStyle = "#e0b04a";
+    // A cowboy: a shirt and a neckerchief in the team color, and a felt hat tinted to match,
+    // with a team-colored band round it.
+    ctx.fillStyle = k.cloth;
     ctx.beginPath();
-    ctx.moveTo(R - 5, -9); ctx.lineTo(R - 13, 0); ctx.lineTo(R - 5, 9);
-    ctx.arc(0, 0, R - 5, 0.45, -0.45, true);
+    ctx.moveTo(R - 4, -10); ctx.lineTo(R - 12, 0); ctx.lineTo(R - 4, 10);
+    ctx.arc(0, 0, R - 4, 0.5, -0.5, true);
     ctx.closePath();
     ctx.fill();
-    disc(-4, 0, R * 0.9, R * 1.02, "#9a6a35", true);
-    disc(-5, 0, R * 0.5, R * 0.42, "#6b4423", true);
-    ctx.strokeStyle = "#4a2f14";
+    disc(-5, 0, R * 0.78, R * 0.9, k.hat, true);                 // the brim
+    ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1.5;     // (its rolled-up edges)
+    ctx.beginPath(); ctx.ellipse(-5, 0, R * 0.66, R * 0.78, 0, 0, Math.PI * 2); ctx.stroke();
+    disc(-6, 0, R * 0.48, R * 0.42, k.dark, false);                // the band
+    disc(-6, 0, R * 0.4, R * 0.34, k.hat, true);                   // the crown
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-5 - R * 0.3, 0);
-    ctx.lineTo(-5 + R * 0.3, 0);
+    ctx.moveTo(-6 - R * 0.26, 0);
+    ctx.lineTo(-6 + R * 0.26, 0);
     ctx.stroke();
   } else if (id === "headband") {
-    // A ninja: black from head to toe. Only a strip of face shows, round the eyes; a white
-    // band round the forehead, with two tails that flap behind.
+    // A ninja: dressed in a dark team color from head to toe. Only a strip of face shows, round
+    // the eyes; a bright team-colored band round the forehead, with two tails that flap behind.
     ctx.beginPath();
     ctx.moveTo(3, -13); ctx.lineTo(13, -12); ctx.quadraticCurveTo(16, 0, 13, 12); ctx.lineTo(3, 13); ctx.quadraticCurveTo(0, 0, 3, -13);
     ctx.fillStyle = "#e8b48f";
     ctx.fill();
-    ctx.strokeStyle = "#f8fafc";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = k.band;
+    ctx.lineWidth = 3.5;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.arc(0, 0, R - 8, 1.35, Math.PI * 2 - 1.35);
@@ -692,60 +692,168 @@ function drawLook(ctx, p, y, time, overEyes) {
     ctx.lineTo(-R - 5, 5 - flap);
     ctx.stroke();
   } else if (id === "wizard") {
-    // A wizard: a purple robe, a long white beard at the front, and the pointed hat with a star.
+    // A wizard: a robe and a pointed hat in the team color, a long white beard at the front, a star.
     for (const [bx, by, br] of [[R - 7, 0, 5.5], [R - 9, -7, 4.5], [R - 9, 7, 4.5]]) disc(bx, by, br, br, "#f1f5f9", false);
-    disc(-5, 0, R * 0.8, R * 0.8, "#4c1d95", true);
-    disc(-7, 0, R * 0.54, R * 0.54, "#6d28d9", false);
-    disc(-11, 0, R * 0.36, R * 0.36, "#7c3aed", false);
-    disc(-15, 0, R * 0.2, R * 0.2, "#a78bfa", false);
+    disc(-5, 0, R * 0.8, R * 0.8, k.hat[0], true);
+    disc(-7, 0, R * 0.54, R * 0.54, k.hat[1], false);
+    disc(-11, 0, R * 0.36, R * 0.36, k.hat[2], false);
+    disc(-15, 0, R * 0.2, R * 0.2, k.hat[3], false);
     ctx.fillStyle = "#facc15";
     ctx.beginPath();
-    for (let k = 0; k < 10; k++) {
-      const a = k / 10 * Math.PI * 2, r = k % 2 ? 2.2 : 5;
+    for (let n = 0; n < 10; n++) {
+      const a = n / 10 * Math.PI * 2, r = n % 2 ? 2.2 : 5;
       ctx.lineTo(-1 + Math.cos(a) * r, Math.sin(a) * r);
     }
     ctx.closePath();
     ctx.fill();
-  } else if (id === "bandit") {
-    // A bandit: a rough tunic with a cloth hood pulled over the head. The hood's point hangs
-    // down behind; the face is a dark opening at the front (the eyes show in it), and a
-    // scarf covers the nose and mouth (drawn over the eyes, above).
-    ctx.fillStyle = look.dark;
-    ctx.beginPath();
-    ctx.moveTo(-R + 5, -8); ctx.lineTo(-R - 9, 0); ctx.lineTo(-R + 5, 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke();
-    disc(-2, 0, R * 0.84, R * 0.84, look.dark, true);
-    // (Folds in the cloth.)
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.lineWidth = 2;
-    for (const r of [0.38, 0.6]) { ctx.beginPath(); ctx.arc(-4, 0, R * r, 1.9, Math.PI * 2 - 1.9); ctx.stroke(); }
-    // The opening of the hood: deep shadow.
-    disc(8, 0, 9.5, 14, "#17120c", false);
+    ctx.strokeStyle = "#a16207"; ctx.lineWidth = 1; ctx.stroke();
   } else if (id === "crown") {
-    // A king: a robe of white fur with black flecks, a gold collar, and the crown.
+    // A king: a royal robe in the team color, a collar of white fur with black flecks, and a gold crown.
+    ctx.strokeStyle = "#f8f5ec";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(-4, 0, R * 0.62, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.fillStyle = "#1f2937";
-    for (let k = 0; k < 9; k++) {
-      const a = k / 9 * Math.PI * 2 + 0.2;
+    for (let n = 0; n < 9; n++) {
+      const a = n / 9 * Math.PI * 2 + 0.2;
       ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * (R - 7.5), Math.sin(a) * (R - 7.5), 2.6, 1.3, a, 0, Math.PI * 2);
+      ctx.ellipse(-4 + Math.cos(a) * R * 0.62, Math.sin(a) * R * 0.62, 1.8, 0.9, a, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.strokeStyle = line;
     ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.arc(-4, 0, R * 0.54, 0, Math.PI * 2);
+    ctx.arc(-4, 0, R * 0.44, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = "#f5c518";
     ctx.lineWidth = 6;
     ctx.stroke();
-    for (let k = 0; k < 8; k++) {
-      const a = k / 8 * Math.PI * 2;
-      disc(-4 + Math.cos(a) * R * 0.54, Math.sin(a) * R * 0.54, 3.4, 3.4, k % 2 ? "#7c3aed" : "#fde047", true);
+    for (let n = 0; n < 8; n++) {
+      const a = n / 8 * Math.PI * 2;
+      disc(-4 + Math.cos(a) * R * 0.44, Math.sin(a) * R * 0.44, 3, 3, n % 2 ? k.cloth : "#fde047", true);
     }
   }
   ctx.restore();
+}
+
+// The archer, seen from above, facing plus x (drawLook has already turned the canvas).
+// A long cloak that sweeps back over the shoulders, a bow and a quiver of arrows on the back,
+// and a deep hood whose point hangs down behind. The face is a dark opening at the front,
+// with two small eyes glinting in it. All in the team's color: maroon or deep teal.
+function drawArcher(ctx, p, k, R, time) {
+  const line = COLORS.outline;
+  const sway = p.moving ? Math.sin(time * 12) * 3 : 0; // the cloak's tail swings while walking
+
+  // The cloak.
+  const cloak = ctx.createLinearGradient(R * 0.4, -R, -R * 1.4, R);
+  cloak.addColorStop(0, k.light);
+  cloak.addColorStop(0.45, k.cloth);
+  cloak.addColorStop(1, k.dark);
+  ctx.beginPath();
+  ctx.moveTo(R * 0.42, -R * 1.0);
+  ctx.bezierCurveTo(R * 0.05, -R * 1.28, -R * 1.0, -R * 0.95, -R * 1.42, sway);
+  ctx.bezierCurveTo(-R * 1.0, R * 0.95, R * 0.05, R * 1.28, R * 0.42, R * 1.0);
+  ctx.quadraticCurveTo(R * 0.85, 0, R * 0.42, -R * 1.0);
+  ctx.closePath();
+  ctx.fillStyle = cloak;
+  ctx.fill();
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+  // (Folds in the cloak, running back to the tail.)
+  ctx.strokeStyle = "rgba(0,0,0,0.28)";
+  ctx.lineWidth = 1.5;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-R * 0.1, side * R * 0.85);
+    ctx.quadraticCurveTo(-R * 0.75, side * R * 0.7, -R * 1.2, sway * 0.7 + side * R * 0.12);
+    ctx.stroke();
+  }
+
+  // The bow, slung across the back: a curved wooden stave and its string.
+  ctx.lineCap = "round";
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 5.5;
+  ctx.beginPath();
+  ctx.arc(-R * 0.15, 0, R * 0.92, 2.05, 4.23);
+  ctx.stroke();
+  ctx.strokeStyle = "#a0692f";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  const end = (a) => [-R * 0.15 + Math.cos(a) * R * 0.92, Math.sin(a) * R * 0.92];
+  ctx.strokeStyle = "rgba(255,255,255,0.75)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(...end(2.05));
+  ctx.lineTo(...end(4.23));
+  ctx.stroke();
+
+  // The quiver: a leather tube on the back, with the arrows' feathers sticking out at the shoulder.
+  ctx.save();
+  ctx.translate(-R * 0.42, -R * 0.8);
+  ctx.rotate(0.22);
+  ctx.fillStyle = "#6b3f1d";
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-R * 0.55, -4.5, R * 1.0, 9, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#f8fafc";
+  for (const off of [-3, 0, 3]) {
+    ctx.beginPath();
+    ctx.moveTo(R * 0.45, off);
+    ctx.lineTo(R * 0.45 + 8, off - 2.5);
+    ctx.lineTo(R * 0.45 + 8, off + 2.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // The hood: rounded over the head, its point hanging down behind.
+  const hood = ctx.createRadialGradient(-R * 0.1, -R * 0.3, R * 0.05, 0, 0, R * 0.9);
+  hood.addColorStop(0, k.light);
+  hood.addColorStop(1, k.dark);
+  ctx.beginPath();
+  ctx.moveTo(-R * 1.0, sway * 0.5);
+  ctx.quadraticCurveTo(-R * 0.55, -R * 0.66, R * 0.12, -R * 0.62);
+  ctx.quadraticCurveTo(R * 0.76, -R * 0.55, R * 0.76, 0);
+  ctx.quadraticCurveTo(R * 0.76, R * 0.55, R * 0.12, R * 0.62);
+  ctx.quadraticCurveTo(-R * 0.55, R * 0.66, -R * 1.0, sway * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = hood;
+  ctx.fill();
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  // (The seam down the middle of the hood.)
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-R * 0.92, sway * 0.5);
+  ctx.quadraticCurveTo(-R * 0.3, 0, R * 0.2, 0);
+  ctx.stroke();
+
+  // The face: deep shadow inside the hood, with two eyes glinting in it.
+  ctx.beginPath();
+  ctx.ellipse(R * 0.5, 0, R * 0.22, R * 0.42, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#140c0c";
+  ctx.fill();
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(R * 0.56, side * R * 0.17, 2.6, 2.2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(R * 0.56 + 1, side * R * 0.17, 1.3, 0, Math.PI * 2);
+    ctx.fillStyle = line;
+    ctx.fill();
+  }
 }
 
 // isMe = true for the player holding this phone (they get a yellow ring so they can find themselves).
@@ -855,57 +963,63 @@ function drawPlayer(ctx, p, time, isMe, plain) {
     drawShot(ctx, p.held, p.x + Math.cos(handAngleR) * (p.radius + 6), y + Math.sin(handAngleR) * (p.radius + 6), 0, 0.75);
   }
 
-  // Body: shaded like a ball, lit from the top-left (light → team color → dark).
-  const ball = ctx.createRadialGradient(p.x - p.radius * 0.35, y - p.radius * 0.4, p.radius * 0.1, p.x, y, p.radius);
-  ball.addColorStop(0, light);
-  ball.addColorStop(0.5, color);
-  ball.addColorStop(1, COLORS[p.team + "Dark"]);
-  ctx.fillStyle = ball;
-  ctx.strokeStyle = COLORS.outline;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  if (p.bot) {
-    // Computer players (bots) are HEXAGONS, so everyone can tell them from people (round).
-    const r = p.radius * 1.08;
-    for (let k = 0; k < 6; k++) {
-      const angle = Math.PI / 6 + k * Math.PI / 3; // (a point at the top and the bottom)
-      const hx = p.x + Math.cos(angle) * r, hy = y + Math.sin(angle) * r;
-      if (k === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
-    }
-    ctx.closePath();
-    ctx.lineJoin = "round";
+  // A whole-figure outfit (the archer) IS the body: no ball, no shine, no big round eyes.
+  const outfit = findLook(p.look);
+  if (outfit && outfit.fullBody && !p.bot) {
+    drawLook(ctx, p, y, time, false);
   } else {
-    ctx.arc(p.x, y, p.radius, 0, Math.PI * 2);
-  }
-  ctx.fill();
-  ctx.stroke();
-
-  // A small shine on the body
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.beginPath();
-  ctx.ellipse(p.x - p.radius * 0.38, y - p.radius * 0.42, p.radius * 0.22, p.radius * 0.14, -0.6, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawLook(ctx, p, y, time, false); // the outfit this player picked (looks.js): the clothes, and what is on the head
-
-  // Eyes, looking in the direction the player faces
-  const lookX = Math.cos(p.facing) * 7;
-  const lookY = Math.sin(p.facing) * 7;
-  for (const side of [-1, 1]) {
-    // Side-to-side offset, at right angles to the facing direction
-    const ex = p.x + lookX + Math.cos(p.facing + Math.PI / 2) * 7 * side;
-    const ey = y + lookY + Math.sin(p.facing + Math.PI / 2) * 7 * side;
-    ctx.fillStyle = "#fff";
+    // Body: shaded like a ball, lit from the top-left (light → team color → dark).
+    const ball = ctx.createRadialGradient(p.x - p.radius * 0.35, y - p.radius * 0.4, p.radius * 0.1, p.x, y, p.radius);
+    ball.addColorStop(0, light);
+    ball.addColorStop(0.5, color);
+    ball.addColorStop(1, COLORS[p.team + "Dark"]);
+    ctx.fillStyle = ball;
+    ctx.strokeStyle = COLORS.outline;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
+    if (p.bot) {
+      // Computer players (bots) are HEXAGONS, so everyone can tell them from people (round).
+      const r = p.radius * 1.08;
+      for (let k = 0; k < 6; k++) {
+        const angle = Math.PI / 6 + k * Math.PI / 3; // (a point at the top and the bottom)
+        const hx = p.x + Math.cos(angle) * r, hy = y + Math.sin(angle) * r;
+        if (k === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.lineJoin = "round";
+    } else {
+      ctx.arc(p.x, y, p.radius, 0, Math.PI * 2);
+    }
     ctx.fill();
-    ctx.fillStyle = COLORS.outline;
-    ctx.beginPath();
-    ctx.arc(ex + Math.cos(p.facing) * 2, ey + Math.sin(p.facing) * 2, 2.8, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    ctx.stroke();
 
-  drawLook(ctx, p, y, time, true); // (…and the few things that go over the eyes: sunglasses, a mask)
+    // A small shine on the body
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(p.x - p.radius * 0.38, y - p.radius * 0.42, p.radius * 0.22, p.radius * 0.14, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawLook(ctx, p, y, time, false); // the outfit this player picked (looks.js): the clothes, and what is on the head
+
+    // Eyes, looking in the direction the player faces
+    const lookX = Math.cos(p.facing) * 7;
+    const lookY = Math.sin(p.facing) * 7;
+    for (const side of [-1, 1]) {
+      // Side-to-side offset, at right angles to the facing direction
+      const ex = p.x + lookX + Math.cos(p.facing + Math.PI / 2) * 7 * side;
+      const ey = y + lookY + Math.sin(p.facing + Math.PI / 2) * 7 * side;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = COLORS.outline;
+      ctx.beginPath();
+      ctx.arc(ex + Math.cos(p.facing) * 2, ey + Math.sin(p.facing) * 2, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    drawLook(ctx, p, y, time, true); // (…and the few things that go over the eyes: sunglasses, a mask)
+  }
 
   // Berry boosts: one little red berry circling the player for each boost that's working,
   // so everyone can see who's sped up.
